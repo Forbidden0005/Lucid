@@ -1,0 +1,122 @@
+<Page
+    x:Class="ExplainMyPC.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Padding="32,28,32,32" Spacing="20">
+
+            <!-- Header -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Settings"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="Configure ExplainMyPC preferences. All settings are opt-in."
+                           Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
+
+            <!-- Appearance -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Appearance"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Dark Mode"
+                                       Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Use the dark Fluent design theme"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1"
+                                      IsOn="{x:Bind ViewModel.DarkModeEnabled, Mode=TwoWay}"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Scanning -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Scanning"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Automatic Scans"
+                                       Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Schedule periodic background scans (off by default)"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1"
+                                      IsOn="{x:Bind ViewModel.AutoScanEnabled, Mode=TwoWay}"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Privacy -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Privacy"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Usage Telemetry"
+                                       Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Help improve ExplainMyPC by sharing anonymous usage data (off by default)"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1"
+                                      IsOn="{x:Bind ViewModel.UsageTelemetryEnabled, Mode=TwoWay}"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock Text="No personal data, files, or system content is ever transmitted without your explicit opt-in."
+                               Style="{StaticResource CaptionTextStyle}"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Save button -->
+            <Button Content="Save Settings"
+                    Command="{x:Bind ViewModel.SaveSettingsCommand}"
+                    Style="{StaticResource PrimaryButtonStyle}" />
+
+            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                       Style="{StaticResource CaptionTextStyle}"
+                       Foreground="{StaticResource SuccessBrush}" />
+
+            <!-- About -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="About"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource BodyTextStyle}">
+                            <Run Text="ExplainMyPC  " FontWeight="SemiBold" />
+                            <Run Text="{x:Bind ViewModel.AppVersion}" />
+                        </TextBlock>
+                        <TextBlock Text="{x:Bind ViewModel.AppDescription}"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

@@ -1,0 +1,115 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Graph & Dashboard-specific colours
+        Supplement AppColors.xaml with metric-specific accent tints.
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- Per-metric accent colours (separate from the global accent blue) -->
+    <Color x:Key="CpuGraphColor">#4EA1FF</Color>     <!-- Accent Blue  -->
+    <Color x:Key="RamGraphColor">#55D6FF</Color>     <!-- Accent Cyan  -->
+    <Color x:Key="GpuGraphColor">#A78BFA</Color>     <!-- Soft Purple  -->
+    <Color x:Key="DiskGraphColor">#FFB347</Color>    <!-- Warning Amber -->
+
+    <SolidColorBrush x:Key="CpuGraphBrush"  Color="{StaticResource CpuGraphColor}" />
+    <SolidColorBrush x:Key="RamGraphBrush"  Color="{StaticResource RamGraphColor}" />
+    <SolidColorBrush x:Key="GpuGraphBrush"  Color="{StaticResource GpuGraphColor}" />
+    <SolidColorBrush x:Key="DiskGraphBrush" Color="{StaticResource DiskGraphColor}" />
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Category Score card colours
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Color x:Key="SecurityScoreColor"   >#57D68D</Color>   <!-- Success green  -->
+    <Color x:Key="StorageScoreColor"    >#FFB347</Color>   <!-- Warning amber  -->
+    <Color x:Key="StabilityScoreColor"  >#55D6FF</Color>   <!-- Accent cyan    -->
+    <Color x:Key="PerformanceScoreColor">#4EA1FF</Color>   <!-- Accent blue    -->
+    <Color x:Key="PrivacyScoreColor"    >#A78BFA</Color>   <!-- Soft purple    -->
+
+    <SolidColorBrush x:Key="SecurityScoreBrush"    Color="{StaticResource SecurityScoreColor}" />
+    <SolidColorBrush x:Key="StorageScoreBrush"     Color="{StaticResource StorageScoreColor}" />
+    <SolidColorBrush x:Key="StabilityScoreBrush"   Color="{StaticResource StabilityScoreColor}" />
+    <SolidColorBrush x:Key="PerformanceScoreBrush" Color="{StaticResource PerformanceScoreColor}" />
+    <SolidColorBrush x:Key="PrivacyScoreBrush"     Color="{StaticResource PrivacyScoreColor}" />
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Category Score Card style
+        Slightly narrower padding than the generic CardStyle so the
+        score ring fits without feeling cramped.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="ScoreCardStyle" TargetType="Border">
+        <Setter Property="Background"      Value="{StaticResource AppSurfaceBrush}" />
+        <Setter Property="CornerRadius"    Value="10" />
+        <Setter Property="BorderBrush"     Value="{StaticResource BorderSubtleBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding"         Value="16,16,16,16" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Explain My PC summary banner
+        Gradient left-border draws the eye without being aggressive.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="ExplainBannerStyle" TargetType="Border">
+        <Setter Property="Background"      Value="{StaticResource AppSurfaceBrush}" />
+        <Setter Property="CornerRadius"    Value="10" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding"         Value="20,16" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Progress bar styles — coloured per category
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="SecurityProgressStyle" TargetType="ProgressBar"
+           BasedOn="{StaticResource AccentProgressBarStyle}">
+        <Setter Property="Foreground" Value="{StaticResource SecurityScoreBrush}" />
+    </Style>
+
+    <Style x:Key="StorageProgressStyle" TargetType="ProgressBar"
+           BasedOn="{StaticResource AccentProgressBarStyle}">
+        <Setter Property="Foreground" Value="{StaticResource StorageScoreBrush}" />
+    </Style>
+
+    <Style x:Key="StabilityProgressStyle" TargetType="ProgressBar"
+           BasedOn="{StaticResource AccentProgressBarStyle}">
+        <Setter Property="Foreground" Value="{StaticResource StabilityScoreBrush}" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Issue Severity Badge styles
+        Severity uses status colours per intelligence-engine.md.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="IssueBadgeModerateStyle" TargetType="Border"
+           BasedOn="{StaticResource StatusBadgeStyle}">
+        <Setter Property="Background" Value="#2A1E0A" />
+        <Setter Property="BorderBrush" Value="{StaticResource WarningBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <Style x:Key="IssueBadgeLowStyle" TargetType="Border"
+           BasedOn="{StaticResource StatusBadgeStyle}">
+        <Setter Property="Background" Value="#0F1E14" />
+        <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <Style x:Key="IssueBadgeHighStyle" TargetType="Border"
+           BasedOn="{StaticResource StatusBadgeStyle}">
+        <Setter Property="Background" Value="#2A0A0A" />
+        <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+</ResourceDictionary>

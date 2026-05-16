@@ -1,0 +1,74 @@
+<Page
+    x:Class="ExplainMyPC.Views.StoragePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Padding="32,28,32,32" Spacing="20">
+
+            <!-- Header -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Storage"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="Analyse disk health, find reclaimable space, and monitor drive status."
+                           Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
+
+            <!-- Storage summary card -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="12">
+                        <TextBlock Text="Disk Health"
+                                   Style="{StaticResource CardTitleStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.DiskHealthSummary, Mode=OneWay}"
+                                   Style="{StaticResource DiagnosticBodyStyle}" />
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="SMART Status"
+                                           Style="{StaticResource CaptionTextStyle}" />
+                                <TextBlock Text="{x:Bind ViewModel.SmartStatus, Mode=OneWay}"
+                                           Style="{StaticResource BodyTextStyle}"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Scan Storage"
+                            Command="{x:Bind ViewModel.RunStorageScanCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Feature preview -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Storage Intelligence — Phase 2 &amp; 6"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="• Junk file analysis with reclaimable size estimates"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Duplicate file detection"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Large file discovery"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• SSD wear and SMART monitoring"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Treemap visualisation"
+                                   Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                    <TextBlock Text="Cleanup is always conservative, explainable, and reversible. Nothing is deleted without your review."
+                               Style="{StaticResource CaptionTextStyle}"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

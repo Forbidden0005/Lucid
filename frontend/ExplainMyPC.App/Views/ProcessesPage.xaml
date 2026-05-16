@@ -1,0 +1,88 @@
+<Page
+    x:Class="ExplainMyPC.Views.ProcessesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Padding="32,28,32,32" Spacing="20">
+
+            <!-- Header -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Processes"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="Live CPU, memory, and disk usage broken down by process."
+                           Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
+
+            <!-- Live telemetry summary -->
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Processes"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.TotalProcessCount, Mode=OneWay}"
+                                   Style="{StaticResource MetricLargeStyle}"
+                                   Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Text="running"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="CPU"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.SystemCpuPercent, Mode=OneWay}"
+                                   Style="{StaticResource MetricLargeStyle}"
+                                   Foreground="{StaticResource AccentCyanBrush}" />
+                        <TextBlock Text="% system"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Memory"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.SystemRamPercent, Mode=OneWay}"
+                                   Style="{StaticResource MetricLargeStyle}"
+                                   Foreground="{StaticResource WarningBrush}" />
+                        <TextBlock Text="% in use"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Process list placeholder -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="Process List"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                        <Button Grid.Column="1"
+                                Content="Start Monitoring"
+                                Command="{x:Bind ViewModel.StartMonitoringCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                    </Grid>
+                    <TextBlock Text="Live process monitoring — with CPU%, memory, disk I/O, and process trees — is available in Phase 2."
+                               Style="{StaticResource BodyTextStyle}"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

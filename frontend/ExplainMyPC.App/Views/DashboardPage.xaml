@@ -1,0 +1,510 @@
+<Page
+    x:Class="ExplainMyPC.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:ExplainMyPC.Controls"
+    xmlns:models="using:ExplainMyPC.Models"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+
+        <StackPanel Padding="32,28,32,32" Spacing="20">
+
+            <!-- ════════════════════════════════════════════════════════════
+                 1. Page Header
+                 ════════════════════════════════════════════════════════════ -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="3">
+                    <TextBlock Text="Dashboard"
+                               Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="{x:Bind ViewModel.SystemSummary, Mode=OneWay}"
+                               Style="{StaticResource PageSubtitleStyle}"
+                               MaxLines="2" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="Run Scan"
+                        Command="{x:Bind ViewModel.RunScanCommand}"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 2. Health Score Row
+                 Left: large overall ring.  Right: three category score cards.
+                 ════════════════════════════════════════════════════════════ -->
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />    <!-- Overall ring card  -->
+                    <ColumnDefinition Width="*" />       <!-- Security           -->
+                    <ColumnDefinition Width="*" />       <!-- Storage            -->
+                    <ColumnDefinition Width="*" />       <!-- Stability          -->
+                </Grid.ColumnDefinitions>
+
+                <!-- ── Overall health ring card ─────────────────────────── -->
+                <Border Grid.Column="0"
+                        Style="{StaticResource ScoreCardStyle}"
+                        Width="210">
+                    <StackPanel Spacing="10" HorizontalAlignment="Center">
+
+                        <TextBlock Text="System Health"
+                                   Style="{StaticResource CardTitleStyle}"
+                                   HorizontalAlignment="Center" />
+
+                        <controls:HealthScoreRing
+                            Score="{x:Bind ViewModel.OverallHealthScore, Mode=OneWay}"
+                            Label="{x:Bind ViewModel.OverallHealthLabel, Mode=OneWay}"
+                            HorizontalAlignment="Center" />
+
+                        <!-- Per-category mini bars -->
+                        <StackPanel Spacing="7" Margin="0,4,0,0">
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="34" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Security"
+                                           Style="{StaticResource CaptionTextStyle}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{x:Bind ViewModel.SecurityScore, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           HorizontalAlignment="Right"
+                                           Foreground="{StaticResource SecurityScoreBrush}" />
+                            </Grid>
+                            <ProgressBar Value="{x:Bind ViewModel.SecurityScore, Mode=OneWay}"
+                                         Maximum="100"
+                                         Style="{StaticResource SecurityProgressStyle}" />
+
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="34" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Stability"
+                                           Style="{StaticResource CaptionTextStyle}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{x:Bind ViewModel.StabilityScore, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           HorizontalAlignment="Right"
+                                           Foreground="{StaticResource StabilityScoreBrush}" />
+                            </Grid>
+                            <ProgressBar Value="{x:Bind ViewModel.StabilityScore, Mode=OneWay}"
+                                         Maximum="100"
+                                         Style="{StaticResource StabilityProgressStyle}" />
+
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="34" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Storage"
+                                           Style="{StaticResource CaptionTextStyle}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{x:Bind ViewModel.StorageScore, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           HorizontalAlignment="Right"
+                                           Foreground="{StaticResource StorageScoreBrush}" />
+                            </Grid>
+                            <ProgressBar Value="{x:Bind ViewModel.StorageScore, Mode=OneWay}"
+                                         Maximum="100"
+                                         Style="{StaticResource StorageProgressStyle}" />
+
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Security score card ───────────────────────────────── -->
+                <Border Grid.Column="1" Style="{StaticResource ScoreCardStyle}">
+                    <StackPanel Spacing="12">
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Width="30" Height="30" CornerRadius="6"
+                                    Background="#0F211A">
+                                <FontIcon Glyph="&#xE72E;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="14"
+                                          Foreground="{StaticResource SecurityScoreBrush}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="Security"
+                                       Style="{StaticResource CardTitleStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <TextBlock Text="{x:Bind ViewModel.SecurityScore, Mode=OneWay}"
+                                   Style="{StaticResource MetricLargeStyle}"
+                                   Foreground="{StaticResource SecurityScoreBrush}" />
+
+                        <ProgressBar Value="{x:Bind ViewModel.SecurityScore, Mode=OneWay}"
+                                     Maximum="100"
+                                     Style="{StaticResource SecurityProgressStyle}" />
+
+                        <Rectangle Style="{StaticResource DividerStyle}" />
+
+                        <TextBlock Text="No threats detected"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource SuccessBrush}" />
+                        <TextBlock Text="Startup entries look clean. No unsigned persistence detected."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Storage score card ────────────────────────────────── -->
+                <Border Grid.Column="2" Style="{StaticResource ScoreCardStyle}">
+                    <StackPanel Spacing="12">
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Width="30" Height="30" CornerRadius="6"
+                                    Background="#201808">
+                                <FontIcon Glyph="&#xEDA2;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="14"
+                                          Foreground="{StaticResource StorageScoreBrush}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="Storage"
+                                       Style="{StaticResource CardTitleStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <TextBlock Text="{x:Bind ViewModel.StorageScore, Mode=OneWay}"
+                                   Style="{StaticResource MetricLargeStyle}"
+                                   Foreground="{StaticResource StorageScoreBrush}" />
+
+                        <ProgressBar Value="{x:Bind ViewModel.StorageScore, Mode=OneWay}"
+                                     Maximum="100"
+                                     Style="{StaticResource StorageProgressStyle}" />
+
+                        <Rectangle Style="{StaticResource DividerStyle}" />
+
+                        <TextBlock Text="347 GB / 512 GB used"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource WarningBrush}" />
+                        <TextBlock Text="SSD at 67% capacity. SMART status: Good."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Stability score card ───────────────────────────────── -->
+                <Border Grid.Column="3" Style="{StaticResource ScoreCardStyle}">
+                    <StackPanel Spacing="12">
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Width="30" Height="30" CornerRadius="6"
+                                    Background="#0A1520">
+                                <FontIcon Glyph="&#xE8CB;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="14"
+                                          Foreground="{StaticResource StabilityScoreBrush}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="Stability"
+                                       Style="{StaticResource CardTitleStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <TextBlock Text="{x:Bind ViewModel.StabilityScore, Mode=OneWay}"
+                                   Style="{StaticResource MetricLargeStyle}"
+                                   Foreground="{StaticResource StabilityScoreBrush}" />
+
+                        <ProgressBar Value="{x:Bind ViewModel.StabilityScore, Mode=OneWay}"
+                                     Maximum="100"
+                                     Style="{StaticResource StabilityProgressStyle}" />
+
+                        <Rectangle Style="{StaticResource DividerStyle}" />
+
+                        <TextBlock Text="No crashes in 14 days"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource SuccessBrush}" />
+                        <TextBlock Text="All drivers up to date. No event log errors."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+            </Grid>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 3. Explain My PC Summary Banner
+                 Gradient border on left edge draws attention without alarm.
+                 ════════════════════════════════════════════════════════════ -->
+            <Grid>
+                <!-- Gradient left-edge accent -->
+                <Border CornerRadius="10"
+                        BorderThickness="1">
+                    <Border.BorderBrush>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#4EA1FF" Offset="0.0" />
+                            <GradientStop Color="#55D6FF" Offset="1.0" />
+                        </LinearGradientBrush>
+                    </Border.BorderBrush>
+                    <Grid Background="{StaticResource AppSurfaceBrush}"
+                          CornerRadius="9"
+                          Padding="20,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Spacing="6"
+                                    VerticalAlignment="Center">
+
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE946;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="15"
+                                          Foreground="{StaticResource AccentBlueBrush}" />
+                                <TextBlock Text="Explain My PC"
+                                           Style="{StaticResource CardTitleStyle}"
+                                           Foreground="{StaticResource AccentBlueBrush}" />
+                            </StackPanel>
+
+                            <TextBlock Text="{x:Bind ViewModel.SystemSummary, Mode=OneWay}"
+                                       Style="{StaticResource DiagnosticBodyStyle}"
+                                       MaxLines="2" />
+
+                            <StackPanel Orientation="Horizontal" Spacing="16"
+                                        Margin="0,4,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Ellipse Width="7" Height="7"
+                                             Fill="{StaticResource WarningBrush}"
+                                             VerticalAlignment="Center" />
+                                    <TextBlock Style="{StaticResource CaptionTextStyle}">
+                                        <Run Text="{x:Bind ViewModel.ActiveIssueCount, Mode=OneWay}" />
+                                        <Run Text=" active findings" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <TextBlock Text="•"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="Last scan: Never"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Content="Open Explain My PC"
+                                Command="{x:Bind ViewModel.OpenExplainCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 4. Live Telemetry Row — four MetricCards
+                 Each card: icon + current value + detail + animated graph.
+                 ════════════════════════════════════════════════════════════ -->
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- CPU -->
+                <controls:MetricCard
+                    Grid.Column="0"
+                    Title="CPU"
+                    IconGlyph="&#xE9F5;"
+                    Value="{x:Bind ViewModel.CpuDisplay, Mode=OneWay}"
+                    DetailText="{x:Bind ViewModel.CpuDetail, Mode=OneWay}"
+                    DataPoints="{x:Bind ViewModel.CpuHistory, Mode=OneWay}"
+                    GraphColor="{StaticResource CpuGraphColor}"
+                    ValuePercent="{x:Bind ViewModel.CpuPercent, Mode=OneWay}"
+                    WarningThreshold="70"
+                    CriticalThreshold="90" />
+
+                <!-- RAM -->
+                <controls:MetricCard
+                    Grid.Column="1"
+                    Title="Memory"
+                    IconGlyph="&#xE950;"
+                    Value="{x:Bind ViewModel.RamDisplay, Mode=OneWay}"
+                    DetailText="{x:Bind ViewModel.RamDetail, Mode=OneWay}"
+                    DataPoints="{x:Bind ViewModel.RamHistory, Mode=OneWay}"
+                    GraphColor="{StaticResource RamGraphColor}"
+                    ValuePercent="{x:Bind ViewModel.RamPercent, Mode=OneWay}"
+                    WarningThreshold="80"
+                    CriticalThreshold="92" />
+
+                <!-- GPU -->
+                <controls:MetricCard
+                    Grid.Column="2"
+                    Title="GPU"
+                    IconGlyph="&#xE7F4;"
+                    Value="{x:Bind ViewModel.GpuDisplay, Mode=OneWay}"
+                    DetailText="{x:Bind ViewModel.GpuDetail, Mode=OneWay}"
+                    DataPoints="{x:Bind ViewModel.GpuHistory, Mode=OneWay}"
+                    GraphColor="{StaticResource GpuGraphColor}"
+                    ValuePercent="{x:Bind ViewModel.GpuPercent, Mode=OneWay}"
+                    WarningThreshold="75"
+                    CriticalThreshold="95" />
+
+                <!-- Disk -->
+                <controls:MetricCard
+                    Grid.Column="3"
+                    Title="Disk I/O"
+                    IconGlyph="&#xEDA2;"
+                    Value="{x:Bind ViewModel.DiskDisplay, Mode=OneWay}"
+                    DetailText="{x:Bind ViewModel.DiskDetail, Mode=OneWay}"
+                    DataPoints="{x:Bind ViewModel.DiskHistory, Mode=OneWay}"
+                    GraphColor="{StaticResource DiskGraphColor}"
+                    ValuePercent="{x:Bind ViewModel.DiskIoPercent, Mode=OneWay}"
+                    WarningThreshold="60"
+                    CriticalThreshold="85" />
+
+            </Grid>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 5. Active Issues
+                 Displayed with human language per intelligence-engine.md.
+                 Phase 3: populated by the rules engine. Phase 1: mock data.
+                 ════════════════════════════════════════════════════════════ -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+
+                    <!-- Section header -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="Active Findings"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                        <Border Grid.Column="1"
+                                Style="{StaticResource StatusBadgeStyle}"
+                                Background="{StaticResource AppElevatedSurfaceBrush}"
+                                VerticalAlignment="Center">
+                            <TextBlock FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource WarningBrush}">
+                                <Run Text="{x:Bind ViewModel.ActiveIssueCount, Mode=OneWay}" />
+                                <Run Text=" issues" />
+                            </TextBlock>
+                        </Border>
+                    </Grid>
+
+                    <!-- Issue 1 (Moderate — Performance) -->
+                    <Border Style="{StaticResource InsetCardStyle}">
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Severity icon -->
+                            <Border Grid.Column="0"
+                                    Width="36" Height="36"
+                                    CornerRadius="6"
+                                    Background="#2A1E0A"
+                                    VerticalAlignment="Top">
+                                <FontIcon Glyph="&#xE823;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="16"
+                                          Foreground="{StaticResource WarningBrush}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Several startup apps are slowing your boot time"
+                                           Style="{StaticResource BodyTextStyle}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="12 applications launch when Windows starts, adding about 8 seconds to boot. Disabling the ones you don't need could speed this up."
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="8"
+                                            Margin="0,4,0,0">
+                                    <Border Style="{StaticResource IssueBadgeModerateStyle}">
+                                        <TextBlock Text="Moderate"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource WarningBrush}" />
+                                    </Border>
+                                    <TextBlock Text="Performance"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Button Grid.Column="2"
+                                    Content="View Fix"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Padding="12,6"
+                                    VerticalAlignment="Center"
+                                    FontSize="12" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Issue 2 (Low — Storage) -->
+                    <Border Style="{StaticResource InsetCardStyle}">
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    Width="36" Height="36"
+                                    CornerRadius="6"
+                                    Background="#0F1E14"
+                                    VerticalAlignment="Top">
+                                <FontIcon Glyph="&#xEDA2;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="16"
+                                          Foreground="{StaticResource SuccessBrush}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Your SSD is 67% full"
+                                           Style="{StaticResource BodyTextStyle}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="Your primary drive has 167 GB of free space. Performance may decrease if available space drops below 10%."
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="8"
+                                            Margin="0,4,0,0">
+                                    <Border Style="{StaticResource IssueBadgeLowStyle}">
+                                        <TextBlock Text="Low"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource SuccessBrush}" />
+                                    </Border>
+                                    <TextBlock Text="Storage"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Button Grid.Column="2"
+                                    Content="Storage"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Padding="12,6"
+                                    VerticalAlignment="Center"
+                                    FontSize="12" />
+                        </Grid>
+                    </Border>
+
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
