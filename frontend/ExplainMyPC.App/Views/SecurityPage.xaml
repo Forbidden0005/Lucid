@@ -1,0 +1,87 @@
+<Page
+    x:Class="ExplainMyPC.Views.SecurityPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Padding="32,28,32,32" Spacing="20">
+
+            <!-- Header -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Security"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="Monitor your system for suspicious processes, startup entries, and persistence changes."
+                           Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
+
+            <!-- Status summary card -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="12">
+                        <TextBlock Text="Security Status"
+                                   Style="{StaticResource CardTitleStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.SecuritySummary, Mode=OneWay}"
+                                   Style="{StaticResource DiagnosticBodyStyle}" />
+
+                        <!-- Threat / Warning counts -->
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Border Style="{StaticResource StatusBadgeStyle}"
+                                        Background="{StaticResource DangerBrush}">
+                                    <TextBlock Text="{x:Bind ViewModel.ThreatCount, Mode=OneWay}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="White" />
+                                </Border>
+                                <TextBlock Text="Threats"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Border Style="{StaticResource StatusBadgeStyle}"
+                                        Background="{StaticResource WarningBrush}">
+                                    <TextBlock Text="{x:Bind ViewModel.WarningCount, Mode=OneWay}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="White" />
+                                </Border>
+                                <TextBlock Text="Warnings"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Button Grid.Column="1"
+                            Content="Run Scan"
+                            Command="{x:Bind ViewModel.RunSecurityScanCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Scan categories coming in Phase 2 -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="What Security Monitors"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="• Unsigned startup executables"  Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Suspicious persistence entries (registry, scheduled tasks)"  Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Hosts file modifications"  Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• DNS configuration changes"  Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• PowerShell execution policy anomalies"  Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                    <TextBlock Text="Security scanning is available in Phase 2."
+                               Style="{StaticResource CaptionTextStyle}"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

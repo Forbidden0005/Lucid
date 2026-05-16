@@ -1,0 +1,127 @@
+<Page
+    x:Class="ExplainMyPC.Views.RepairsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Padding="32,28,32,32" Spacing="20">
+
+            <!-- Header -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Repairs"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="Safe system repair tools. A restore point is always created before any changes are made."
+                           Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
+
+            <!-- Safety commitment banner -->
+            <Border Background="{StaticResource AppElevatedSurfaceBrush}"
+                    CornerRadius="8"
+                    BorderBrush="{StaticResource AccentBlueBrush}"
+                    BorderThickness="1"
+                    Padding="16,12">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <FontIcon Glyph="&#xE72E;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="16"
+                              Foreground="{StaticResource AccentBlueBrush}"
+                              VerticalAlignment="Center" />
+                    <TextBlock Text="Every repair creates a restore point and rollback snapshot before making any changes. You can always undo."
+                               Style="{StaticResource BodyTextStyle}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- SFC card -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="8">
+                        <TextBlock Text="System File Checker (SFC)"
+                                   Style="{StaticResource CardTitleStyle}" />
+                        <TextBlock Text="Scans Windows system files for corruption and restores them from the Windows image cache."
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Style="{StaticResource StatusBadgeStyle}"
+                                    Background="{StaticResource AppElevatedSurfaceBrush}">
+                                <TextBlock Text="Low Risk" FontSize="11"
+                                           Foreground="{StaticResource SuccessBrush}" />
+                            </Border>
+                            <Border Style="{StaticResource StatusBadgeStyle}"
+                                    Background="{StaticResource AppElevatedSurfaceBrush}">
+                                <TextBlock Text="Rollback supported" FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Run SFC"
+                            Command="{x:Bind ViewModel.RunSfcCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="False" />
+                </Grid>
+            </Border>
+
+            <!-- DISM card -->
+            <Border Style="{StaticResource CardStyle}">
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="8">
+                        <TextBlock Text="DISM Health Restore"
+                                   Style="{StaticResource CardTitleStyle}" />
+                        <TextBlock Text="Repairs the Windows component store (WinSxS) used by SFC. Recommended if SFC reports unfixable errors."
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Style="{StaticResource StatusBadgeStyle}"
+                                    Background="{StaticResource AppElevatedSurfaceBrush}">
+                                <TextBlock Text="Low Risk" FontSize="11"
+                                           Foreground="{StaticResource SuccessBrush}" />
+                            </Border>
+                            <Border Style="{StaticResource StatusBadgeStyle}"
+                                    Background="{StaticResource AppElevatedSurfaceBrush}">
+                                <TextBlock Text="Requires internet" FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Run DISM"
+                            Command="{x:Bind ViewModel.RunDismCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="False" />
+                </Grid>
+            </Border>
+
+            <!-- More repairs coming -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="More Repair Tools — Phase 4"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="• Windows Update repair"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Network stack reset"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• DNS flush and repair"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Restore point manager"
+                                   Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Text="• Rollback history browser"
+                                   Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

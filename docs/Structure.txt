@@ -1,0 +1,17 @@
+ExplainMyPC/
+│
+├── CLAUDE.md
+├── README.md
+├── ROADMAP.md
+├── CONTRIBUTING.md
+├── docs/
+│   ├── architecture.md
+│   ├── ui-guidelines.md
+│   ├── intelligence-engine.md
+│   └── security-model.md
+│
+├── frontend/
+├── backend/
+├── shared/
+├── installer/
+└── scripts/
