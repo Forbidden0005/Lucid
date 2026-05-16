@@ -1,15 +1,14 @@
-using ExplainMyPC.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
 namespace ExplainMyPC.Views;
 
+/// <summary>
+/// Settings page — app preferences and configuration.
+/// </summary>
 public sealed partial class SettingsPage : Page
 {
-    public SettingsViewModel ViewModel { get; }
-
     public SettingsPage()
     {
         InitializeComponent();
-        ViewModel = App.GetService<SettingsViewModel>();
     }
 }

@@ -6,15 +6,12 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!--
-                    XamlControlsResources must come first so our overrides
-                    in subsequent dictionaries take precedence.
-                -->
+                <!-- WinUI base styles (must come first) -->
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- Our dark theme colors and brushes -->
                 <ResourceDictionary Source="ms-appx:///Styles/AppColors.xaml" />
+                <!-- Typography styles -->
                 <ResourceDictionary Source="ms-appx:///Styles/AppTypography.xaml" />
-                <ResourceDictionary Source="ms-appx:///Styles/AppControls.xaml" />
-                <ResourceDictionary Source="ms-appx:///Styles/GraphStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

@@ -6,26 +6,21 @@
     Title="ExplainMyPC">
 
     <!--
-        RootGrid carries RequestedTheme="Dark" so the entire window tree
-        uses dark Fluent resources, even on a light-themed Windows install.
+        Dark theme forced so the entire window uses our custom palette,
+        regardless of the system-wide Windows theme setting.
     -->
     <Grid x:Name="RootGrid"
           RequestedTheme="Dark"
           Background="{StaticResource AppBackgroundBrush}">
 
-        <!--
-            ════════════════════════════════════════════════════════════
-            Shell: NavigationView (sidebar) + Content Frame
+        <!-- ════════════════════════════════════════════════════════════════
+             NavigationView: responsive sidebar + inline content
 
-            PaneDisplayMode="Auto" means:
-              • Wide window  (≥ExpandedModeThresholdWidth) → open pane with labels
-              • Medium window (≥CompactModeThresholdWidth)  → compact icon-only pane
-              • Narrow window                               → hamburger overlay
-
-            This gives us a responsive layout for free — no manual
-            VisualStateManager triggers needed.
-            ════════════════════════════════════════════════════════════
-        -->
+             PaneDisplayMode="Auto" gives us:
+               Wide (>=1024px)  -> full sidebar with labels
+               Medium (>=720px) -> compact icon-only sidebar
+               Narrow           -> hamburger overlay
+        ════════════════════════════════════════════════════════════════ -->
         <muxc:NavigationView
             x:Name="NavView"
             IsBackButtonVisible="Collapsed"
@@ -35,21 +30,21 @@
             CompactModeThresholdWidth="720"
             ExpandedModeThresholdWidth="1024"
             PaneDisplayMode="Auto"
-            PaneBackground="{StaticResource AppSurfaceBrush}"
             Background="{StaticResource AppBackgroundBrush}"
-            ItemInvoked="NavView_ItemInvoked"
-            BackRequested="NavView_BackRequested">
+            ItemInvoked="NavView_ItemInvoked">
 
-            <!--
-                ── Pane Header ──────────────────────────────────────────
-                App name + tagline appear at the top of the sidebar.
-                Kept minimal: name + one-line descriptor.
-            -->
+            <!-- Override NavigationView pane background via theme resources -->
+            <muxc:NavigationView.Resources>
+                <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground"
+                                 Color="{StaticResource AppSurfaceColor}" />
+                <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground"
+                                 Color="{StaticResource AppSurfaceColor}" />
+            </muxc:NavigationView.Resources>
+
+            <!-- ── Sidebar Header: App Icon + Name ─────────────────────── -->
             <muxc:NavigationView.PaneHeader>
                 <Grid Padding="16,16,16,12">
                     <StackPanel Spacing="2">
-
-                        <!-- Icon row -->
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Border Width="28" Height="28"
                                     CornerRadius="6"
@@ -65,7 +60,6 @@
                                        Style="{StaticResource AppNameStyle}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
-
                         <TextBlock Text="System Intelligence"
                                    Style="{StaticResource CaptionTextStyle}"
                                    Margin="38,0,0,0" />
@@ -73,34 +67,20 @@
                 </Grid>
             </muxc:NavigationView.PaneHeader>
 
-            <!--
-                ── Main Navigation Items ─────────────────────────────────
-                Order follows product hierarchy:
-                  1. Dashboard      — system at a glance
-                  2. Explain My PC  — flagship intelligence feature
-                  ─ separator ─
-                  3. Security       — threat visibility
-                  4. Processes      — live telemetry
-                  5. Storage        — disk intelligence
-                  6. Apps           — installed software
-                  7. Privacy        — data exposure
-                  8. Repairs        — safe fix workflows
-            -->
+            <!-- ── Navigation Items ────────────────────────────────────── -->
             <muxc:NavigationView.MenuItems>
 
                 <muxc:NavigationViewItem x:Name="NavDashboard"
                                          Tag="dashboard"
                                          Content="Dashboard"
-                                         ToolTipService.ToolTip="Dashboard — system at a glance">
+                                         IsSelected="True">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE80F;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
-                <muxc:NavigationViewItem x:Name="NavExplain"
-                                         Tag="explain"
-                                         Content="Explain My PC"
-                                         ToolTipService.ToolTip="Explain My PC — plain-language system analysis">
+                <muxc:NavigationViewItem Tag="explain"
+                                         Content="Explain My PC">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
@@ -108,55 +88,43 @@
 
                 <muxc:NavigationViewItemSeparator />
 
-                <muxc:NavigationViewItem x:Name="NavSecurity"
-                                         Tag="security"
-                                         Content="Security"
-                                         ToolTipService.ToolTip="Security — suspicious activity and threat visibility">
+                <muxc:NavigationViewItem Tag="security"
+                                         Content="Security">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
-                <muxc:NavigationViewItem x:Name="NavProcesses"
-                                         Tag="processes"
-                                         Content="Processes"
-                                         ToolTipService.ToolTip="Processes — live CPU, RAM, and process telemetry">
+                <muxc:NavigationViewItem Tag="processes"
+                                         Content="Processes">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE9F5;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
-                <muxc:NavigationViewItem x:Name="NavStorage"
-                                         Tag="storage"
-                                         Content="Storage"
-                                         ToolTipService.ToolTip="Storage — disk health, junk, and SMART analysis">
+                <muxc:NavigationViewItem Tag="storage"
+                                         Content="Storage">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
-                <muxc:NavigationViewItem x:Name="NavApps"
-                                         Tag="apps"
-                                         Content="Apps"
-                                         ToolTipService.ToolTip="Apps — installed applications and startup impact">
+                <muxc:NavigationViewItem Tag="apps"
+                                         Content="Apps">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE71D;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
-                <muxc:NavigationViewItem x:Name="NavPrivacy"
-                                         Tag="privacy"
-                                         Content="Privacy"
-                                         ToolTipService.ToolTip="Privacy — data exposure and permission visibility">
+                <muxc:NavigationViewItem Tag="privacy"
+                                         Content="Privacy">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE7B3;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
-                <muxc:NavigationViewItem x:Name="NavRepairs"
-                                         Tag="repairs"
-                                         Content="Repairs"
-                                         ToolTipService.ToolTip="Repairs — SFC, DISM, and safe rollback workflows">
+                <muxc:NavigationViewItem Tag="repairs"
+                                         Content="Repairs">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE90F;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
@@ -164,32 +132,24 @@
 
             </muxc:NavigationView.MenuItems>
 
-            <!--
-                ── Footer Navigation Items ───────────────────────────────
-                Settings lives in the footer so it never competes visually
-                with the main feature navigation.
-            -->
+            <!-- ── Footer: Settings ────────────────────────────────────── -->
             <muxc:NavigationView.FooterMenuItems>
-                <muxc:NavigationViewItem x:Name="NavSettings"
-                                         Tag="settings"
-                                         Content="Settings"
-                                         ToolTipService.ToolTip="Settings">
+                <muxc:NavigationViewItem Tag="settings"
+                                         Content="Settings">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE713;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
             </muxc:NavigationView.FooterMenuItems>
 
-            <!--
-                ── Content Frame ─────────────────────────────────────────
-                The Frame is the NavigationView's content child.
-                NavigationService holds a reference to this Frame and
-                drives all page transitions; nothing else touches it.
-            -->
+            <!-- ════════════════════════════════════════════════════════════
+                 Content Frame — pages are loaded here when sidebar items
+                 are clicked. NavigationView_ItemInvoked in code-behind
+                 calls ContentFrame.Navigate() to switch pages.
+            ════════════════════════════════════════════════════════════ -->
             <Frame x:Name="ContentFrame"
                    Background="{StaticResource AppBackgroundBrush}" />
 
         </muxc:NavigationView>
-
     </Grid>
 </Window>

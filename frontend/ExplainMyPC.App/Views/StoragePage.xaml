@@ -4,68 +4,83 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{StaticResource AppBackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Padding="32,28,32,32" Spacing="20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
 
-            <!-- Header -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Storage"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Analyse disk health, find reclaimable space, and monitor drive status."
+                <TextBlock Text="Disk health, space usage, and cleanup opportunities"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- Storage summary card -->
-            <Border Style="{StaticResource CardStyle}">
-                <Grid ColumnSpacing="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="12">
-                        <TextBlock Text="Disk Health"
-                                   Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.DiskHealthSummary, Mode=OneWay}"
-                                   Style="{StaticResource DiagnosticBodyStyle}" />
-                        <StackPanel Orientation="Horizontal" Spacing="16">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="SMART Status"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                                <TextBlock Text="{x:Bind ViewModel.SmartStatus, Mode=OneWay}"
-                                           Style="{StaticResource BodyTextStyle}"
-                                           Foreground="{StaticResource TextSecondaryBrush}" />
-                            </StackPanel>
-                        </StackPanel>
+            <!-- Drive overview -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="24"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="20" Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Text="C: Drive (NVMe SSD)"
+                                   Style="{StaticResource SectionTitleStyle}" />
                     </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="Scan Storage"
-                            Command="{x:Bind ViewModel.RunStorageScanCommand}"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            VerticalAlignment="Center" />
-                </Grid>
+
+                    <!-- Usage bar -->
+                    <Grid Height="8" CornerRadius="4">
+                        <Border Background="{StaticResource AppElevatedSurfaceBrush}"
+                                CornerRadius="4" />
+                        <Border Background="{StaticResource AccentBlueBrush}"
+                                CornerRadius="4"
+                                HorizontalAlignment="Left"
+                                Width="240" />
+                    </Grid>
+
+                    <TextBlock Text="237 GB used of 512 GB (46%)"
+                               Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
             </Border>
 
-            <!-- Feature preview -->
-            <Border Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="16">
-                    <TextBlock Text="Storage Intelligence — Phase 2 &amp; 6"
-                               Style="{StaticResource SectionTitleStyle}" />
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="• Junk file analysis with reclaimable size estimates"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Duplicate file detection"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Large file discovery"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• SSD wear and SMART monitoring"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Treemap visualisation"
-                                   Style="{StaticResource BodyTextStyle}" />
-                    </StackPanel>
-                    <TextBlock Text="Cleanup is always conservative, explainable, and reversible. Nothing is deleted without your review."
-                               Style="{StaticResource CaptionTextStyle}"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
+            <!-- Cleanup opportunities -->
+            <TextBlock Text="Cleanup Opportunities"
+                       Style="{StaticResource SectionTitleStyle}" />
+
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Windows Update cache" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="3.2 GB"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource WarningBrush}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Temporary files" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="1.8 GB"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource WarningBrush}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Recycle Bin" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="680 MB"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

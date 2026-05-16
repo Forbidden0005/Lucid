@@ -4,240 +4,49 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{StaticResource AppBackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
 
-        <StackPanel Padding="32,28,32,32" Spacing="20">
-
-            <!-- ════════════════════════════════════════════════════════════
-                 Page Header
-                 ════════════════════════════════════════════════════════════ -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Explain My PC"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Get a plain-language analysis of what is happening on your system and why."
+                <TextBlock Text="Plain-language system analysis"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- ════════════════════════════════════════════════════════════
-                 Scan CTA card — primary entry point for the feature
-                 ════════════════════════════════════════════════════════════ -->
-            <Border Style="{StaticResource CardStyle}">
-                <Grid ColumnSpacing="24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" Spacing="12">
-                        <TextBlock Text="System Analysis"
-                                   Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.Summary, Mode=OneWay}"
-                                   Style="{StaticResource DiagnosticBodyStyle}" />
-
-                        <!-- Last scan timestamp -->
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE823;"
-                                      FontFamily="Segoe MDL2 Assets"
-                                      FontSize="12"
-                                      Foreground="{StaticResource TextSecondaryBrush}" />
-                            <TextBlock Style="{StaticResource CaptionTextStyle}">
-                                <Run Text="Last scan: " />
-                                <Run Text="{x:Bind ViewModel.LastScanTime, Mode=OneWay}" />
-                            </TextBlock>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Scan button -->
-                    <StackPanel Grid.Column="1"
-                                VerticalAlignment="Center"
-                                Spacing="10">
-                        <Button Content="Analyse Now"
-                                Command="{x:Bind ViewModel.RunExplainScanCommand}"
-                                Style="{StaticResource PrimaryButtonStyle}"
-                                Width="140" />
-                        <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
-                                      Width="24" Height="24"
-                                      Foreground="{StaticResource AccentBlueBrush}"
-                                      HorizontalAlignment="Center" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- ════════════════════════════════════════════════════════════
-                 What this feature analyses — helps users understand scope
-                 ════════════════════════════════════════════════════════════ -->
-            <Border Style="{StaticResource CardStyle}">
+            <!-- Explanation output card -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="24"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="What Explain My PC Checks"
-                               Style="{StaticResource SectionTitleStyle}" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="20" Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Text="System Analysis"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                    </StackPanel>
 
-                    <Grid ColumnSpacing="16" RowSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource BodyTextStyle}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="Your PC is running normally. CPU usage is low at 23%, and you have plenty of free RAM. Your disk has about 275 GB of free space remaining. No unusual processes detected." />
 
-                        <!-- Row 0 -->
-                        <StackPanel Grid.Row="0" Grid.Column="0"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xE823;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource AccentBlueBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Startup speed"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="Why your PC takes time to boot"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="0" Grid.Column="1"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xE9F5;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource AccentCyanBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Memory pressure"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="What is consuming your RAM"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <!-- Row 1 -->
-                        <StackPanel Grid.Row="1" Grid.Column="0"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource WarningBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Disk bottlenecks"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="Storage pressure and SMART health"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="1" Grid.Column="1"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource DangerBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Suspicious activity"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="Unsigned startups and persistence"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <!-- Row 2 -->
-                        <StackPanel Grid.Row="2" Grid.Column="0"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xE9F3;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource SuccessBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Thermal health"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="Overheating and throttling signals"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="2" Grid.Column="1"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xE8CB;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource AccentBlueBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="System stability"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="Crash logs and driver failures"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <!-- Row 3 -->
-                        <StackPanel Grid.Row="3" Grid.Column="0"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xE71D;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource AccentCyanBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Storage waste"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="Junk files and duplicate data"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="3" Grid.Column="1"
-                                    Orientation="Horizontal" Spacing="10">
-                            <Border Width="32" Height="32" CornerRadius="6"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <FontIcon Glyph="&#xE7B3;" FontFamily="Segoe MDL2 Assets"
-                                          FontSize="14" Foreground="{StaticResource WarningBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Privacy exposure"
-                                           Style="{StaticResource CardTitleStyle}"
-                                           FontSize="14" />
-                                <TextBlock Text="App permissions and data access"
-                                           Style="{StaticResource CaptionTextStyle}" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Grid>
+                    <TextBlock Style="{StaticResource BodyTextStyle}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="Startup time could be improved — 12 applications launch automatically when Windows starts. Consider disabling apps you don't need immediately." />
                 </StackPanel>
             </Border>
 
-            <!-- ════════════════════════════════════════════════════════════
-                 Output area — shown after a scan (Phase 3)
-                 Empty state communicates honestly and calmly.
-                 ════════════════════════════════════════════════════════════ -->
-            <Border Style="{StaticResource CardStyle}">
+            <!-- Ask a question placeholder -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="24"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
                 <StackPanel Spacing="12">
-                    <TextBlock Text="Analysis Results"
-                               Style="{StaticResource SectionTitleStyle}" />
-                    <TextBlock Text="No analysis results yet. Run a scan above to get a full explanation of your system."
-                               Style="{StaticResource BodyTextStyle}"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="Ask about your PC"
+                               Style="{StaticResource CardTitleStyle}" />
+                    <TextBlock Text="Coming soon: type a question like &#x22;Why is my PC slow?&#x22; and get a clear, evidence-based answer."
+                               Style="{StaticResource CaptionTextStyle}" />
                 </StackPanel>
             </Border>
 

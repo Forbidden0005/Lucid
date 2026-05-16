@@ -1,5 +1,4 @@
-using ExplainMyPC.Core.Navigation;
-using ExplainMyPC.ViewModels;
+using ExplainMyPC.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Graphics;
@@ -8,96 +7,60 @@ namespace ExplainMyPC;
 
 /// <summary>
 /// The application shell window.
-///
-/// Responsibilities:
-///   • Host the NavigationView sidebar and content Frame.
-///   • Wire the NavigationView's item-invoked events to NavigationService.
-///   • Set the initial window size and navigate to the Dashboard on first load.
-///
-/// What this class does NOT do:
-///   • It does not contain business logic — that lives in ShellViewModel.
-///   • It does not navigate programmatically from ViewModels — pages call
-///     INavigationService directly via DI.
+/// Handles sidebar navigation by switching pages in a Frame.
+/// No DI, no services — just simple code-behind navigation.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    private readonly INavigationService _navigationService;
-    private readonly ShellViewModel _shellViewModel;
-
     public MainWindow()
     {
         InitializeComponent();
 
-        _navigationService = App.GetService<INavigationService>();
-        _shellViewModel    = App.GetService<ShellViewModel>();
-
-        // Give NavigationService the Frame it will drive for the app lifetime.
-        _navigationService.SetFrame(ContentFrame);
-
-        // Reasonable default size for a diagnostics dashboard.
+        // Set a reasonable default window size.
         AppWindow.Resize(new SizeInt32(1280, 820));
         Title = "ExplainMyPC";
 
-        Loaded += OnLoaded;
+        // Navigate to Dashboard on startup.
+        ContentFrame.Navigate(typeof(DashboardPage));
     }
 
-    // ── Event Handlers ───────────────────────────────────────────────────────
-
-    private void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        // Pre-select Dashboard in the sidebar and navigate there.
-        NavView.SelectedItem = NavDashboard;
-        _navigationService.Navigate("dashboard");
-    }
-
+    /// <summary>
+    /// When a sidebar item is clicked, navigate to the matching page.
+    /// The Tag on each NavigationViewItem tells us which page to load.
+    /// </summary>
     private void NavView_ItemInvoked(
         NavigationView sender,
         NavigationViewItemInvokedEventArgs args)
     {
         if (args.InvokedItemContainer is NavigationViewItem { Tag: string tag })
-            _navigationService.Navigate(tag);
+        {
+            NavigateToPage(tag);
+        }
     }
-
-    private void NavView_BackRequested(
-        NavigationView sender,
-        NavigationViewBackRequestedEventArgs args)
-    {
-        _shellViewModel.GoBack();
-        // Keep the sidebar selection in sync after going back.
-        SyncSidebarSelection();
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// After a back-navigation, finds the NavigationViewItem whose Tag
-    /// matches the new current page key and re-selects it in the sidebar.
+    /// Simple switch that maps sidebar tag strings to page types.
     /// </summary>
-    private void SyncSidebarSelection()
+    private void NavigateToPage(string tag)
     {
-        var key = _navigationService.CurrentPageKey;
-        if (key is null) return;
-
-        foreach (var obj in NavView.MenuItems)
+        Type? pageType = tag switch
         {
-            if (obj is NavigationViewItem item &&
-                item.Tag is string tag &&
-                tag.Equals(key, StringComparison.OrdinalIgnoreCase))
-            {
-                NavView.SelectedItem = item;
-                return;
-            }
-        }
+            "dashboard" => typeof(DashboardPage),
+            "explain"   => typeof(ExplainPage),
+            "security"  => typeof(SecurityPage),
+            "processes" => typeof(ProcessesPage),
+            "storage"   => typeof(StoragePage),
+            "apps"      => typeof(AppsPage),
+            "privacy"   => typeof(PrivacyPage),
+            "repairs"   => typeof(RepairsPage),
+            "settings"  => typeof(SettingsPage),
+            _ => null
+        };
 
-        foreach (var obj in NavView.FooterMenuItems)
+        // Only navigate if we got a valid page and it's not already showing.
+        if (pageType is not null && ContentFrame.CurrentSourcePageType != pageType)
         {
-            if (obj is NavigationViewItem item &&
-                item.Tag is string tag &&
-                tag.Equals(key, StringComparison.OrdinalIgnoreCase))
-            {
-                NavView.SelectedItem = item;
-                return;
-            }
+            ContentFrame.Navigate(pageType);
         }
     }
 }

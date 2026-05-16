@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ExplainMyPC.App (Unpackaged)": {
+      "commandName": "MsixPackage",
+      "nativeDebugging": false
+    }
+  }
+}

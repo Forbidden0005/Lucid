@@ -4,122 +4,99 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{StaticResource AppBackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Padding="32,28,32,32" Spacing="20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
 
-            <!-- Header -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Repairs"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Safe system repair tools. A restore point is always created before any changes are made."
+                <TextBlock Text="Safe fix and rollback workflows"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- Safety commitment banner -->
-            <Border Background="{StaticResource AppElevatedSurfaceBrush}"
-                    CornerRadius="8"
-                    BorderBrush="{StaticResource AccentBlueBrush}"
-                    BorderThickness="1"
-                    Padding="16,12">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <FontIcon Glyph="&#xE72E;"
-                              FontFamily="Segoe MDL2 Assets"
-                              FontSize="16"
-                              Foreground="{StaticResource AccentBlueBrush}"
-                              VerticalAlignment="Center" />
-                    <TextBlock Text="Every repair creates a restore point and rollback snapshot before making any changes. You can always undo."
-                               Style="{StaticResource BodyTextStyle}"
-                               VerticalAlignment="Center" />
-                </StackPanel>
-            </Border>
+            <!-- Available repairs -->
+            <TextBlock Text="Available Repairs"
+                       Style="{StaticResource SectionTitleStyle}" />
 
-            <!-- SFC card -->
-            <Border Style="{StaticResource CardStyle}">
-                <Grid ColumnSpacing="20">
+            <!-- SFC -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="8">
+
+                    <Border Width="40" Height="40" CornerRadius="8"
+                            Background="#1E4EA1FF" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE90F;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="18" Foreground="{StaticResource AccentBlueBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="2">
                         <TextBlock Text="System File Checker (SFC)"
                                    Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="Scans Windows system files for corruption and restores them from the Windows image cache."
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border Style="{StaticResource StatusBadgeStyle}"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <TextBlock Text="Low Risk" FontSize="11"
-                                           Foreground="{StaticResource SuccessBrush}" />
-                            </Border>
-                            <Border Style="{StaticResource StatusBadgeStyle}"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <TextBlock Text="Rollback supported" FontSize="11"
-                                           Foreground="{StaticResource TextSecondaryBrush}" />
-                            </Border>
-                        </StackPanel>
+                        <TextBlock Text="Scans and repairs protected Windows system files. Safe and non-destructive."
+                                   Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="Run SFC"
-                            Command="{x:Bind ViewModel.RunSfcCommand}"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            VerticalAlignment="Center"
-                            IsEnabled="False" />
                 </Grid>
             </Border>
 
-            <!-- DISM card -->
-            <Border Style="{StaticResource CardStyle}">
-                <Grid ColumnSpacing="20">
+            <!-- DISM -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="8">
+
+                    <Border Width="40" Height="40" CornerRadius="8"
+                            Background="#1E4EA1FF" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE90F;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="18" Foreground="{StaticResource AccentBlueBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="2">
                         <TextBlock Text="DISM Health Restore"
                                    Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="Repairs the Windows component store (WinSxS) used by SFC. Recommended if SFC reports unfixable errors."
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border Style="{StaticResource StatusBadgeStyle}"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <TextBlock Text="Low Risk" FontSize="11"
-                                           Foreground="{StaticResource SuccessBrush}" />
-                            </Border>
-                            <Border Style="{StaticResource StatusBadgeStyle}"
-                                    Background="{StaticResource AppElevatedSurfaceBrush}">
-                                <TextBlock Text="Requires internet" FontSize="11"
-                                           Foreground="{StaticResource TextSecondaryBrush}" />
-                            </Border>
-                        </StackPanel>
+                        <TextBlock Text="Repairs the Windows component store. Run this if SFC reports issues it cannot fix."
+                                   Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="Run DISM"
-                            Command="{x:Bind ViewModel.RunDismCommand}"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            VerticalAlignment="Center"
-                            IsEnabled="False" />
                 </Grid>
             </Border>
 
-            <!-- More repairs coming -->
-            <Border Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="More Repair Tools — Phase 4"
-                               Style="{StaticResource SectionTitleStyle}" />
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="• Windows Update repair"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Network stack reset"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• DNS flush and repair"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Restore point manager"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Rollback history browser"
-                                   Style="{StaticResource BodyTextStyle}" />
+            <!-- Disk cleanup -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="40" Height="40" CornerRadius="8"
+                            Background="#1E57D68D" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="18" Foreground="{StaticResource SuccessBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="2">
+                        <TextBlock Text="Safe Disk Cleanup"
+                                   Style="{StaticResource CardTitleStyle}" />
+                        <TextBlock Text="Removes temporary files, caches, and update leftovers. Always explains what will be deleted."
+                                   Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
 
         </StackPanel>

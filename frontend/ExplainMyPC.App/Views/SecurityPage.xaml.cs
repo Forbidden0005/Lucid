@@ -1,15 +1,14 @@
-using ExplainMyPC.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
 namespace ExplainMyPC.Views;
 
+/// <summary>
+/// Security page — threat visibility and protection status.
+/// </summary>
 public sealed partial class SecurityPage : Page
 {
-    public SecurityViewModel ViewModel { get; }
-
     public SecurityPage()
     {
         InitializeComponent();
-        ViewModel = App.GetService<SecurityViewModel>();
     }
 }
