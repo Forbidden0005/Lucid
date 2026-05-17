@@ -1,11 +1,14 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
 namespace ExplainMyPC;
 
 /// <summary>
 /// Application entry point.
-/// Simplified — no dependency injection, no services.
-/// Just launches the main window.
+///
+/// Responsibilities:
+///   • Initialize app-level services (AppServices.Initialize) before the window opens.
+///   • Shut down services cleanly when the main window closes.
 /// </summary>
 public partial class App : Application
 {
@@ -18,7 +21,15 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Initialize services on the UI thread so they can capture the
+        // DispatcherQueue used to marshal telemetry back to the UI.
+        AppServices.Initialize(DispatcherQueue.GetForCurrentThread());
+
         _mainWindow = new MainWindow();
+
+        // Release PerformanceCounter handles and background tasks when the window closes.
+        _mainWindow.Closed += (_, _) => AppServices.Shutdown();
+
         _mainWindow.Activate();
     }
 }

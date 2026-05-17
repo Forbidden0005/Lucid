@@ -36,15 +36,32 @@
     Remove this section when you're ready to wire up the full architecture.
   -->
   <ItemGroup>
+    <!-- ViewModels: only DashboardViewModel in Phase 3 -->
     <Compile Remove="ViewModels\**" />
     <Compile Include="ViewModels\DashboardViewModel.cs" />
+    <None Include="ViewModels\**" Exclude="ViewModels\DashboardViewModel.cs" />
+
+    <!--
+      Services: compile the live telemetry service and its samplers.
+      Other service files (MockTelemetryService, etc.) remain as None —
+      visible in Solution Explorer but excluded from the build.
+    -->
     <Compile Remove="Services\**" />
+    <Compile Include="Services\ITelemetryService.cs" />
+    <Compile Include="Services\WindowsTelemetryService.cs" />
+    <Compile Include="Services\Telemetry\Samplers\CpuSampler.cs" />
+    <Compile Include="Services\Telemetry\Samplers\RamSampler.cs" />
+    <Compile Include="Services\Telemetry\Samplers\GpuSampler.cs" />
+    <Compile Include="Services\Telemetry\Samplers\DiskSampler.cs" />
+    <Compile Include="Services\Telemetry\Samplers\ThermalSampler.cs" />
+    <None Include="Services\**"
+          Exclude="Services\ITelemetryService.cs;Services\WindowsTelemetryService.cs;Services\Telemetry\Samplers\CpuSampler.cs;Services\Telemetry\Samplers\RamSampler.cs;Services\Telemetry\Samplers\GpuSampler.cs;Services\Telemetry\Samplers\DiskSampler.cs;Services\Telemetry\Samplers\ThermalSampler.cs" />
+
+    <!-- Future feature code — excluded until ready to wire up -->
     <Compile Remove="Controls\**" />
     <Compile Remove="Intelligence\**" />
     <Compile Remove="Core\**" />
     <Compile Remove="Models\**" />
-    <None Include="ViewModels\**" Exclude="ViewModels\DashboardViewModel.cs" />
-    <None Include="Services\**" />
     <None Include="Controls\**" />
     <None Include="Intelligence\**" />
     <None Include="Core\**" />

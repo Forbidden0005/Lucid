@@ -1,34 +1,45 @@
 namespace ExplainMyPC.Helpers;
 
 /// <summary>
-/// Immutable snapshot of system metrics captured during a single telemetry poll.
+/// Immutable snapshot of all hardware telemetry captured in a single poll cycle.
 ///
-/// All values are already rounded — no further arithmetic needed in the ViewModel.
-/// Passed from TelemetryPoller to subscribers on the UI thread.
+/// Core fields (Phase 2) — provided by TelemetryPoller and WindowsTelemetryService:
+///   CPU, RAM, GPU, Disk percentages, sizes, and GPU availability.
+///
+/// Extended fields (Phase 3) — provided by WindowsTelemetryService only.
+///   These default to zero / false so the Phase 2 TelemetryPoller can still
+///   construct snapshots using named arguments without specifying them.
+///
+///   GpuVramUsedGb / GpuVramTotalGb  — from "GPU Adapter Memory" perf counter
+///   DiskReadMbps  / DiskWriteMbps   — from "PhysicalDisk" perf counter
+///   CpuTemperatureCelsius           — from "Thermal Zone Information" counter
+///   CpuTemperatureAvailable         — false when ACPI zones are not exposed
 /// </summary>
-/// <param name="CpuPercent">Total CPU utilisation, 0–100.</param>
-/// <param name="CpuFrequencyGhz">Average clock speed across all logical cores, in GHz.
-///     0 if <c>CallNtPowerInformation</c> is unavailable on this system.</param>
-/// <param name="CpuCoreCount">Logical processor count (<see cref="Environment.ProcessorCount"/>).</param>
-/// <param name="RamPercent">Physical RAM utilisation, 0–100.</param>
-/// <param name="RamUsedGb">Physical RAM in use, gigabytes.</param>
-/// <param name="RamTotalGb">Total installed physical RAM, gigabytes.</param>
-/// <param name="DiskPercent">System-drive space utilisation, 0–100.</param>
-/// <param name="DiskUsedGb">System-drive used space, gigabytes.</param>
-/// <param name="DiskTotalGb">System-drive total capacity, gigabytes.</param>
-/// <param name="GpuPercent">Sum of GPU 3D-engine utilisation across all adapters, 0–100.
-///     0 when <see cref="GpuAvailable"/> is false.</param>
-/// <param name="GpuAvailable">True when the GPU Engine performance-counter category
-///     exists and at least one 3D-engine instance was found.</param>
 public sealed record TelemetrySnapshot(
+    // ── CPU ───────────────────────────────────────────────────────────────────
     double CpuPercent,
     double CpuFrequencyGhz,
     int    CpuCoreCount,
+
+    // ── RAM ───────────────────────────────────────────────────────────────────
     double RamPercent,
     double RamUsedGb,
     double RamTotalGb,
+
+    // ── Disk ──────────────────────────────────────────────────────────────────
     double DiskPercent,
     double DiskUsedGb,
     double DiskTotalGb,
+
+    // ── GPU ───────────────────────────────────────────────────────────────────
     double GpuPercent,
-    bool   GpuAvailable);
+    bool   GpuAvailable,
+
+    // ── Extended (Phase 3) — callers that provide only the Phase 2 fields
+    //    can omit these; they default to "not available".
+    double GpuVramUsedGb           = 0,
+    double GpuVramTotalGb          = 0,
+    double DiskReadMbps            = 0,
+    double DiskWriteMbps           = 0,
+    double CpuTemperatureCelsius   = 0,
+    bool   CpuTemperatureAvailable = false);

@@ -8,6 +8,12 @@ public interface IGpuSampler : IDisposable
     /// <summary>Check counter availability and read VRAM capacity. Call once before Read().</summary>
     void Initialize();
     GpuSample Read();
+
+    /// <summary>
+    /// True after Initialize() if the "GPU Engine" performance-counter category
+    /// is present on this system. False on VMs or machines without a WDDM driver.
+    /// </summary>
+    bool IsAvailable { get; }
 }
 
 public sealed record GpuSample(double UsagePercent, double VramUsedGb, double VramTotalGb);
@@ -49,6 +55,8 @@ public sealed class GpuSampler : IGpuSampler
     private bool _engineAvailable;
     private bool _memoryAvailable;
     private double _vramTotalGb;
+
+    public bool IsAvailable => _engineAvailable;
 
     // Keyed by instance name. Re-populated every Read() as processes come and go.
     private readonly Dictionary<string, PerformanceCounter> _engineCounters = new(StringComparer.OrdinalIgnoreCase);

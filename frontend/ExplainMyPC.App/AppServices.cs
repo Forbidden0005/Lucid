@@ -1,0 +1,58 @@
+using ExplainMyPC.Services;
+using Microsoft.UI.Dispatching;
+
+namespace ExplainMyPC;
+
+/// <summary>
+/// Lightweight application-level service registry.
+///
+/// Provides a straightforward alternative to a full DI container at
+/// ExplainMyPC's current scale. All services are created once from
+/// Initialize(), started, and live for the application lifetime.
+///
+/// To add a new service:
+///   1. Define an interface in Services/.
+///   2. Add a typed property here.
+///   3. Wire up the concrete class in Initialize().
+///
+/// Usage:
+///   Call Initialize() from App.OnLaunched before the main window opens.
+///   Call Shutdown() from the main window's Closed handler.
+/// </summary>
+public static class AppServices
+{
+    private static ITelemetryService? _telemetry;
+
+    /// <summary>Live hardware telemetry — CPU, RAM, GPU, Disk, Thermal.</summary>
+    public static ITelemetryService Telemetry =>
+        _telemetry ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Creates and starts all application services.
+    /// Must be called on the UI thread so services can capture the
+    /// DispatcherQueue used to marshal readings back to the UI.
+    /// </summary>
+    public static void Initialize(DispatcherQueue uiDispatcher)
+    {
+        _telemetry = new WindowsTelemetryService(uiDispatcher);
+        _telemetry.Start();
+
+        // Future services registered here, e.g.:
+        // _storage  = new WindowsStorageService();
+        // _process  = new WindowsProcessService();
+        // _security = new WindowsSecurityService();
+    }
+
+    /// <summary>
+    /// Stops and disposes all services.
+    /// Call from the main window's Closed event handler.
+    /// </summary>
+    public static void Shutdown()
+    {
+        _telemetry?.Stop();
+        if (_telemetry is IDisposable d) d.Dispose();
+        _telemetry = null;
+    }
+}
