@@ -106,14 +106,18 @@ public static class AppServices
         // Add new executors here as capabilities are implemented.
         _executorRegistry = new ActionExecutorRegistry();
         _executorRegistry.RegisterAll([
-            // Guided navigation: open the relevant system tool and let the user act.
-            // These are the first live executors — completely safe, fully reversible.
+            // Phase 1 — guided navigation: open the relevant system tool and let
+            // the user act. Completely safe, no system modification.
             new OpenTaskManagerExecutor(),      // action.cpu.open-task-manager
             new OpenStorageSenseExecutor(),     // action.disk.run-storage-sense
             new OpenStartupAppsExecutor(),      // action.startup.open-startup-apps
             new OpenWindowsSecurityExecutor(),  // action.security.open-windows-security
 
-            // Phase 2 (planned): cleanup executors — temp file deletion, Disk Cleanup
+            // Phase 2 — real cleanup: scans known-safe temp directories and moves
+            // stale files to a rollback staging area (atomic rename on same drive).
+            // Supports dry-run preview, per-file logging, cancellation, and rollback.
+            new TempFileCleanupExecutor(),      // action.disk.clean-temp-files
+
             // Phase 3 (planned): startup management — enumerate + toggle startup entries
             // Phase 4 (planned): repair commands — SFC /scannow, DISM, network reset
         ]);
