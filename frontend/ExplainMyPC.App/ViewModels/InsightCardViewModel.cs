@@ -207,6 +207,23 @@ public sealed partial class InsightCardViewModel : ObservableObject
     public Visibility ActionsVisibility =>
         HasActions ? Visibility.Visible : Visibility.Collapsed;
 
+    // ── Process attribution ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Processes identified as contributors to this finding (CPU%, RAM GB, or
+    /// GPU heuristic). Empty when no process crosses the attribution threshold
+    /// or when the process sampler has not yet produced its first delta.
+    ///
+    /// GPU attributions have lower confidence (~55 %) and show "Detected"
+    /// instead of a numeric usage value in the UI.
+    /// </summary>
+    public IReadOnlyList<Services.Intelligence.ProcessAttribution> AttributedProcesses =>
+        _insight.AttributedProcesses;
+
+    public bool       HasAttributedProcesses  => _insight.AttributedProcesses.Count > 0;
+    public Visibility AttributionsVisibility  =>
+        HasAttributedProcesses ? Visibility.Visible : Visibility.Collapsed;
+
     /// <summary>Expands or collapses the full detail panel.</summary>
     [RelayCommand]
     private void ToggleExpanded() => IsExpanded = !IsExpanded;

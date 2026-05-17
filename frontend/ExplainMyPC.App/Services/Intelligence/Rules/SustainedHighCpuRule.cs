@@ -44,6 +44,8 @@ public sealed class SustainedHighCpuRule : IInsightRule
         // (~40 samples at the 1.5-second poll rate).
         int confidence = Math.Clamp(stats.SampleCount * 100 / 40, 72, 98);
 
+        var attributions = ProcessAttributionHelper.ForCpu(current.TopProcesses);
+
         return new SystemInsight(
             Id:                RuleId,
             Severity:          InsightSeverity.Warning,
@@ -54,6 +56,7 @@ public sealed class SustainedHighCpuRule : IInsightRule
             ActionHint:          "Open Task Manager (Ctrl+Shift+Esc) and sort by CPU to find the responsible process.",
             DetectedAt:          DateTimeOffset.Now,
             ConfidencePercent:   confidence,
-            RecommendedActions:  s_actions);
+            RecommendedActions:  s_actions,
+            AttributedProcesses: attributions);
     }
 }

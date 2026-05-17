@@ -50,7 +50,8 @@ public sealed class ElevatedRamPressureRule : IInsightRule
         if (current.RamPercent <= HighRamThreshold)
             return null;
 
-        double freeGb = current.RamTotalGb - current.RamUsedGb;
+        double freeGb      = current.RamTotalGb - current.RamUsedGb;
+        var    attributions = ProcessAttributionHelper.ForRam(current.TopProcesses, current.RamTotalGb);
 
         return new SystemInsight(
             Id:         RuleId,
@@ -59,8 +60,9 @@ public sealed class ElevatedRamPressureRule : IInsightRule
             Detail:     $"Your PC is using {current.RamUsedGb:F1} GB of {current.RamTotalGb:F0} GB RAM " +
                         $"({current.RamPercent:0}%), leaving only {freeGb:F1} GB free. " +
                         $"Windows may start swapping data to disk, which can cause noticeable slowdowns.",
-            ActionHint:         "Close unused browser tabs or applications to free up memory.",
-            DetectedAt:         DateTimeOffset.Now,
-            RecommendedActions: s_actions);
+            ActionHint:          "Close unused browser tabs or applications to free up memory.",
+            DetectedAt:          DateTimeOffset.Now,
+            RecommendedActions:  s_actions,
+            AttributedProcesses: attributions);
     }
 }

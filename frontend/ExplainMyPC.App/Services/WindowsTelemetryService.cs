@@ -27,9 +27,10 @@ namespace ExplainMyPC.Services;
 /// </summary>
 public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
 {
-    private const int WarmupDelayMs        = 1_000;   // let rate counters settle
-    private const int PollIntervalMs       = 1_500;   // 1.5 s per cycle
-    private const int ThermalIntervalTicks = 5;       // sample thermal every 5 cycles
+    private const int WarmupDelayMs         = 1_000;   // let rate counters settle
+    private const int PollIntervalMs        = 1_500;   // 1.5 s per cycle
+    private const int ThermalIntervalTicks  = 5;       // sample thermal every 5 cycles (~7.5 s)
+    private const int ProcessIntervalTicks  = 3;       // sample processes every 3 cycles (~4.5 s)
 
     private readonly DispatcherQueue _dispatcher;
 
@@ -39,11 +40,14 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
     private readonly GpuSampler     _gpu     = new();
     private readonly DiskSampler    _disk    = new();
     private readonly ThermalSampler _thermal = new();
+    private readonly ProcessSampler _process = new();
 
     private CancellationTokenSource? _cts;
     private Task?                    _pollTask;
     private int                      _thermalTick;
-    private ThermalSample            _lastThermal = new(0, IsAvailable: false);
+    private int                      _processTick;
+    private ThermalSample            _lastThermal   = new(0, IsAvailable: false);
+    private IReadOnlyList<Helpers.ProcessSample> _lastProcesses = [];
     private bool                     _disposed;
 
     public event EventHandler<TelemetrySnapshot>? ReadingAvailable;
@@ -114,6 +118,12 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
             _lastThermal = _thermal.Read();
         _thermalTick = (_thermalTick + 1) % ThermalIntervalTicks;
 
+        // Process list refreshes every ProcessIntervalTicks cycles (~4.5 s).
+        // Enumeration is fast but CPU-delta accuracy doesn't benefit from sub-second sampling.
+        if (_processTick == 0)
+            _lastProcesses = _process.Sample();
+        _processTick = (_processTick + 1) % ProcessIntervalTicks;
+
         var cpu  = _cpu.Read();
         var ram  = _ram.Read();
         var gpu  = _gpu.Read();
@@ -149,7 +159,10 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
             DiskReadMbps:            Math.Round(disk.ReadMbps,   1),
             DiskWriteMbps:           Math.Round(disk.WriteMbps,  1),
             CpuTemperatureCelsius:   Math.Round(_lastThermal.CpuCelsius, 1),
-            CpuTemperatureAvailable: _lastThermal.IsAvailable);
+            CpuTemperatureAvailable: _lastThermal.IsAvailable,
+
+            // Process samples (Phase 4) — cached between sampling ticks
+            TopProcesses:            _lastProcesses);
     }
 
     // ── IDisposable ───────────────────────────────────────────────────────────
@@ -165,6 +178,7 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
         _gpu.Dispose();
         _disk.Dispose();
         _thermal.Dispose();
+        _process.Dispose();
         // RamSampler holds no resources.
     }
 }

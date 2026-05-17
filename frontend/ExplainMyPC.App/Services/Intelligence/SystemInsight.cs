@@ -60,7 +60,18 @@ public sealed record SystemInsight(
     /// Actions are data-only — no execution engine is wired yet.
     /// Allocated as static readonly fields on each rule to avoid per-tick heap churn.
     /// </summary>
-    IReadOnlyList<SystemAction>? RecommendedActions = null)
+    IReadOnlyList<SystemAction>? RecommendedActions = null,
+
+    /// <summary>
+    /// Processes identified as likely contributors to this finding.
+    /// Populated by <see cref="ProcessAttributionHelper"/> when process samples
+    /// are available in the telemetry snapshot. Empty for non-hardware findings
+    /// (e.g. system.healthy) or when no process meets the attribution threshold.
+    ///
+    /// GPU attributions are always heuristic (confidence ~55 %); CPU and RAM
+    /// attributions are directly measured (confidence ~90 %).
+    /// </summary>
+    IReadOnlyList<ProcessAttribution>? AttributedProcesses = null)
 {
     /// <summary>
     /// The remediation steps attached to this finding.
@@ -68,4 +79,11 @@ public sealed record SystemInsight(
     /// </summary>
     public IReadOnlyList<SystemAction> RecommendedActions { get; } =
         RecommendedActions ?? [];
+
+    /// <summary>
+    /// Processes attributed to this finding.
+    /// Always returns a non-null list (empty when no attribution is available).
+    /// </summary>
+    public IReadOnlyList<ProcessAttribution> AttributedProcesses { get; } =
+        AttributedProcesses ?? [];
 }

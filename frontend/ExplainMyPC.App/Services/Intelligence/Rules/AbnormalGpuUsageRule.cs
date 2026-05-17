@@ -65,6 +65,8 @@ public sealed class AbnormalGpuUsageRule : IInsightRule
         // 5-minute window ≈ 200 samples at the 1.5-second poll rate.
         int confidence = Math.Clamp(gpuStats.SampleCount * 100 / 200, 72, 95);
 
+        var attributions = ProcessAttributionHelper.ForGpu(current.TopProcesses);
+
         return new SystemInsight(
             Id:                RuleId,
             Severity:          InsightSeverity.Warning,
@@ -76,6 +78,7 @@ public sealed class AbnormalGpuUsageRule : IInsightRule
             ActionHint:          "Open Task Manager → Performance → GPU to identify which process is responsible.",
             DetectedAt:          DateTimeOffset.Now,
             ConfidencePercent:   confidence,
-            RecommendedActions:  s_actions);
+            RecommendedActions:  s_actions,
+            AttributedProcesses: attributions);
     }
 }
