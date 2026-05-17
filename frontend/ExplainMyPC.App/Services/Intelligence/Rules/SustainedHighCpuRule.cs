@@ -26,14 +26,19 @@ public sealed class SustainedHighCpuRule : IInsightRule
         if (stats.Average <= HighCpuThreshold)
             return null;
 
+        // Confidence scales from 72 % at MinSamples to 98 % at a full 1-minute window
+        // (~40 samples at the 1.5-second poll rate).
+        int confidence = Math.Clamp(stats.SampleCount * 100 / 40, 72, 98);
+
         return new SystemInsight(
-            Id:         RuleId,
-            Severity:   InsightSeverity.Warning,
-            Title:      "CPU Under Heavy Load",
-            Detail:     $"Your processor has averaged {stats.Average:0}% usage over the last minute " +
-                        $"(currently {current.CpuPercent:0}%). Sustained high CPU usage can make " +
-                        $"your PC feel unresponsive and slow to switch between tasks.",
-            ActionHint: "Open Task Manager (Ctrl+Shift+Esc) and sort by CPU to find the responsible process.",
-            DetectedAt: DateTimeOffset.Now);
+            Id:                RuleId,
+            Severity:          InsightSeverity.Warning,
+            Title:             "CPU Under Heavy Load",
+            Detail:            $"Your processor has averaged {stats.Average:0}% usage over the last minute " +
+                               $"(currently {current.CpuPercent:0}%). Sustained high CPU usage can make " +
+                               $"your PC feel unresponsive and slow to switch between tasks.",
+            ActionHint:        "Open Task Manager (Ctrl+Shift+Esc) and sort by CPU to find the responsible process.",
+            DetectedAt:        DateTimeOffset.Now,
+            ConfidencePercent: confidence);
     }
 }

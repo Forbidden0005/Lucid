@@ -62,14 +62,18 @@ public sealed class SystemRunningWellRule : IInsightRule
         if (current.GpuAvailable && current.GpuPercent >= GpuOkThreshold)
             return null;
 
+        // Confidence grows toward 97 % as the full 1-minute window fills.
+        int confidence = Math.Clamp(cpuStats.SampleCount * 100 / 40, 75, 97);
+
         return new SystemInsight(
-            Id:         RuleId,
-            Severity:   InsightSeverity.Info,
-            Title:      "System Running Well",
-            Detail:     $"All monitored components are within healthy ranges. " +
-                        $"CPU is averaging {cpuStats.Average:0}%, RAM is at {current.RamPercent:0}%, " +
-                        $"and disk usage is {current.DiskPercent:0}%.",
-            ActionHint: null,
-            DetectedAt: DateTimeOffset.Now);
+            Id:                RuleId,
+            Severity:          InsightSeverity.Info,
+            Title:             "System Running Well",
+            Detail:            $"All monitored components are within healthy ranges. " +
+                               $"CPU is averaging {cpuStats.Average:0}%, RAM is at {current.RamPercent:0}%, " +
+                               $"and disk usage is {current.DiskPercent:0}%.",
+            ActionHint:        null,
+            DetectedAt:        DateTimeOffset.Now,
+            ConfidencePercent: confidence);
     }
 }

@@ -210,9 +210,18 @@ public partial class DashboardViewModel : ObservableObject
     /// <summary>
     /// The current list of intelligence findings, ordered highest severity
     /// first. Updated whenever the engine detects a change in the active set.
-    /// Bind UI lists directly to this property.
     /// </summary>
     public IReadOnlyList<SystemInsight> CurrentInsights { get; private set; } = [];
+
+    /// <summary>
+    /// Findings grouped by severity tier (Warnings → Recommendations → Informational),
+    /// each group pre-sorted for display. Only non-empty groups are included.
+    /// Bind the Active Insights section's ItemsRepeater to this property.
+    /// </summary>
+    public IReadOnlyList<InsightGroupViewModel> InsightGroups { get; private set; } = [];
+
+    // Card cache: preserves IsExpanded state across engine re-evaluations.
+    private readonly Dictionary<string, InsightCardViewModel> _cardCache = new();
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -277,6 +286,45 @@ public partial class DashboardViewModel : ObservableObject
         CurrentInsights = insights;
         InsightCount    = insights.Count;
         OnPropertyChanged(nameof(CurrentInsights));
+
+        // ── Update card cache ─────────────────────────────────────────────────
+        // Remove cards whose findings have cleared.
+        var activeIds = new HashSet<string>(insights.Select(i => i.Id));
+        foreach (var stale in _cardCache.Keys.Where(k => !activeIds.Contains(k)).ToList())
+            _cardCache.Remove(stale);
+
+        // Add new cards; refresh existing ones (preserves IsExpanded state).
+        foreach (var insight in insights)
+        {
+            if (_cardCache.TryGetValue(insight.Id, out var existing))
+                existing.Update(insight);
+            else
+                _cardCache[insight.Id] = new InsightCardViewModel(insight);
+        }
+
+        // ── Rebuild ordered groups ────────────────────────────────────────────
+        InsightGroups = BuildGroups();
+        OnPropertyChanged(nameof(InsightGroups));
+    }
+
+    private IReadOnlyList<InsightGroupViewModel> BuildGroups()
+    {
+        var groups = new List<InsightGroupViewModel>(3)
+        {
+            MakeGroup(InsightSeverity.Warning,        "Warnings",       ""),
+            MakeGroup(InsightSeverity.Recommendation, "Recommendations", ""),
+            MakeGroup(InsightSeverity.Info,           "Informational",  ""),
+        };
+        return groups.Where(g => g.HasItems).ToList();
+    }
+
+    private InsightGroupViewModel MakeGroup(InsightSeverity severity, string title, string icon)
+    {
+        var cards = _cardCache.Values
+            .Where(c => c.Severity == severity)
+            .OrderBy(c => c.SortKey)
+            .ToList();
+        return new InsightGroupViewModel(severity, title, icon, cards);
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────────

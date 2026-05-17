@@ -48,4 +48,10 @@ public sealed record SystemInsight(
     string          Title,
     string          Detail,
     string?         ActionHint,
-    DateTimeOffset  DetectedAt);
+    DateTimeOffset  DetectedAt,
+    /// <summary>
+    /// How confident the rule is in this finding, expressed as a percentage.
+    /// Rules with direct sensor readings (disk space, temperature) report 100.
+    /// History-based rules scale from ~70 % at MinSamples to ~98 % at a full window.
+    /// </summary>
+    int             ConfidencePercent = 100);

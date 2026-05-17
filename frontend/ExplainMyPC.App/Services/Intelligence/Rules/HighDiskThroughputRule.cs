@@ -52,14 +52,18 @@ public sealed class HighDiskThroughputRule : IInsightRule
         if (avgMbps <= HighThroughputMbps)
             return null;
 
+        // 60-second window ≈ 40 samples at the 1.5-second poll rate.
+        int confidence = Math.Clamp(_window.Count * 100 / 40, 72, 97);
+
         return new SystemInsight(
-            Id:         RuleId,
-            Severity:   InsightSeverity.Info,
-            Title:      "High Disk Activity",
-            Detail:     $"Your disk has sustained {avgMbps:0} MB/s of read/write throughput over the " +
-                        $"last minute (currently {mbps:0} MB/s). A background task — such as Windows " +
-                        $"Update, an antivirus scan, or a backup — is likely running.",
-            ActionHint: null,
-            DetectedAt: DateTimeOffset.Now);
+            Id:                RuleId,
+            Severity:          InsightSeverity.Info,
+            Title:             "High Disk Activity",
+            Detail:            $"Your disk has sustained {avgMbps:0} MB/s of read/write throughput over the " +
+                               $"last minute (currently {mbps:0} MB/s). A background task — such as Windows " +
+                               $"Update, an antivirus scan, or a backup — is likely running.",
+            ActionHint:        null,
+            DetectedAt:        DateTimeOffset.Now,
+            ConfidencePercent: confidence);
     }
 }

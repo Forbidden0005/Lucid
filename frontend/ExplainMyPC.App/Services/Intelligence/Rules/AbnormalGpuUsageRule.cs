@@ -38,15 +38,19 @@ public sealed class AbnormalGpuUsageRule : IInsightRule
         if (gpuStats.Average <= GpuHighThreshold || cpuStats.Average >= CpuLowThreshold)
             return null;
 
+        // 5-minute window ≈ 200 samples at the 1.5-second poll rate.
+        int confidence = Math.Clamp(gpuStats.SampleCount * 100 / 200, 72, 95);
+
         return new SystemInsight(
-            Id:         RuleId,
-            Severity:   InsightSeverity.Warning,
-            Title:      "Unexpected GPU Activity",
-            Detail:     $"Your GPU has averaged {gpuStats.Average:0}% load over the last 5 minutes " +
-                        $"while CPU usage remained low ({cpuStats.Average:0}%). " +
-                        $"This pattern is uncommon during typical productivity tasks and may indicate " +
-                        $"a background process is using the graphics card.",
-            ActionHint: "Open Task Manager → Performance → GPU to identify which process is responsible.",
-            DetectedAt: DateTimeOffset.Now);
+            Id:                RuleId,
+            Severity:          InsightSeverity.Warning,
+            Title:             "Unexpected GPU Activity",
+            Detail:            $"Your GPU has averaged {gpuStats.Average:0}% load over the last 5 minutes " +
+                               $"while CPU usage remained low ({cpuStats.Average:0}%). " +
+                               $"This pattern is uncommon during typical productivity tasks and may indicate " +
+                               $"a background process is using the graphics card.",
+            ActionHint:        "Open Task Manager → Performance → GPU to identify which process is responsible.",
+            DetectedAt:        DateTimeOffset.Now,
+            ConfidencePercent: confidence);
     }
 }

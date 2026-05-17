@@ -36,10 +36,13 @@
     Remove this section when you're ready to wire up the full architecture.
   -->
   <ItemGroup>
-    <!-- ViewModels: only DashboardViewModel in Phase 3 -->
+    <!-- ViewModels: DashboardViewModel + insight presentation layer -->
     <Compile Remove="ViewModels\**" />
     <Compile Include="ViewModels\DashboardViewModel.cs" />
-    <None Include="ViewModels\**" Exclude="ViewModels\DashboardViewModel.cs" />
+    <Compile Include="ViewModels\InsightCardViewModel.cs" />
+    <Compile Include="ViewModels\InsightGroupViewModel.cs" />
+    <None Include="ViewModels\**"
+          Exclude="ViewModels\DashboardViewModel.cs;ViewModels\InsightCardViewModel.cs;ViewModels\InsightGroupViewModel.cs" />
 
     <!--
       Services: compile the live telemetry service and its samplers.
