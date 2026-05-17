@@ -13,8 +13,13 @@
         are sourced from the shared design system (AppCards/AppBadges/
         AppProgress/AppButtons.xaml merged in App.xaml).
 
-        Code-behind: animates progress bars on load; delegates hover effects
-        to AnimationHelper (scale + border brighten on pointer enter/exit).
+        Data: x:Bind connects all dynamic text and numeric values to
+        DashboardViewModel (exposed as ViewModel on the code-behind class).
+        Mode=OneWay ensures the UI reacts to future property changes when
+        live telemetry is wired up in Phase 2.
+
+        Animations: AnimationHelper drives progress bar entrance on load.
+        Hover effects: AnimationHelper scale + border brighten on pointer enter/exit.
 
         NOTE: Each animated Border has its own inline CompositeTransform.
         See AppCards.xaml for an explanation of why this is required.
@@ -39,7 +44,7 @@
                                Style="{StaticResource PageSubtitleStyle}" />
                 </StackPanel>
 
-                <!-- "All systems normal" status pill -->
+                <!-- System status pill -->
                 <Border Grid.Column="1"
                         Background="{StaticResource StatusGoodSubtleBrush}"
                         CornerRadius="12" Padding="12,6"
@@ -47,7 +52,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Ellipse Width="8" Height="8"
                                  Fill="{StaticResource StatusGoodBrush}" />
-                        <TextBlock Text="All systems normal"
+                        <TextBlock Text="{x:Bind ViewModel.SystemStatusText, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextStyle}"
                                    Foreground="{StaticResource StatusGoodBrush}" />
                     </StackPanel>
@@ -74,13 +79,14 @@
                     <!-- Score ring -->
                     <Grid Grid.Column="0" Width="90" Height="90">
                         <ProgressRing IsIndeterminate="False"
-                                      Value="87" Maximum="100"
+                                      Value="{x:Bind ViewModel.HealthScore, Mode=OneWay}"
+                                      Maximum="100"
                                       Width="90" Height="90"
                                       Background="Transparent"
                                       Foreground="{StaticResource StatusGoodBrush}" />
                         <StackPanel VerticalAlignment="Center"
                                     HorizontalAlignment="Center">
-                            <TextBlock Text="87"
+                            <TextBlock Text="{x:Bind ViewModel.HealthScoreText, Mode=OneWay}"
                                        Style="{StaticResource MetricLargeStyle}"
                                        HorizontalAlignment="Center" />
                             <TextBlock Text="/100"
@@ -95,9 +101,9 @@
                                 Margin="28,0,0,0"
                                 VerticalAlignment="Center"
                                 Spacing="8">
-                        <TextBlock Text="System Health: Good"
+                        <TextBlock Text="{x:Bind ViewModel.HealthTitle, Mode=OneWay}"
                                    Style="{StaticResource SectionTitleStyle}" />
-                        <TextBlock Text="Your PC is running well. No critical issues detected. Performance is stable across all components."
+                        <TextBlock Text="{x:Bind ViewModel.HealthDescription, Mode=OneWay}"
                                    Style="{StaticResource BodyTextStyle}"
                                    Foreground="{StaticResource TextSecondaryBrush}" />
 
@@ -107,28 +113,28 @@
                                 <Ellipse Width="6" Height="6"
                                          Fill="{StaticResource StatusGoodBrush}"
                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Performance 92"
+                                <TextBlock Text="{x:Bind ViewModel.PerformanceScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Ellipse Width="6" Height="6"
                                          Fill="{StaticResource StatusGoodBrush}"
                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Security 95"
+                                <TextBlock Text="{x:Bind ViewModel.SecurityScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Ellipse Width="6" Height="6"
                                          Fill="{StaticResource StatusModerateBrush}"
                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Storage 71"
+                                <TextBlock Text="{x:Bind ViewModel.StorageScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Ellipse Width="6" Height="6"
                                          Fill="{StaticResource StatusGoodBrush}"
                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Privacy 88"
+                                <TextBlock Text="{x:Bind ViewModel.PrivacyScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                         </StackPanel>
@@ -142,7 +148,7 @@
                                   FontSize="16"
                                   Foreground="{StaticResource StatusGoodBrush}"
                                   HorizontalAlignment="Center" />
-                        <TextBlock Text="+3"
+                        <TextBlock Text="{x:Bind ViewModel.TrendLabel, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextStyle}"
                                    Foreground="{StaticResource StatusGoodBrush}"
                                    HorizontalAlignment="Center" />
@@ -201,15 +207,14 @@
                                      VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="23%"
+                        <TextBlock Text="{x:Bind ViewModel.CpuDisplay, Mode=OneWay}"
                                    Style="{StaticResource MetricMediumStyle}" />
 
                         <ProgressBar x:Name="CpuBar"
                                      Style="{StaticResource UsageBar}"
-                                     Value="23"
                                      Foreground="{StaticResource AccentBlueBrush}" />
 
-                        <TextBlock Text="42&#x00B0;C  &#x2022;  3.80 GHz"
+                        <TextBlock Text="{x:Bind ViewModel.CpuDetail, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
                 </Border>
@@ -247,15 +252,14 @@
                                      VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="61%"
+                        <TextBlock Text="{x:Bind ViewModel.RamDisplay, Mode=OneWay}"
                                    Style="{StaticResource MetricMediumStyle}" />
 
                         <ProgressBar x:Name="RamBar"
                                      Style="{StaticResource UsageBar}"
-                                     Value="61"
                                      Foreground="{StaticResource AccentCyanBrush}" />
 
-                        <TextBlock Text="9.8 GB / 16 GB"
+                        <TextBlock Text="{x:Bind ViewModel.RamDetail, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
                 </Border>
@@ -293,15 +297,14 @@
                                      VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="12%"
+                        <TextBlock Text="{x:Bind ViewModel.GpuDisplay, Mode=OneWay}"
                                    Style="{StaticResource MetricMediumStyle}" />
 
                         <ProgressBar x:Name="GpuBar"
                                      Style="{StaticResource UsageBar}"
-                                     Value="12"
                                      Foreground="{StaticResource StatusGoodBrush}" />
 
-                        <TextBlock Text="38&#x00B0;C  &#x2022;  1.2 GB VRAM"
+                        <TextBlock Text="{x:Bind ViewModel.GpuDetail, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
                 </Border>
@@ -339,15 +342,14 @@
                                      VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="46%"
+                        <TextBlock Text="{x:Bind ViewModel.DiskDisplay, Mode=OneWay}"
                                    Style="{StaticResource MetricMediumStyle}" />
 
                         <ProgressBar x:Name="DiskBar"
                                      Style="{StaticResource UsageBar}"
-                                     Value="46"
                                      Foreground="{StaticResource StatusModerateBrush}" />
 
-                        <TextBlock Text="237 GB / 512 GB"
+                        <TextBlock Text="{x:Bind ViewModel.DiskDetail, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
                 </Border>
@@ -385,12 +387,12 @@
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="18s"
+                            <TextBlock Text="{x:Bind ViewModel.BootTimeValue, Mode=OneWay}"
                                        Style="{StaticResource MetricMediumStyle}" />
                             <Border Background="{StaticResource StatusGoodSubtleBrush}"
                                     CornerRadius="4" Padding="6,2"
                                     VerticalAlignment="Center">
-                                <TextBlock Text="&#x2193; 2s faster"
+                                <TextBlock Text="{x:Bind ViewModel.BootTimeDelta, Mode=OneWay}"
                                            FontSize="11"
                                            Foreground="{StaticResource StatusGoodBrush}" />
                             </Border>
@@ -418,12 +420,12 @@
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="31%"
+                            <TextBlock Text="{x:Bind ViewModel.CpuAvgValue, Mode=OneWay}"
                                        Style="{StaticResource MetricMediumStyle}" />
                             <Border Background="{StaticResource StatusModerateSubtleBrush}"
                                     CornerRadius="4" Padding="6,2"
                                     VerticalAlignment="Center">
-                                <TextBlock Text="&#x2191; 4% higher"
+                                <TextBlock Text="{x:Bind ViewModel.CpuAvgDelta, Mode=OneWay}"
                                            FontSize="11"
                                            Foreground="{StaticResource StatusModerateBrush}" />
                             </Border>
@@ -451,12 +453,12 @@
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="275 GB"
+                            <TextBlock Text="{x:Bind ViewModel.DiskFreeValue, Mode=OneWay}"
                                        Style="{StaticResource MetricMediumStyle}" />
                             <Border Background="{StaticResource StatusCriticalSubtleBrush}"
                                     CornerRadius="4" Padding="6,2"
                                     VerticalAlignment="Center">
-                                <TextBlock Text="&#x2193; 12 GB lost"
+                                <TextBlock Text="{x:Bind ViewModel.DiskFreeDelta, Mode=OneWay}"
                                            FontSize="11"
                                            Foreground="{StaticResource StatusCriticalBrush}" />
                             </Border>
@@ -544,7 +546,7 @@
                 <Border Grid.Column="1"
                         Background="{StaticResource StatusInfoSubtleBrush}"
                         CornerRadius="10" Padding="8,3">
-                    <TextBlock Text="3 findings"
+                    <TextBlock Text="{x:Bind ViewModel.InsightCountText, Mode=OneWay}"
                                FontSize="11"
                                Foreground="{StaticResource StatusInfoBrush}" />
                 </Border>

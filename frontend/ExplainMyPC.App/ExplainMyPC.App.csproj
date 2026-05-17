@@ -24,6 +24,8 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools"
                       Version="10.0.26100.1742"
                       PrivateAssets="all" />
+    <PackageReference Include="CommunityToolkit.Mvvm"
+                      Version="8.2.2" />
   </ItemGroup>
 
   <!--
@@ -33,12 +35,13 @@
   -->
   <ItemGroup>
     <Compile Remove="ViewModels\**" />
+    <Compile Include="ViewModels\DashboardViewModel.cs" />
     <Compile Remove="Services\**" />
     <Compile Remove="Controls\**" />
     <Compile Remove="Intelligence\**" />
     <Compile Remove="Core\**" />
     <Compile Remove="Models\**" />
-    <None Include="ViewModels\**" />
+    <None Include="ViewModels\**" Exclude="ViewModels\DashboardViewModel.cs" />
     <None Include="Services\**" />
     <None Include="Controls\**" />
     <None Include="Intelligence\**" />

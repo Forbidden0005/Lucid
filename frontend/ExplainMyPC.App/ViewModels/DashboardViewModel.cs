@@ -1,287 +1,162 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using ExplainMyPC.Core.MVVM;
-using ExplainMyPC.Core.Navigation;
-using ExplainMyPC.Intelligence;
-using ExplainMyPC.Intelligence.Models;
-using ExplainMyPC.Models;
-using ExplainMyPC.Services;
-using Microsoft.UI.Dispatching;
 
 namespace ExplainMyPC.ViewModels;
 
 /// <summary>
-/// ViewModel for the Dashboard page.
+/// ViewModel for DashboardPage — Phase 1 (mock data, no services).
 ///
-/// Architecture:
-///   • Subscribes to ITelemetryService.ReadingUpdated on the ThreadPool.
-///   • Marshals every reading to the UI thread via DispatcherQueue.
-///   • Maintains 60-point rolling queues for graph history AND a 30-reading
-///     history queue that feeds the Intelligence Engine for trend analysis.
-///   • On every reading, calls IIntelligenceEngine.Analyze() synchronously.
-///     Rules are fast in-memory comparisons; the ~1 ms cost is negligible.
-///   • Exposes double[] snapshots (not ObservableCollection) so x:Bind fires
-///     a full property-changed notification and TelemetryGraph re-renders.
+/// Property names and structure are designed so upgrading to live telemetry
+/// later requires only adding a constructor parameter and hooking a service —
+/// not renaming bindings or touching the XAML.
 ///
-/// Cleanup:
-///   DashboardPage.Unloaded calls Cleanup() to unsubscribe from the singleton
-///   ITelemetryService, preventing it from holding a reference to this
-///   transient ViewModel after navigation.
+/// Live telemetry wiring happens in Phase 2 when ITelemetryService is introduced.
 /// </summary>
-public sealed partial class DashboardViewModel : ViewModelBase
+public partial class DashboardViewModel : ObservableObject
 {
-    private const int GraphHistoryLength   = 60;
-    private const int EngineHistoryLength  = 30;
+    // ── Health Score ──────────────────────────────────────────────────────
 
-    private readonly INavigationService   _navigationService;
-    private readonly ITelemetryService    _telemetryService;
-    private readonly IIntelligenceEngine  _engine;
-    private readonly DispatcherQueue      _dispatcher;
+    /// <summary>Overall health score 0–100. Typed as double for ProgressRing.Value.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HealthScoreText))]
+    private double _healthScore = 87;
 
-    // ── Rolling graph queues ──────────────────────────────────────────────────
-    private readonly Queue<double>           _cpuQueue;
-    private readonly Queue<double>           _ramQueue;
-    private readonly Queue<double>           _gpuQueue;
-    private readonly Queue<double>           _diskQueue;
+    public string HealthScoreText => $"{HealthScore:0}";
 
-    // ── Engine history queue (full readings for trend analysis) ───────────────
-    private readonly Queue<TelemetryReading> _readingHistory;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HealthTitle))]
+    private string _healthLabel = "Good";
 
-    // ── Startup app count — updated by StartupScanner (Phase 2) ──────────────
-    private int _startupAppCount;
+    public string HealthTitle => $"System Health: {HealthLabel}";
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Observable properties — all updated on the UI thread
-    // ════════════════════════════════════════════════════════════════════════
+    [ObservableProperty]
+    private string _healthDescription =
+        "Your PC is running well. No critical issues detected. " +
+        "Performance is stable across all components.";
 
-    // ── Health scores ─────────────────────────────────────────────────────────
-    [ObservableProperty] private int    _overallHealthScore;
-    [ObservableProperty] private string _overallHealthLabel  = string.Empty;
-    [ObservableProperty] private int    _securityScore;
-    [ObservableProperty] private int    _stabilityScore;
-    [ObservableProperty] private int    _storageScore;
-    [ObservableProperty] private int    _performanceScore;
-    [ObservableProperty] private int    _privacyScore;
+    [ObservableProperty]
+    private string _systemStatusText = "All systems normal";
 
-    // ── Live metrics ──────────────────────────────────────────────────────────
+    /// <summary>Week-over-week score change. Positive values display as "+3".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrendLabel))]
+    private int _trendDelta = 3;
+
+    public string TrendLabel => TrendDelta >= 0 ? $"+{TrendDelta}" : $"{TrendDelta}";
+
+    // ── Sub-scores ────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PerformanceScoreText))]
+    private int _performanceScore = 92;
+
+    public string PerformanceScoreText => $"Performance {PerformanceScore}";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SecurityScoreText))]
+    private int _securityScore = 95;
+
+    public string SecurityScoreText => $"Security {SecurityScore}";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StorageScoreText))]
+    private int _storageScore = 71;
+
+    public string StorageScoreText => $"Storage {StorageScore}";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PrivacyScoreText))]
+    private int _privacyScore = 88;
+
+    public string PrivacyScoreText => $"Privacy {PrivacyScore}";
+
+    // ── CPU ───────────────────────────────────────────────────────────────
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CpuDisplay))]
     [NotifyPropertyChangedFor(nameof(CpuDetail))]
-    private double _cpuPercent;
+    private double _cpuPercent = 23;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CpuDetail))]
-    private double _cpuTemperature;
+    private double _cpuTemperature = 42;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CpuDetail))]
-    private double _cpuFrequencyGhz;
+    private double _cpuFrequencyGhz = 3.80;
+
+    public string CpuDisplay => $"{CpuPercent:0}%";
+    public string CpuDetail  => $"{CpuTemperature:0}°C  •  {CpuFrequencyGhz:F2} GHz";
+
+    // ── RAM ───────────────────────────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RamDisplay))]
     [NotifyPropertyChangedFor(nameof(RamDetail))]
-    private double _ramPercent;
+    private double _ramPercent = 61;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RamDetail))]
-    private long _ramUsedMb;
+    private double _ramUsedGb = 9.8;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RamDetail))]
-    private long _ramTotalMb;
+    private double _ramTotalGb = 16;
+
+    public string RamDisplay => $"{RamPercent:0}%";
+    public string RamDetail  => $"{RamUsedGb:F1} GB / {RamTotalGb:F0} GB";
+
+    // ── GPU ───────────────────────────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GpuDisplay))]
     [NotifyPropertyChangedFor(nameof(GpuDetail))]
-    private double _gpuPercent;
+    private double _gpuPercent = 12;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GpuDetail))]
-    private double _gpuTemperature;
+    private double _gpuTemperature = 38;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GpuDetail))]
-    private double _gpuVramUsed;
+    private double _gpuVramUsedGb = 1.2;
+
+    public string GpuDisplay => $"{GpuPercent:0}%";
+    public string GpuDetail  => $"{GpuTemperature:0}°C  •  {GpuVramUsedGb:F1} GB VRAM";
+
+    // ── Disk ─────────────────────────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDisplay))]
     [NotifyPropertyChangedFor(nameof(DiskDetail))]
-    private double _diskReadMbps;
+    private double _diskPercent = 46;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDetail))]
-    private double _diskWriteMbps;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DiskDisplay))]
-    private double _diskIoPercent;
+    private double _diskUsedGb = 237;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDetail))]
-    private long _diskUsedGb;
+    private double _diskTotalGb = 512;
+
+    public string DiskDisplay => $"{DiskPercent:0}%";
+    public string DiskDetail  => $"{DiskUsedGb:F0} GB / {DiskTotalGb:F0} GB";
+
+    // ── Trends ────────────────────────────────────────────────────────────
+
+    [ObservableProperty] private string _bootTimeValue = "18s";
+    [ObservableProperty] private string _bootTimeDelta = "↓ 2s faster";
+
+    [ObservableProperty] private string _cpuAvgValue = "31%";
+    [ObservableProperty] private string _cpuAvgDelta = "↑ 4% higher";
+
+    [ObservableProperty] private string _diskFreeValue = "275 GB";
+    [ObservableProperty] private string _diskFreeDelta = "↓ 12 GB lost";
+
+    // ── Insights ──────────────────────────────────────────────────────────
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DiskDetail))]
-    private long _diskTotalGb;
+    [NotifyPropertyChangedFor(nameof(InsightCountText))]
+    private int _insightCount = 3;
 
-    // ── Graph history arrays ──────────────────────────────────────────────────
-    [ObservableProperty] private double[] _cpuHistory;
-    [ObservableProperty] private double[] _ramHistory;
-    [ObservableProperty] private double[] _gpuHistory;
-    [ObservableProperty] private double[] _diskHistory;
-
-    // ── Intelligence output ───────────────────────────────────────────────────
-    [ObservableProperty] private string _systemSummary =
-        "Waiting for telemetry data…";
-    [ObservableProperty] private int _activeIssueCount;
-    [ObservableProperty] private IReadOnlyList<SystemIssue> _systemIssues = [];
-
-    // ════════════════════════════════════════════════════════════════════════
-    // Computed display strings
-    // ════════════════════════════════════════════════════════════════════════
-
-    public string CpuDisplay  => $"{CpuPercent:F0}%";
-    public string CpuDetail   => $"{CpuTemperature:F0}°C  •  {CpuFrequencyGhz:F2} GHz";
-
-    public string RamDisplay  => $"{RamPercent:F0}%";
-    public string RamDetail   => $"{RamUsedMb / 1024.0:F1} GB / {RamTotalMb / 1024.0:F0} GB";
-
-    public string GpuDisplay  => $"{GpuPercent:F0}%";
-    public string GpuDetail   => $"{GpuTemperature:F0}°C  •  {GpuVramUsed:F1} GB VRAM";
-
-    public string DiskDisplay => $"↑{DiskReadMbps:F0}  ↓{DiskWriteMbps:F0} MB/s";
-    public string DiskDetail  => $"{DiskUsedGb} GB / {DiskTotalGb} GB used";
-
-    // ════════════════════════════════════════════════════════════════════════
-    // Constructor
-    // ════════════════════════════════════════════════════════════════════════
-
-    public DashboardViewModel(
-        INavigationService   navigationService,
-        ITelemetryService    telemetryService,
-        IIntelligenceEngine  intelligenceEngine)
-    {
-        _navigationService = navigationService;
-        _telemetryService  = telemetryService;
-        _engine            = intelligenceEngine;
-        _dispatcher        = DispatcherQueue.GetForCurrentThread();
-
-        // Seed graph queues with a flat baseline so the graphs render immediately.
-        _cpuQueue  = new Queue<double>(Enumerable.Repeat(0.0, GraphHistoryLength));
-        _ramQueue  = new Queue<double>(Enumerable.Repeat(0.0, GraphHistoryLength));
-        _gpuQueue  = new Queue<double>(Enumerable.Repeat(0.0, GraphHistoryLength));
-        _diskQueue = new Queue<double>(Enumerable.Repeat(0.0, GraphHistoryLength));
-
-        _cpuHistory  = [.. _cpuQueue];
-        _ramHistory  = [.. _ramQueue];
-        _gpuHistory  = [.. _gpuQueue];
-        _diskHistory = [.. _diskQueue];
-
-        _readingHistory = new Queue<TelemetryReading>(EngineHistoryLength);
-
-        // Wire up telemetry.
-        _telemetryService.ReadingUpdated += OnReadingUpdated;
-        _telemetryService.Start();
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // Commands
-    // ════════════════════════════════════════════════════════════════════════
-
-    [RelayCommand]
-    private void OpenExplain() => _navigationService.Navigate("explain");
-
-    [RelayCommand]
-    private void RunScan()
-    {
-        // Phase 2: trigger ScanService.RunFullScanAsync().
-        StatusMessage = "Full scan available in Phase 2.";
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // Telemetry intake
-    // ════════════════════════════════════════════════════════════════════════
-
-    private void OnReadingUpdated(object? sender, TelemetryReading r)
-    {
-        _dispatcher.TryEnqueue(() => ApplyReading(r));
-    }
-
-    private void ApplyReading(TelemetryReading r)
-    {
-        // ── Raw metric values ─────────────────────────────────────────────
-        CpuPercent      = r.CpuPercent;
-        CpuTemperature  = r.CpuTemperatureCelsius;
-        CpuFrequencyGhz = r.CpuFrequencyGhz;
-
-        RamPercent      = r.RamPercent;
-        RamUsedMb       = r.RamUsedMb;
-        RamTotalMb      = r.RamTotalMb;
-
-        GpuPercent      = r.GpuPercent;
-        GpuTemperature  = r.GpuTemperatureCelsius;
-        GpuVramUsed     = r.GpuVramUsedGb;
-
-        DiskReadMbps    = r.DiskReadMbps;
-        DiskWriteMbps   = r.DiskWriteMbps;
-        DiskIoPercent   = r.DiskUsagePercent;
-        DiskUsedGb      = r.DiskUsedGb;
-        DiskTotalGb     = r.DiskTotalGb;
-
-        // ── Roll graph queues ─────────────────────────────────────────────
-        EnqueueGraph(_cpuQueue,  r.CpuPercent);
-        EnqueueGraph(_ramQueue,  r.RamPercent);
-        EnqueueGraph(_gpuQueue,  r.GpuPercent);
-        EnqueueGraph(_diskQueue, r.DiskUsagePercent);
-
-        CpuHistory  = [.. _cpuQueue];
-        RamHistory  = [.. _ramQueue];
-        GpuHistory  = [.. _gpuQueue];
-        DiskHistory = [.. _diskQueue];
-
-        // ── Roll engine history ───────────────────────────────────────────
-        if (_readingHistory.Count >= EngineHistoryLength)
-            _readingHistory.Dequeue();
-        _readingHistory.Enqueue(r);
-
-        // ── Run intelligence engine ───────────────────────────────────────
-        var snapshot = new SystemSnapshot(
-            Current:        r,
-            RecentHistory:  [.. _readingHistory],
-            StartupAppCount: _startupAppCount);
-
-        var output = _engine.Analyze(snapshot);
-
-        // ── Apply engine output ───────────────────────────────────────────
-        OverallHealthScore  = output.Health.Overall;
-        OverallHealthLabel  = output.Health.Label;
-        SecurityScore       = output.Health.Security;
-        StabilityScore      = output.Health.Stability;
-        StorageScore        = output.Health.Storage;
-        PerformanceScore    = output.Health.Performance;
-        PrivacyScore        = output.Health.Privacy;
-
-        SystemSummary    = output.SystemSummary;
-        SystemIssues     = output.Issues;
-        ActiveIssueCount = output.Issues.Count(i => i.Severity >= IssueSeverity.Low);
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ════════════════════════════════════════════════════════════════════════
-
-    private static void EnqueueGraph(Queue<double> queue, double value)
-    {
-        if (queue.Count >= GraphHistoryLength) queue.Dequeue();
-        queue.Enqueue(value);
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // Cleanup — called by DashboardPage.Unloaded
-    // ════════════════════════════════════════════════════════════════════════
-
-    public void Cleanup()
-    {
-        _telemetryService.ReadingUpdated -= OnReadingUpdated;
-    }
+    public string InsightCountText => $"{InsightCount} finding{(InsightCount == 1 ? "" : "s")}";
 }
