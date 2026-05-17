@@ -1,4 +1,5 @@
 using ExplainMyPC.Services;
+using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.Intelligence;
 using Microsoft.UI.Dispatching;
 
@@ -25,6 +26,8 @@ public static class AppServices
     private static ITelemetryService?       _telemetry;
     private static ITelemetryHistoryBuffer? _history;
     private static ISystemInsightEngine?    _intelligence;
+    private static ActionExecutorRegistry?  _executorRegistry;
+    private static IActionExecutionEngine?  _executionEngine;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -52,6 +55,28 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Registry of all registered action executors.
+    /// Use to check whether a specific action is implemented, or to
+    /// register new executors during startup.
+    /// </summary>
+    public static ActionExecutorRegistry ExecutorRegistry =>
+        _executorRegistry ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Action execution engine. The single entry point for running or
+    /// rolling back recommended remediation actions.
+    /// No executors are registered yet — all actions return
+    /// <see cref="ActionExecutionStatus.ExecutorNotFound"/> until individual
+    /// executor implementations are wired up.
+    /// </summary>
+    public static IActionExecutionEngine ExecutionEngine =>
+        _executionEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -74,6 +99,14 @@ public static class AppServices
         _telemetry.Start();
         _intelligence.Start();
 
+        // Remediation execution engine — registry starts empty.
+        // Register executor implementations here as they are built:
+        //   _executorRegistry.Register(new CleanTempFilesExecutor());
+        //   _executorRegistry.Register(new StorageSenseExecutor());
+        //   ...
+        _executorRegistry = new ActionExecutorRegistry();
+        _executionEngine  = new ActionExecutionEngine(_executorRegistry);
+
         // Future services registered here, e.g.:
         // _storage  = new WindowsStorageService();
         // _process  = new WindowsProcessService();
@@ -86,6 +119,9 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        _executionEngine  = null;
+        _executorRegistry = null;
+
         _intelligence?.Stop();
         if (_intelligence is IDisposable id) id.Dispose();
         _intelligence = null;
