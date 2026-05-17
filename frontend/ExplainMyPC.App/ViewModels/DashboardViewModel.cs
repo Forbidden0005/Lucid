@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using ExplainMyPC.Helpers;
+using ExplainMyPC.Services.Intelligence;
 
 namespace ExplainMyPC.ViewModels;
 
@@ -198,13 +199,20 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private string _diskFreeValue = "275 GB";
     [ObservableProperty] private string _diskFreeDelta = "↓ 12 GB lost";
 
-    // ── Insights (Phase 3: mock) ──────────────────────────────────────────────
+    // ── Insights — live from SystemInsightEngine ──────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(InsightCountText))]
-    private int _insightCount = 3;
+    private int _insightCount = 0;
 
     public string InsightCountText => $"{InsightCount} finding{(InsightCount == 1 ? "" : "s")}";
+
+    /// <summary>
+    /// The current list of intelligence findings, ordered highest severity
+    /// first. Updated whenever the engine detects a change in the active set.
+    /// Bind UI lists directly to this property.
+    /// </summary>
+    public IReadOnlyList<SystemInsight> CurrentInsights { get; private set; } = [];
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -217,6 +225,12 @@ public partial class DashboardViewModel : ObservableObject
         // apply it immediately so the UI doesn't wait for the next poll cycle.
         if (AppServices.Telemetry.LastReading is { } snapshot)
             OnReadingAvailable(null, snapshot);
+
+        // Subscribe to intelligence findings.
+        AppServices.Intelligence.InsightsUpdated += OnInsightsUpdated;
+
+        // Seed from whatever the engine has already evaluated (back-navigation).
+        ApplyInsights(AppServices.Intelligence.CurrentInsights);
     }
 
     // ── Telemetry intake ──────────────────────────────────────────────────────
@@ -249,15 +263,32 @@ public partial class DashboardViewModel : ObservableObject
         DiskWriteMbps = s.DiskWriteMbps;
     }
 
+    // ── Intelligence intake ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called on the UI thread whenever the active set of findings changes.
+    /// Fires much less frequently than telemetry ticks (only on set changes).
+    /// </summary>
+    private void OnInsightsUpdated(object? sender, IReadOnlyList<SystemInsight> insights) =>
+        ApplyInsights(insights);
+
+    private void ApplyInsights(IReadOnlyList<SystemInsight> insights)
+    {
+        CurrentInsights = insights;
+        InsightCount    = insights.Count;
+        OnPropertyChanged(nameof(CurrentInsights));
+    }
+
     // ── Cleanup ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Unsubscribes from the telemetry service.
-    /// Does NOT stop the service — it is app-level and may serve other pages.
+    /// Unsubscribes from app-level services.
+    /// Does NOT stop them — they are app-level and may serve other pages.
     /// Call from DashboardPage.Unloaded.
     /// </summary>
     public void Cleanup()
     {
-        AppServices.Telemetry.ReadingAvailable -= OnReadingAvailable;
+        AppServices.Telemetry.ReadingAvailable   -= OnReadingAvailable;
+        AppServices.Intelligence.InsightsUpdated -= OnInsightsUpdated;
     }
 }

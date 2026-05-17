@@ -1,4 +1,5 @@
 using ExplainMyPC.Services;
+using ExplainMyPC.Services.Intelligence;
 using Microsoft.UI.Dispatching;
 
 namespace ExplainMyPC;
@@ -23,6 +24,7 @@ public static class AppServices
 {
     private static ITelemetryService?       _telemetry;
     private static ITelemetryHistoryBuffer? _history;
+    private static ISystemInsightEngine?    _intelligence;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -41,6 +43,15 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Rule-based intelligence engine that evaluates heuristics on every
+    /// telemetry tick and publishes findings when the active set changes.
+    /// </summary>
+    public static ISystemInsightEngine Intelligence =>
+        _intelligence ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -50,8 +61,9 @@ public static class AppServices
     /// </summary>
     public static void Initialize(DispatcherQueue uiDispatcher)
     {
-        _telemetry = new WindowsTelemetryService(uiDispatcher);
-        _history   = new TelemetryHistoryBuffer();
+        _telemetry    = new WindowsTelemetryService(uiDispatcher);
+        _history      = new TelemetryHistoryBuffer();
+        _intelligence = new SystemInsightEngine(_telemetry, _history);
 
         // Every snapshot flows into the history buffer automatically.
         // ReadingAvailable fires on the UI thread, so Record() is always
@@ -60,6 +72,7 @@ public static class AppServices
         _telemetry.ReadingAvailable += (_, snapshot) => _history.Record(snapshot);
 
         _telemetry.Start();
+        _intelligence.Start();
 
         // Future services registered here, e.g.:
         // _storage  = new WindowsStorageService();
@@ -73,6 +86,10 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        _intelligence?.Stop();
+        if (_intelligence is IDisposable id) id.Dispose();
+        _intelligence = null;
+
         _telemetry?.Stop();
         if (_telemetry is IDisposable td) td.Dispose();
         if (_history  is IDisposable hd) hd.Dispose();

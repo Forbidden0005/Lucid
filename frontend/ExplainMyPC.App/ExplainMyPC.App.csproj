@@ -57,8 +57,19 @@
     <Compile Include="Services\Telemetry\Samplers\GpuSampler.cs" />
     <Compile Include="Services\Telemetry\Samplers\DiskSampler.cs" />
     <Compile Include="Services\Telemetry\Samplers\ThermalSampler.cs" />
+    <Compile Include="Services\Intelligence\SystemInsight.cs" />
+    <Compile Include="Services\Intelligence\IInsightRule.cs" />
+    <Compile Include="Services\Intelligence\ISystemInsightEngine.cs" />
+    <Compile Include="Services\Intelligence\SystemInsightEngine.cs" />
+    <Compile Include="Services\Intelligence\Rules\SustainedHighCpuRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\ElevatedRamPressureRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\AbnormalGpuUsageRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\LowDiskSpaceRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\HighDiskThroughputRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\HighCpuTemperatureRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\SystemRunningWellRule.cs" />
     <None Include="Services\**"
-          Exclude="Services\ITelemetryService.cs;Services\ITelemetryHistoryBuffer.cs;Services\WindowsTelemetryService.cs;Services\TelemetryHistoryBuffer.cs;Services\Telemetry\TelemetryHistory.cs;Services\Telemetry\Samplers\CpuSampler.cs;Services\Telemetry\Samplers\RamSampler.cs;Services\Telemetry\Samplers\GpuSampler.cs;Services\Telemetry\Samplers\DiskSampler.cs;Services\Telemetry\Samplers\ThermalSampler.cs" />
+          Exclude="Services\ITelemetryService.cs;Services\ITelemetryHistoryBuffer.cs;Services\WindowsTelemetryService.cs;Services\TelemetryHistoryBuffer.cs;Services\Telemetry\TelemetryHistory.cs;Services\Telemetry\Samplers\CpuSampler.cs;Services\Telemetry\Samplers\RamSampler.cs;Services\Telemetry\Samplers\GpuSampler.cs;Services\Telemetry\Samplers\DiskSampler.cs;Services\Telemetry\Samplers\ThermalSampler.cs;Services\Intelligence\SystemInsight.cs;Services\Intelligence\IInsightRule.cs;Services\Intelligence\ISystemInsightEngine.cs;Services\Intelligence\SystemInsightEngine.cs;Services\Intelligence\Rules\SustainedHighCpuRule.cs;Services\Intelligence\Rules\ElevatedRamPressureRule.cs;Services\Intelligence\Rules\AbnormalGpuUsageRule.cs;Services\Intelligence\Rules\LowDiskSpaceRule.cs;Services\Intelligence\Rules\HighDiskThroughputRule.cs;Services\Intelligence\Rules\HighCpuTemperatureRule.cs;Services\Intelligence\Rules\SystemRunningWellRule.cs" />
 
     <!-- Future feature code — excluded until ready to wire up -->
     <Compile Remove="Controls\**" />
