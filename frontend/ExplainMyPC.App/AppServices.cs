@@ -1,4 +1,5 @@
 using ExplainMyPC.Services;
+using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.Execution.Executors;
 using ExplainMyPC.Services.History;
@@ -27,6 +28,7 @@ public static class AppServices
 {
     private static ITelemetryService?        _telemetry;
     private static ITelemetryHistoryBuffer?  _history;
+    private static ISystemBaselineService?   _baseline;
     private static ISystemInsightEngine?     _intelligence;
     private static ActionExecutorRegistry?   _executorRegistry;
     private static IActionExecutionEngine?   _executionEngine;
@@ -46,6 +48,17 @@ public static class AppServices
     /// </summary>
     public static ITelemetryHistoryBuffer History =>
         _history ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Adaptive machine-specific behavioral baseline service.
+    /// Observes telemetry over time and learns this machine's normal operating
+    /// ranges for CPU, RAM, temperature, and disk I/O.
+    /// Baseline-aware insight rules use this to detect machine-specific anomalies.
+    /// </summary>
+    public static ISystemBaselineService Baseline =>
+        _baseline ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -100,9 +113,16 @@ public static class AppServices
     /// </summary>
     public static void Initialize(DispatcherQueue uiDispatcher)
     {
-        _telemetry    = new WindowsTelemetryService(uiDispatcher);
-        _history      = new TelemetryHistoryBuffer();
-        _intelligence = new SystemInsightEngine(_telemetry, _history);
+        _telemetry = new WindowsTelemetryService(uiDispatcher);
+        _history   = new TelemetryHistoryBuffer();
+
+        // Adaptive baseline service — learns this machine's normal operating
+        // ranges over time and persists them to %LOCALAPPDATA%\ExplainMyPC\.
+        // Must be created before SystemInsightEngine so the baseline rules
+        // receive a valid service reference at construction time.
+        _baseline = new SystemBaselineService(_telemetry);
+
+        _intelligence = new SystemInsightEngine(_telemetry, _history, _baseline);
 
         // Every snapshot flows into the history buffer automatically.
         // ReadingAvailable fires on the UI thread, so Record() is always
@@ -111,6 +131,7 @@ public static class AppServices
         _telemetry.ReadingAvailable += (_, snapshot) => _history.Record(snapshot);
 
         _telemetry.Start();
+        _baseline.Start();      // must start after _telemetry so ReadingAvailable exists
         _intelligence.Start();
 
         // ── Operational history ───────────────────────────────────────────────
@@ -159,6 +180,9 @@ public static class AppServices
         _intelligence?.Stop();
         if (_intelligence is IDisposable id) id.Dispose();
         _intelligence = null;
+
+        _baseline?.Stop();
+        _baseline = null;
 
         _telemetry?.Stop();
         if (_telemetry is IDisposable td) td.Dispose();

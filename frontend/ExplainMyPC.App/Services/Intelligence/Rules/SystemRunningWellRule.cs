@@ -1,4 +1,5 @@
 using ExplainMyPC.Helpers;
+using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Telemetry;
 
 namespace ExplainMyPC.Services.Intelligence.Rules;
@@ -32,6 +33,13 @@ public sealed class SystemRunningWellRule : IInsightRule
     private const double GpuOkThreshold  = 85.0;
     private const int    MinSamples      = 5;
 
+    private readonly ISystemBaselineService? _baseline;
+
+    public SystemRunningWellRule(ISystemBaselineService? baseline = null)
+    {
+        _baseline = baseline;
+    }
+
     public string RuleId => "system.healthy";
 
     public SystemInsight? Evaluate(TelemetrySnapshot current, ITelemetryHistoryBuffer history)
@@ -61,6 +69,18 @@ public sealed class SystemRunningWellRule : IInsightRule
         // GPU must not be under unexpected load (GPU presence is optional).
         if (current.GpuAvailable && current.GpuPercent >= GpuOkThreshold)
             return null;
+
+        // Baseline anomaly check — if any metric is anomalous for THIS machine,
+        // suppress the "all clear" even when absolute thresholds are not exceeded.
+        // This prevents "System Running Well" and a baseline-anomaly insight from
+        // appearing simultaneously, which would be confusing.
+        if (_baseline?.CurrentBaseline is { } bl)
+        {
+            if (bl.IsIdleCpuAnomaly(current.CpuPercent))   return null;
+            if (bl.IsRamAnomaly(current.RamPercent))        return null;
+            if (current.CpuTemperatureAvailable &&
+                bl.IsThermalAnomaly(current.CpuTemperatureCelsius)) return null;
+        }
 
         // Confidence grows toward 97 % as the full 1-minute window fills.
         int confidence = Math.Clamp(cpuStats.SampleCount * 100 / 40, 75, 97);

@@ -1,4 +1,5 @@
 using ExplainMyPC.Helpers;
+using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Intelligence.Rules;
 
 namespace ExplainMyPC.Services.Intelligence;
@@ -59,11 +60,21 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public SystemInsightEngine(ITelemetryService telemetry, ITelemetryHistoryBuffer history)
+    /// <param name="telemetry">Live telemetry feed — rules are evaluated on each reading.</param>
+    /// <param name="history">Rolling 30-minute history buffer for trend analysis.</param>
+    /// <param name="baseline">
+    ///     Optional adaptive baseline service. When provided, three additional
+    ///     machine-specific anomaly rules are registered. When null, the engine
+    ///     operates with fixed-threshold rules only (same behaviour as before).
+    /// </param>
+    public SystemInsightEngine(
+        ITelemetryService       telemetry,
+        ITelemetryHistoryBuffer history,
+        ISystemBaselineService? baseline = null)
     {
         _telemetry   = telemetry;
         _history     = history;
-        _rules       = CreateRules();
+        _rules       = CreateRules(baseline);
         _synthesizer = new InsightSynthesisEngine(CreateSynthesisRules());
     }
 
@@ -83,9 +94,12 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
     ///
     /// SystemRunningWellRule is last — only fires when no other rule produces a finding.
     /// </summary>
-    private static IReadOnlyList<IInsightRule> CreateRules() =>
+    private static IReadOnlyList<IInsightRule> CreateRules(ISystemBaselineService? baseline) =>
     [
-        // ── Point-in-time rules ────────────────────────────────────────────────
+        // ── Point-in-time rules (fixed global thresholds) ─────────────────────
+        // These fire based on objectively high values, regardless of the
+        // machine's individual history. They remain the first line of defense
+        // and are always present even before the baseline warms up.
         new SustainedHighCpuRule(),
         new ElevatedRamPressureRule(),
         new AbnormalGpuUsageRule(),
@@ -109,8 +123,24 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
         new HighImpactStartupAppsRule(),        // specific heavy apps at startup
         new StartupResourceCorrelationRule(),   // startup config + live resource pressure
 
+        // ── Adaptive baseline rules (machine-specific anomaly detection) ───────
+        // These supplement the fixed-threshold rules above by detecting
+        // deviations from THIS machine's learned behavioral norms.
+        // Silent during warm-up (first ~5 min); silent when baseline is null.
+        // The rules are registered only when a baseline service is provided.
+        .. (baseline is not null
+            ? new IInsightRule[]
+              {
+                  new BaselineCpuAnomalyRule(baseline),
+                  new BaselineRamAnomalyRule(baseline),
+                  new BaselineThermalAnomalyRule(baseline),
+              }
+            : []),
+
         // ── All-clear ─────────────────────────────────────────────────────────
-        new SystemRunningWellRule(),   // only fires when every rule above is silent
+        // Only fires when every rule above is silent AND no baseline anomaly
+        // is active. Baseline-awareness is injected so it can cross-check.
+        new SystemRunningWellRule(baseline),
     ];
 
     /// <summary>
