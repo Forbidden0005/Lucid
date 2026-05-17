@@ -5,30 +5,20 @@
     Background="{StaticResource AppBackgroundBrush}"
     Loaded="Page_Loaded">
 
-    <Page.Resources>
-        <!-- Hover card style — adds subtle scale + brightness on hover -->
-        <Style x:Key="HoverCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
-            <Setter Property="RenderTransform">
-                <Setter.Value>
-                    <CompositeTransform />
-                </Setter.Value>
-            </Setter>
-        </Style>
+    <!--
+        DashboardPage.xaml — System overview with health score, live metrics,
+        trends, quick actions, and active insights.
 
-        <!-- Animated progress bar colors -->
-        <SolidColorBrush x:Key="CpuBarBrush" Color="{StaticResource AccentBlueColor}" />
-        <SolidColorBrush x:Key="RamBarBrush" Color="{StaticResource AccentCyanColor}" />
-        <SolidColorBrush x:Key="GpuBarBrush" Color="{StaticResource SuccessColor}" />
-        <SolidColorBrush x:Key="DiskBarBrush" Color="{StaticResource WarningColor}" />
+        All card styles, badge styles, progress bar styles, and button styles
+        are sourced from the shared design system (AppCards/AppBadges/
+        AppProgress/AppButtons.xaml merged in App.xaml).
 
-        <!-- Progress bar track color -->
-        <SolidColorBrush x:Key="BarTrackBrush" Color="#1AFFFFFF" />
-    </Page.Resources>
+        Code-behind: animates progress bars on load; delegates hover effects
+        to AnimationHelper (scale + border brighten on pointer enter/exit).
+
+        NOTE: Each animated Border has its own inline CompositeTransform.
+        See AppCards.xaml for an explanation of why this is required.
+    -->
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Padding="32,32,32,48" Spacing="28">
@@ -49,17 +39,17 @@
                                Style="{StaticResource PageSubtitleStyle}" />
                 </StackPanel>
 
-                <!-- Status pill -->
+                <!-- "All systems normal" status pill -->
                 <Border Grid.Column="1"
-                        Background="#1E57D68D"
-                        CornerRadius="12"
-                        Padding="12,6"
+                        Background="{StaticResource StatusGoodSubtleBrush}"
+                        CornerRadius="12" Padding="12,6"
                         VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" />
+                        <Ellipse Width="8" Height="8"
+                                 Fill="{StaticResource StatusGoodBrush}" />
                         <TextBlock Text="All systems normal"
                                    Style="{StaticResource CaptionTextStyle}"
-                                   Foreground="{StaticResource SuccessBrush}" />
+                                   Foreground="{StaticResource StatusGoodBrush}" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -67,10 +57,13 @@
             <!-- ══════════════════════════════════════════════════════════
                  HEALTH SCORE CARD
             ══════════════════════════════════════════════════════════ -->
-            <Border Style="{StaticResource HoverCardStyle}"
+            <Border Style="{StaticResource CardSurface}"
                     Padding="28"
                     PointerEntered="Card_PointerEntered"
                     PointerExited="Card_PointerExited">
+                <Border.RenderTransform>
+                    <CompositeTransform />
+                </Border.RenderTransform>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -80,14 +73,11 @@
 
                     <!-- Score ring -->
                     <Grid Grid.Column="0" Width="90" Height="90">
-                        <!-- Background track -->
                         <ProgressRing IsIndeterminate="False"
-                                      Value="87"
-                                      Maximum="100"
+                                      Value="87" Maximum="100"
                                       Width="90" Height="90"
                                       Background="Transparent"
-                                      Foreground="{StaticResource SuccessBrush}" />
-                        <!-- Score number overlay -->
+                                      Foreground="{StaticResource StatusGoodBrush}" />
                         <StackPanel VerticalAlignment="Center"
                                     HorizontalAlignment="Center">
                             <TextBlock Text="87"
@@ -111,35 +101,50 @@
                                    Style="{StaticResource BodyTextStyle}"
                                    Foreground="{StaticResource TextSecondaryBrush}" />
 
-                        <!-- Sub-scores row -->
+                        <!-- Sub-scores -->
                         <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
                             <StackPanel Orientation="Horizontal" Spacing="4">
-                                <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" />
-                                <TextBlock Text="Performance 92" Style="{StaticResource CaptionTextStyle}" />
+                                <Ellipse Width="6" Height="6"
+                                         Fill="{StaticResource StatusGoodBrush}"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="Performance 92"
+                                           Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
-                                <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" />
-                                <TextBlock Text="Security 95" Style="{StaticResource CaptionTextStyle}" />
+                                <Ellipse Width="6" Height="6"
+                                         Fill="{StaticResource StatusGoodBrush}"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="Security 95"
+                                           Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
-                                <Ellipse Width="6" Height="6" Fill="{StaticResource WarningBrush}" VerticalAlignment="Center" />
-                                <TextBlock Text="Storage 71" Style="{StaticResource CaptionTextStyle}" />
+                                <Ellipse Width="6" Height="6"
+                                         Fill="{StaticResource StatusModerateBrush}"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="Storage 71"
+                                           Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
-                                <Ellipse Width="6" Height="6" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" />
-                                <TextBlock Text="Privacy 88" Style="{StaticResource CaptionTextStyle}" />
+                                <Ellipse Width="6" Height="6"
+                                         Fill="{StaticResource StatusGoodBrush}"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="Privacy 88"
+                                           Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Trend indicator -->
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                    <!-- Weekly trend indicator -->
+                    <StackPanel Grid.Column="2"
+                                VerticalAlignment="Center"
+                                Spacing="2">
                         <FontIcon Glyph="&#xE70E;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="16" Foreground="{StaticResource SuccessBrush}"
+                                  FontSize="16"
+                                  Foreground="{StaticResource StatusGoodBrush}"
                                   HorizontalAlignment="Center" />
                         <TextBlock Text="+3"
                                    Style="{StaticResource CaptionTextStyle}"
-                                   Foreground="{StaticResource SuccessBrush}"
+                                   Foreground="{StaticResource StatusGoodBrush}"
                                    HorizontalAlignment="Center" />
                         <TextBlock Text="this week"
                                    Style="{StaticResource CaptionTextStyle}"
@@ -149,7 +154,7 @@
             </Border>
 
             <!-- ══════════════════════════════════════════════════════════
-                 LIVE METRICS — with animated progress bars
+                 LIVE METRICS — progress bars animate on page load
             ══════════════════════════════════════════════════════════ -->
             <TextBlock Text="Live Metrics"
                        Style="{StaticResource SectionTitleStyle}" />
@@ -163,10 +168,14 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- CPU Card -->
-                <Border Grid.Column="0" Style="{StaticResource HoverCardStyle}"
+                <Border Grid.Column="0"
+                        Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
                         PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
                     <StackPanel Spacing="12">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -174,28 +183,31 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="8">
+                                <!-- Small 28px icon container — CornerRadius="6" for compact size -->
                                 <Border Width="28" Height="28" CornerRadius="6"
-                                        Background="#1E4EA1FF">
+                                        Background="{StaticResource StatusInfoTintBrush}">
                                     <FontIcon Glyph="&#xE950;" FontFamily="Segoe MDL2 Assets"
-                                              FontSize="13" Foreground="{StaticResource AccentBlueBrush}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                              FontSize="13"
+                                              Foreground="{StaticResource StatusInfoBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
                                 </Border>
-                                <TextBlock Text="CPU" Style="{StaticResource CardTitleStyle}"
+                                <TextBlock Text="CPU"
+                                           Style="{StaticResource CardTitleStyle}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
-                            <!-- Status dot -->
                             <Ellipse Grid.Column="1" Width="8" Height="8"
-                                     Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" />
+                                     Fill="{StaticResource StatusGoodBrush}"
+                                     VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="23%" Style="{StaticResource MetricMediumStyle}" />
+                        <TextBlock Text="23%"
+                                   Style="{StaticResource MetricMediumStyle}" />
 
-                        <!-- Animated progress bar -->
                         <ProgressBar x:Name="CpuBar"
-                                     Value="23" Maximum="100"
-                                     Height="4" CornerRadius="2"
-                                     Foreground="{StaticResource CpuBarBrush}"
-                                     Background="{StaticResource BarTrackBrush}" />
+                                     Style="{StaticResource UsageBar}"
+                                     Value="23"
+                                     Foreground="{StaticResource AccentBlueBrush}" />
 
                         <TextBlock Text="42&#x00B0;C  &#x2022;  3.80 GHz"
                                    Style="{StaticResource CaptionTextStyle}" />
@@ -203,10 +215,14 @@
                 </Border>
 
                 <!-- RAM Card -->
-                <Border Grid.Column="1" Style="{StaticResource HoverCardStyle}"
+                <Border Grid.Column="1"
+                        Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
                         PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
                     <StackPanel Spacing="12">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -215,25 +231,29 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Border Width="28" Height="28" CornerRadius="6"
-                                        Background="#1E55D6FF">
+                                        Background="{StaticResource AccentCyanTintBrush}">
                                     <FontIcon Glyph="&#xE964;" FontFamily="Segoe MDL2 Assets"
-                                              FontSize="13" Foreground="{StaticResource AccentCyanBrush}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                              FontSize="13"
+                                              Foreground="{StaticResource AccentCyanBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
                                 </Border>
-                                <TextBlock Text="RAM" Style="{StaticResource CardTitleStyle}"
+                                <TextBlock Text="RAM"
+                                           Style="{StaticResource CardTitleStyle}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
                             <Ellipse Grid.Column="1" Width="8" Height="8"
-                                     Fill="{StaticResource WarningBrush}" VerticalAlignment="Center" />
+                                     Fill="{StaticResource StatusModerateBrush}"
+                                     VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="61%" Style="{StaticResource MetricMediumStyle}" />
+                        <TextBlock Text="61%"
+                                   Style="{StaticResource MetricMediumStyle}" />
 
                         <ProgressBar x:Name="RamBar"
-                                     Value="61" Maximum="100"
-                                     Height="4" CornerRadius="2"
-                                     Foreground="{StaticResource RamBarBrush}"
-                                     Background="{StaticResource BarTrackBrush}" />
+                                     Style="{StaticResource UsageBar}"
+                                     Value="61"
+                                     Foreground="{StaticResource AccentCyanBrush}" />
 
                         <TextBlock Text="9.8 GB / 16 GB"
                                    Style="{StaticResource CaptionTextStyle}" />
@@ -241,10 +261,14 @@
                 </Border>
 
                 <!-- GPU Card -->
-                <Border Grid.Column="2" Style="{StaticResource HoverCardStyle}"
+                <Border Grid.Column="2"
+                        Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
                         PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
                     <StackPanel Spacing="12">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -253,25 +277,29 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Border Width="28" Height="28" CornerRadius="6"
-                                        Background="#1E57D68D">
+                                        Background="{StaticResource StatusGoodTintBrush}">
                                     <FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets"
-                                              FontSize="13" Foreground="{StaticResource SuccessBrush}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                              FontSize="13"
+                                              Foreground="{StaticResource StatusGoodBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
                                 </Border>
-                                <TextBlock Text="GPU" Style="{StaticResource CardTitleStyle}"
+                                <TextBlock Text="GPU"
+                                           Style="{StaticResource CardTitleStyle}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
                             <Ellipse Grid.Column="1" Width="8" Height="8"
-                                     Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" />
+                                     Fill="{StaticResource StatusGoodBrush}"
+                                     VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="12%" Style="{StaticResource MetricMediumStyle}" />
+                        <TextBlock Text="12%"
+                                   Style="{StaticResource MetricMediumStyle}" />
 
                         <ProgressBar x:Name="GpuBar"
-                                     Value="12" Maximum="100"
-                                     Height="4" CornerRadius="2"
-                                     Foreground="{StaticResource GpuBarBrush}"
-                                     Background="{StaticResource BarTrackBrush}" />
+                                     Style="{StaticResource UsageBar}"
+                                     Value="12"
+                                     Foreground="{StaticResource StatusGoodBrush}" />
 
                         <TextBlock Text="38&#x00B0;C  &#x2022;  1.2 GB VRAM"
                                    Style="{StaticResource CaptionTextStyle}" />
@@ -279,10 +307,14 @@
                 </Border>
 
                 <!-- Disk Card -->
-                <Border Grid.Column="3" Style="{StaticResource HoverCardStyle}"
+                <Border Grid.Column="3"
+                        Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
                         PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
                     <StackPanel Spacing="12">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -291,25 +323,29 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Border Width="28" Height="28" CornerRadius="6"
-                                        Background="#1EFFB347">
+                                        Background="{StaticResource StatusModerateTintBrush}">
                                     <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
-                                              FontSize="13" Foreground="{StaticResource WarningBrush}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                              FontSize="13"
+                                              Foreground="{StaticResource StatusModerateBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
                                 </Border>
-                                <TextBlock Text="Disk" Style="{StaticResource CardTitleStyle}"
+                                <TextBlock Text="Disk"
+                                           Style="{StaticResource CardTitleStyle}"
                                            VerticalAlignment="Center" />
                             </StackPanel>
                             <Ellipse Grid.Column="1" Width="8" Height="8"
-                                     Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" />
+                                     Fill="{StaticResource StatusGoodBrush}"
+                                     VerticalAlignment="Center" />
                         </Grid>
 
-                        <TextBlock Text="46%" Style="{StaticResource MetricMediumStyle}" />
+                        <TextBlock Text="46%"
+                                   Style="{StaticResource MetricMediumStyle}" />
 
                         <ProgressBar x:Name="DiskBar"
-                                     Value="46" Maximum="100"
-                                     Height="4" CornerRadius="2"
-                                     Foreground="{StaticResource DiskBarBrush}"
-                                     Background="{StaticResource BarTrackBrush}" />
+                                     Style="{StaticResource UsageBar}"
+                                     Value="46"
+                                     Foreground="{StaticResource StatusModerateBrush}" />
 
                         <TextBlock Text="237 GB / 512 GB"
                                    Style="{StaticResource CaptionTextStyle}" />
@@ -318,7 +354,7 @@
             </Grid>
 
             <!-- ══════════════════════════════════════════════════════════
-                 TRENDS SECTION
+                 RECENT TRENDS
             ══════════════════════════════════════════════════════════ -->
             <TextBlock Text="Recent Trends"
                        Style="{StaticResource SectionTitleStyle}"
@@ -331,24 +367,32 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Trend: Boot time -->
-                <Border Grid.Column="0" Style="{StaticResource HoverCardStyle}"
+                <!-- Boot time -->
+                <Border Grid.Column="0"
+                        Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
                         PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
                     <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xEC49;" FontFamily="Segoe MDL2 Assets"
-                                      FontSize="14" Foreground="{StaticResource AccentBlueBrush}" />
-                            <TextBlock Text="Boot Time" Style="{StaticResource CaptionTextStyle}" />
+                                      FontSize="14"
+                                      Foreground="{StaticResource AccentBlueBrush}" />
+                            <TextBlock Text="Boot Time"
+                                       Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="18s" Style="{StaticResource MetricMediumStyle}" />
-                            <Border Background="#1E57D68D" CornerRadius="4" Padding="6,2"
+                            <TextBlock Text="18s"
+                                       Style="{StaticResource MetricMediumStyle}" />
+                            <Border Background="{StaticResource StatusGoodSubtleBrush}"
+                                    CornerRadius="4" Padding="6,2"
                                     VerticalAlignment="Center">
                                 <TextBlock Text="&#x2193; 2s faster"
                                            FontSize="11"
-                                           Foreground="{StaticResource SuccessBrush}" />
+                                           Foreground="{StaticResource StatusGoodBrush}" />
                             </Border>
                         </StackPanel>
                         <TextBlock Text="vs. last week average"
@@ -356,24 +400,32 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Trend: Avg CPU -->
-                <Border Grid.Column="1" Style="{StaticResource HoverCardStyle}"
+                <!-- Avg CPU -->
+                <Border Grid.Column="1"
+                        Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
                         PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
                     <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE9D2;" FontFamily="Segoe MDL2 Assets"
-                                      FontSize="14" Foreground="{StaticResource AccentCyanBrush}" />
-                            <TextBlock Text="Avg CPU (24h)" Style="{StaticResource CaptionTextStyle}" />
+                                      FontSize="14"
+                                      Foreground="{StaticResource AccentCyanBrush}" />
+                            <TextBlock Text="Avg CPU (24h)"
+                                       Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="31%" Style="{StaticResource MetricMediumStyle}" />
-                            <Border Background="#1EFFB347" CornerRadius="4" Padding="6,2"
+                            <TextBlock Text="31%"
+                                       Style="{StaticResource MetricMediumStyle}" />
+                            <Border Background="{StaticResource StatusModerateSubtleBrush}"
+                                    CornerRadius="4" Padding="6,2"
                                     VerticalAlignment="Center">
                                 <TextBlock Text="&#x2191; 4% higher"
                                            FontSize="11"
-                                           Foreground="{StaticResource WarningBrush}" />
+                                           Foreground="{StaticResource StatusModerateBrush}" />
                             </Border>
                         </StackPanel>
                         <TextBlock Text="vs. last week average"
@@ -381,24 +433,32 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Trend: Disk Free -->
-                <Border Grid.Column="2" Style="{StaticResource HoverCardStyle}"
+                <!-- Disk free -->
+                <Border Grid.Column="2"
+                        Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
                         PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
                     <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
-                                      FontSize="14" Foreground="{StaticResource WarningBrush}" />
-                            <TextBlock Text="Disk Free" Style="{StaticResource CaptionTextStyle}" />
+                                      FontSize="14"
+                                      Foreground="{StaticResource StatusModerateBrush}" />
+                            <TextBlock Text="Disk Free"
+                                       Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="275 GB" Style="{StaticResource MetricMediumStyle}" />
-                            <Border Background="#1EFF6B6B" CornerRadius="4" Padding="6,2"
+                            <TextBlock Text="275 GB"
+                                       Style="{StaticResource MetricMediumStyle}" />
+                            <Border Background="{StaticResource StatusCriticalSubtleBrush}"
+                                    CornerRadius="4" Padding="6,2"
                                     VerticalAlignment="Center">
                                 <TextBlock Text="&#x2193; 12 GB lost"
                                            FontSize="11"
-                                           Foreground="{StaticResource DangerBrush}" />
+                                           Foreground="{StaticResource StatusCriticalBrush}" />
                             </Border>
                         </StackPanel>
                         <TextBlock Text="in the last 7 days"
@@ -422,16 +482,11 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Action: Explain -->
-                <Button Grid.Column="0"
-                        HorizontalAlignment="Stretch"
-                        Padding="16,14"
-                        CornerRadius="8"
-                        Background="{StaticResource AppSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderSubtleBrush}">
+                <Button Grid.Column="0" Style="{StaticResource ActionButton}">
                     <StackPanel Spacing="6" HorizontalAlignment="Center">
                         <FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="18" Foreground="{StaticResource AccentBlueBrush}"
+                                  FontSize="18"
+                                  Foreground="{StaticResource AccentBlueBrush}"
                                   HorizontalAlignment="Center" />
                         <TextBlock Text="Explain My PC"
                                    Style="{StaticResource CaptionTextStyle}"
@@ -439,16 +494,11 @@
                     </StackPanel>
                 </Button>
 
-                <!-- Action: Scan -->
-                <Button Grid.Column="1"
-                        HorizontalAlignment="Stretch"
-                        Padding="16,14"
-                        CornerRadius="8"
-                        Background="{StaticResource AppSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderSubtleBrush}">
+                <Button Grid.Column="1" Style="{StaticResource ActionButton}">
                     <StackPanel Spacing="6" HorizontalAlignment="Center">
                         <FontIcon Glyph="&#xE71C;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="18" Foreground="{StaticResource AccentCyanBrush}"
+                                  FontSize="18"
+                                  Foreground="{StaticResource AccentCyanBrush}"
                                   HorizontalAlignment="Center" />
                         <TextBlock Text="Full Scan"
                                    Style="{StaticResource CaptionTextStyle}"
@@ -456,16 +506,11 @@
                     </StackPanel>
                 </Button>
 
-                <!-- Action: Cleanup -->
-                <Button Grid.Column="2"
-                        HorizontalAlignment="Stretch"
-                        Padding="16,14"
-                        CornerRadius="8"
-                        Background="{StaticResource AppSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderSubtleBrush}">
+                <Button Grid.Column="2" Style="{StaticResource ActionButton}">
                     <StackPanel Spacing="6" HorizontalAlignment="Center">
                         <FontIcon Glyph="&#xE74D;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="18" Foreground="{StaticResource SuccessBrush}"
+                                  FontSize="18"
+                                  Foreground="{StaticResource StatusGoodBrush}"
                                   HorizontalAlignment="Center" />
                         <TextBlock Text="Cleanup"
                                    Style="{StaticResource CaptionTextStyle}"
@@ -473,16 +518,11 @@
                     </StackPanel>
                 </Button>
 
-                <!-- Action: Startup -->
-                <Button Grid.Column="3"
-                        HorizontalAlignment="Stretch"
-                        Padding="16,14"
-                        CornerRadius="8"
-                        Background="{StaticResource AppSurfaceBrush}"
-                        BorderBrush="{StaticResource BorderSubtleBrush}">
+                <Button Grid.Column="3" Style="{StaticResource ActionButton}">
                     <StackPanel Spacing="6" HorizontalAlignment="Center">
                         <FontIcon Glyph="&#xE7B3;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="18" Foreground="{StaticResource WarningBrush}"
+                                  FontSize="18"
+                                  Foreground="{StaticResource StatusModerateBrush}"
                                   HorizontalAlignment="Center" />
                         <TextBlock Text="Startup Apps"
                                    Style="{StaticResource CaptionTextStyle}"
@@ -501,19 +541,23 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Active Insights"
                            Style="{StaticResource SectionTitleStyle}" />
-                <Border Grid.Column="1" Background="#1E4EA1FF"
+                <Border Grid.Column="1"
+                        Background="{StaticResource StatusInfoSubtleBrush}"
                         CornerRadius="10" Padding="8,3">
                     <TextBlock Text="3 findings"
                                FontSize="11"
-                               Foreground="{StaticResource AccentBlueBrush}" />
+                               Foreground="{StaticResource StatusInfoBrush}" />
                 </Border>
             </Grid>
 
-            <!-- Insight: Startup apps (warning) -->
-            <Border Style="{StaticResource HoverCardStyle}"
+            <!-- Insight: Startup apps — Moderate -->
+            <Border Style="{StaticResource CardSurface}"
                     Padding="20"
                     PointerEntered="Card_PointerEntered"
                     PointerExited="Card_PointerExited">
+                <Border.RenderTransform>
+                    <CompositeTransform />
+                </Border.RenderTransform>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -521,11 +565,14 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Width="40" Height="40" CornerRadius="10"
-                            Background="#1EFFB347" VerticalAlignment="Center">
+                    <Border Width="40" Height="40"
+                            Style="{StaticResource IconContainerWarning}"
+                            VerticalAlignment="Center">
                         <FontIcon Glyph="&#xE7B3;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="16" Foreground="{StaticResource WarningBrush}"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                  FontSize="16"
+                                  Foreground="{StaticResource StatusModerateBrush}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
                     </Border>
 
                     <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="4">
@@ -535,22 +582,21 @@
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
 
-                    <!-- Severity badge -->
-                    <Border Grid.Column="2" Background="#1EFFB347"
-                            CornerRadius="4" Padding="8,4"
-                            VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Border Grid.Column="2" Style="{StaticResource BadgeInlineModerate}">
                         <TextBlock Text="Moderate"
-                                   FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource WarningBrush}" />
+                                   Style="{StaticResource BadgeLabelModerate}" />
                     </Border>
                 </Grid>
             </Border>
 
-            <!-- Insight: Disk space trending down (warning) -->
-            <Border Style="{StaticResource HoverCardStyle}"
+            <!-- Insight: Disk space declining — Moderate -->
+            <Border Style="{StaticResource CardSurface}"
                     Padding="20"
                     PointerEntered="Card_PointerEntered"
                     PointerExited="Card_PointerExited">
+                <Border.RenderTransform>
+                    <CompositeTransform />
+                </Border.RenderTransform>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -558,11 +604,14 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Width="40" Height="40" CornerRadius="10"
-                            Background="#1EFFB347" VerticalAlignment="Center">
+                    <Border Width="40" Height="40"
+                            Style="{StaticResource IconContainerWarning}"
+                            VerticalAlignment="Center">
                         <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="16" Foreground="{StaticResource WarningBrush}"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                  FontSize="16"
+                                  Foreground="{StaticResource StatusModerateBrush}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
                     </Border>
 
                     <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="4">
@@ -572,21 +621,21 @@
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
 
-                    <Border Grid.Column="2" Background="#1EFFB347"
-                            CornerRadius="4" Padding="8,4"
-                            VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Border Grid.Column="2" Style="{StaticResource BadgeInlineModerate}">
                         <TextBlock Text="Moderate"
-                                   FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource WarningBrush}" />
+                                   Style="{StaticResource BadgeLabelModerate}" />
                     </Border>
                 </Grid>
             </Border>
 
-            <!-- Insight: Security good (info) -->
-            <Border Style="{StaticResource HoverCardStyle}"
+            <!-- Insight: Security healthy — Good -->
+            <Border Style="{StaticResource CardSurface}"
                     Padding="20"
                     PointerEntered="Card_PointerEntered"
                     PointerExited="Card_PointerExited">
+                <Border.RenderTransform>
+                    <CompositeTransform />
+                </Border.RenderTransform>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -594,11 +643,14 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Width="40" Height="40" CornerRadius="10"
-                            Background="#1E57D68D" VerticalAlignment="Center">
+                    <Border Width="40" Height="40"
+                            Style="{StaticResource IconContainerGreen}"
+                            VerticalAlignment="Center">
                         <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="16" Foreground="{StaticResource SuccessBrush}"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                  FontSize="16"
+                                  Foreground="{StaticResource StatusGoodBrush}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
                     </Border>
 
                     <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="4">
@@ -608,12 +660,9 @@
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
 
-                    <Border Grid.Column="2" Background="#1E57D68D"
-                            CornerRadius="4" Padding="8,4"
-                            VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Border Grid.Column="2" Style="{StaticResource BadgeInlineGood}">
                         <TextBlock Text="Good"
-                                   FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource SuccessBrush}" />
+                                   Style="{StaticResource BadgeLabelGood}" />
                     </Border>
                 </Grid>
             </Border>
