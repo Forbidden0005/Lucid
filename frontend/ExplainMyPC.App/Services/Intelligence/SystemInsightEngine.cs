@@ -1,5 +1,6 @@
 using ExplainMyPC.Helpers;
 using ExplainMyPC.Services.Baseline;
+using ExplainMyPC.Services.Intelligence.Forecasting;
 using ExplainMyPC.Services.Intelligence.Rules;
 
 namespace ExplainMyPC.Services.Intelligence;
@@ -92,6 +93,10 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
     ///   RisingRamTrendRule, CpuEscalationRule, PeriodicCpuSpikeRule,
     ///   WorseningThermalTrendRule, LongRunningDiskPressureRule
     ///
+    /// Predictive / forecast rules (fire when a trend projects a future threshold breach):
+    ///   RamPressureForecastRule, DiskExhaustionForecastRule,
+    ///   ThermalRunawayForecastRule, StartupDegradationForecastRule
+    ///
     /// SystemRunningWellRule is last — only fires when no other rule produces a finding.
     /// </summary>
     private static IReadOnlyList<IInsightRule> CreateRules(ISystemBaselineService? baseline) =>
@@ -136,6 +141,15 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
                   new BaselineThermalAnomalyRule(baseline),
               }
             : []),
+
+        // ── Predictive / forecast rules ───────────────────────────────────────
+        // These rules project current trends forward to predict future threshold
+        // breaches before they happen. All use linear extrapolation over the
+        // rolling history buffer; they are silent until enough samples accumulate.
+        new RamPressureForecastRule(),          // RAM → 85 % within 30 min
+        new DiskExhaustionForecastRule(),       // disk full within 48 h (slope) / 4 h (write rate)
+        new ThermalRunawayForecastRule(),       // CPU → 85 °C within 25 min
+        new StartupDegradationForecastRule(baseline),   // next-login settle time estimate
 
         // ── All-clear ─────────────────────────────────────────────────────────
         // Only fires when every rule above is silent AND no baseline anomaly
