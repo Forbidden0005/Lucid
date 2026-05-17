@@ -69,18 +69,41 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
 
     /// <summary>
     /// Phase 1 heuristics — evaluated against each telemetry snapshot.
-    /// SystemRunningWellRule is last so it only fires when no other
-    /// conditions would logically precede an "all-clear" message.
+    ///
+    /// Order within severity groups matters for tie-breaking only;
+    /// <see cref="EvaluateAll"/> re-sorts the final list by severity.
+    ///
+    /// Point-in-time rules (fire when a threshold is currently exceeded):
+    ///   SustainedHighCpuRule, ElevatedRamPressureRule, AbnormalGpuUsageRule,
+    ///   LowDiskSpaceRule, HighDiskThroughputRule, HighCpuTemperatureRule
+    ///
+    /// Trend-aware rules (fire when a metric is changing over time):
+    ///   RisingRamTrendRule, CpuEscalationRule, PeriodicCpuSpikeRule,
+    ///   WorseningThermalTrendRule, LongRunningDiskPressureRule
+    ///
+    /// SystemRunningWellRule is last — only fires when no other rule produces a finding.
     /// </summary>
     private static IReadOnlyList<IInsightRule> CreateRules() =>
     [
+        // ── Point-in-time rules ────────────────────────────────────────────────
         new SustainedHighCpuRule(),
         new ElevatedRamPressureRule(),
         new AbnormalGpuUsageRule(),
         new LowDiskSpaceRule(),
         new HighDiskThroughputRule(),
         new HighCpuTemperatureRule(),
-        new SystemRunningWellRule(),   // "all clear" — intentionally last
+
+        // ── Trend-aware rules ─────────────────────────────────────────────────
+        // These require history window coverage before they can fire.
+        // On cold start they return null until enough samples accumulate.
+        new RisingRamTrendRule(),
+        new CpuEscalationRule(),
+        new PeriodicCpuSpikeRule(),
+        new WorseningThermalTrendRule(),
+        new LongRunningDiskPressureRule(),
+
+        // ── All-clear ─────────────────────────────────────────────────────────
+        new SystemRunningWellRule(),   // only fires when every rule above is silent
     ];
 
     /// <summary>

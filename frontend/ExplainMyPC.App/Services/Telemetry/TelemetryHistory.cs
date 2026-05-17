@@ -8,7 +8,17 @@ public enum TelemetryMetric
     Cpu,
     Ram,
     Gpu,
-    Disk
+    Disk,
+
+    /// <summary>
+    /// CPU temperature in degrees Celsius. Stored as raw Celsius values
+    /// (not normalised to a percentage), so stat averages are in °C.
+    /// Only populated on ticks where <c>CpuTemperatureAvailable = true</c>;
+    /// zero is recorded on other ticks (ACPI-zone unavailability or
+    /// pre-warm-up samples). Rules must gate on the current snapshot's
+    /// <c>CpuTemperatureAvailable</c> flag before querying this metric.
+    /// </summary>
+    Temperature,
 }
 
 /// <summary>

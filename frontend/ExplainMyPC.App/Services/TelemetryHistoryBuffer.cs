@@ -7,16 +7,18 @@ namespace ExplainMyPC.Services;
 /// Circular-buffer implementation of <see cref="ITelemetryHistoryBuffer"/>.
 ///
 /// Storage layout:
-///   Five parallel arrays of equal length (timestamps + one per metric).
+///   Six parallel arrays of equal length (timestamps + one per metric).
 ///   All arrays are allocated once at construction — no per-sample heap
 ///   allocations on the write path.
+///
+///   Metrics recorded: CPU%, RAM%, GPU%, Disk%, Temperature(°C).
 ///
 ///   At 1.5 s per poll tick the default capacity of 1 200 covers exactly
 ///   30 minutes. A small timing margin means the oldest sample in a
 ///   LastThirtyMinutes query will always exist even if polls run slightly fast.
 ///
 /// Memory:
-///   5 arrays × 1 200 entries × 8 bytes = ~48 KB — negligible.
+///   6 arrays × 1 200 entries × 8 bytes = ~57.6 KB — negligible.
 ///
 /// Ring-buffer semantics:
 ///   _head  — index of the oldest valid entry.
@@ -26,7 +28,7 @@ namespace ExplainMyPC.Services;
 ///
 /// Concurrency model:
 ///   Record() holds an exclusive write lock for the duration of a single
-///   array-slot update (≈5 assignments, nanosecond range).
+///   array-slot update (≈6 assignments, nanosecond range).
 ///   GetSamples() and GetStats() hold a shared read lock, allowing multiple
 ///   background analysis threads to query simultaneously.
 /// </summary>
@@ -44,6 +46,7 @@ public sealed class TelemetryHistoryBuffer : ITelemetryHistoryBuffer, IDisposabl
     private readonly double[]         _ram;
     private readonly double[]         _gpu;
     private readonly double[]         _disk;
+    private readonly double[]         _temperature; // raw °C; 0 when unavailable
 
     // Ring-buffer state (guarded by _lock).
     private int _head;   // index of oldest valid entry
@@ -72,12 +75,13 @@ public sealed class TelemetryHistoryBuffer : ITelemetryHistoryBuffer, IDisposabl
 
     public TelemetryHistoryBuffer(int capacity = DefaultCapacity)
     {
-        _capacity   = capacity;
-        _timestamps = new DateTimeOffset[capacity];
-        _cpu        = new double[capacity];
-        _ram        = new double[capacity];
-        _gpu        = new double[capacity];
-        _disk       = new double[capacity];
+        _capacity    = capacity;
+        _timestamps  = new DateTimeOffset[capacity];
+        _cpu         = new double[capacity];
+        _ram         = new double[capacity];
+        _gpu         = new double[capacity];
+        _disk        = new double[capacity];
+        _temperature = new double[capacity];
     }
 
     // ── Write ─────────────────────────────────────────────────────────────────
@@ -95,11 +99,13 @@ public sealed class TelemetryHistoryBuffer : ITelemetryHistoryBuffer, IDisposabl
         {
             int writeIdx = (_head + _count) % _capacity;
 
-            _timestamps[writeIdx] = now;
-            _cpu [writeIdx]       = snapshot.CpuPercent;
-            _ram [writeIdx]       = snapshot.RamPercent;
-            _gpu [writeIdx]       = snapshot.GpuPercent;
-            _disk[writeIdx]       = snapshot.DiskPercent;
+            _timestamps  [writeIdx] = now;
+            _cpu         [writeIdx] = snapshot.CpuPercent;
+            _ram         [writeIdx] = snapshot.RamPercent;
+            _gpu         [writeIdx] = snapshot.GpuPercent;
+            _disk        [writeIdx] = snapshot.DiskPercent;
+            // Store raw °C; 0 when ACPI zones are unavailable on this system.
+            _temperature [writeIdx] = snapshot.CpuTemperatureCelsius;
 
             if (_count < _capacity)
                 _count++;
@@ -178,10 +184,11 @@ public sealed class TelemetryHistoryBuffer : ITelemetryHistoryBuffer, IDisposabl
 
     private double[] SelectArray(TelemetryMetric metric) => metric switch
     {
-        TelemetryMetric.Cpu  => _cpu,
-        TelemetryMetric.Ram  => _ram,
-        TelemetryMetric.Gpu  => _gpu,
-        TelemetryMetric.Disk => _disk,
+        TelemetryMetric.Cpu         => _cpu,
+        TelemetryMetric.Ram         => _ram,
+        TelemetryMetric.Gpu         => _gpu,
+        TelemetryMetric.Disk        => _disk,
+        TelemetryMetric.Temperature => _temperature,
         _ => throw new ArgumentOutOfRangeException(nameof(metric), $"Unknown metric: {metric}")
     };
 
