@@ -1,5 +1,6 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Execution;
+using ExplainMyPC.Services.Execution.Executors;
 using ExplainMyPC.Services.Intelligence;
 using Microsoft.UI.Dispatching;
 
@@ -68,9 +69,10 @@ public static class AppServices
     /// <summary>
     /// Action execution engine. The single entry point for running or
     /// rolling back recommended remediation actions.
-    /// No executors are registered yet — all actions return
-    /// <see cref="ActionExecutionStatus.ExecutorNotFound"/> until individual
-    /// executor implementations are wired up.
+    /// Phase-1 executors (open Task Manager, Storage Sense, Startup Apps,
+    /// Windows Security) are registered at startup. Actions without a
+    /// registered executor return
+    /// <see cref="ActionExecutionStatus.ExecutorNotFound"/>.
     /// </summary>
     public static IActionExecutionEngine ExecutionEngine =>
         _executionEngine ?? throw new InvalidOperationException(
@@ -99,12 +101,22 @@ public static class AppServices
         _telemetry.Start();
         _intelligence.Start();
 
-        // Remediation execution engine — registry starts empty.
-        // Register executor implementations here as they are built:
-        //   _executorRegistry.Register(new CleanTempFilesExecutor());
-        //   _executorRegistry.Register(new StorageSenseExecutor());
-        //   ...
+        // ── Remediation execution engine ──────────────────────────────────────
+        // Phase 1 — safe open-application executors (no system modification).
+        // Add new executors here as capabilities are implemented.
         _executorRegistry = new ActionExecutorRegistry();
+        _executorRegistry.RegisterAll([
+            // Guided navigation: open the relevant system tool and let the user act.
+            // These are the first live executors — completely safe, fully reversible.
+            new OpenTaskManagerExecutor(),      // action.cpu.open-task-manager
+            new OpenStorageSenseExecutor(),     // action.disk.run-storage-sense
+            new OpenStartupAppsExecutor(),      // action.startup.open-startup-apps
+            new OpenWindowsSecurityExecutor(),  // action.security.open-windows-security
+
+            // Phase 2 (planned): cleanup executors — temp file deletion, Disk Cleanup
+            // Phase 3 (planned): startup management — enumerate + toggle startup entries
+            // Phase 4 (planned): repair commands — SFC /scannow, DISM, network reset
+        ]);
         _executionEngine  = new ActionExecutionEngine(_executorRegistry);
 
         // Future services registered here, e.g.:
