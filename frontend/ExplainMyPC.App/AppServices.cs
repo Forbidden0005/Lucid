@@ -5,7 +5,9 @@ using ExplainMyPC.Services.Execution.Executors;
 using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using ExplainMyPC.Services.Narrative;
+using ExplainMyPC.Services.Session;
 using Microsoft.UI.Dispatching;
+
 
 namespace ExplainMyPC;
 
@@ -31,6 +33,7 @@ public static class AppServices
     private static ITelemetryHistoryBuffer?     _history;
     private static ISystemBaselineService?      _baseline;
     private static ISystemInsightEngine?        _intelligence;
+    private static ISessionContextService?      _session;
     private static IOperationalNarrativeEngine? _narrative;
     private static ActionExecutorRegistry?      _executorRegistry;
     private static IActionExecutionEngine?      _executionEngine;
@@ -70,6 +73,16 @@ public static class AppServices
     /// </summary>
     public static ISystemInsightEngine Intelligence =>
         _intelligence ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Session context service that tracks system uptime, sleep/wake cycles,
+    /// post-login windows, idle periods, and insight onset times.
+    /// Provides temporal anchoring for the narrative engine.
+    /// </summary>
+    public static ISessionContextService Session =>
+        _session ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -142,13 +155,21 @@ public static class AppServices
         // correctness when background analysis threads read concurrently.
         _telemetry.ReadingAvailable += (_, snapshot) => _history.Record(snapshot);
 
+        // Session context service — tracks boot time, sleep/wake cycles, idle periods,
+        // and insight onset times. Created after _intelligence so the InsightsUpdated
+        // subscription is valid at construction time. Started after _intelligence.Start()
+        // so the engine is already running when the first InsightsUpdated fires.
+        _session = new SessionContextService(_telemetry, _intelligence);
+
         // Narrative engine synthesizes active findings into human-readable prose.
-        // Created after the intelligence engine so it can subscribe to InsightsUpdated.
-        _narrative = new OperationalNarrativeEngine(_intelligence, _telemetry, _baseline);
+        // Receives the session context so it can add temporal and phase context to prose.
+        // Created after both the intelligence engine and session service.
+        _narrative = new OperationalNarrativeEngine(_intelligence, _telemetry, _baseline, _session);
 
         _telemetry.Start();
         _baseline.Start();      // must start after _telemetry so ReadingAvailable exists
         _intelligence.Start();
+        _session.Start();       // must start after _intelligence (subscribes to InsightsUpdated)
         _narrative.Start();     // must start after _intelligence
 
         // ── Operational history ───────────────────────────────────────────────
@@ -196,6 +217,10 @@ public static class AppServices
 
         _narrative?.Stop();
         _narrative = null;
+
+        // Session must stop before intelligence — it holds a subscription to InsightsUpdated.
+        _session?.Stop();
+        _session = null;
 
         _intelligence?.Stop();
         if (_intelligence is IDisposable id) id.Dispose();

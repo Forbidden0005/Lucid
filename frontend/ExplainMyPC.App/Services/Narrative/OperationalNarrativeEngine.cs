@@ -2,6 +2,7 @@ using System.Text;
 using ExplainMyPC.Helpers;
 using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Intelligence;
+using ExplainMyPC.Services.Session;
 
 namespace ExplainMyPC.Services.Narrative;
 
@@ -33,6 +34,7 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
     private readonly ISystemInsightEngine    _insights;
     private readonly ITelemetryService       _telemetry;
     private readonly ISystemBaselineService? _baseline;
+    private readonly ISessionContextService? _session;
 
     public OperationalNarrative? CurrentNarrative { get; private set; }
     public event EventHandler<OperationalNarrative>? NarrativeUpdated;
@@ -40,11 +42,13 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
     public OperationalNarrativeEngine(
         ISystemInsightEngine    insights,
         ITelemetryService       telemetry,
-        ISystemBaselineService? baseline = null)
+        ISystemBaselineService? baseline = null,
+        ISessionContextService? session  = null)
     {
         _insights  = insights;
         _telemetry = telemetry;
         _baseline  = baseline;
+        _session   = session;
     }
 
     public void Start()
@@ -63,7 +67,11 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
 
     private void Regenerate(IReadOnlyList<SystemInsight> insights)
     {
-        var narrative = BuildNarrative(insights, _telemetry.LastReading, _baseline?.CurrentBaseline);
+        var narrative = BuildNarrative(
+            insights,
+            _telemetry.LastReading,
+            _baseline?.CurrentBaseline,
+            _session?.Current);
         CurrentNarrative = narrative;
         NarrativeUpdated?.Invoke(this, narrative);
     }
@@ -77,7 +85,8 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
     private static OperationalNarrative BuildNarrative(
         IReadOnlyList<SystemInsight> all,
         TelemetrySnapshot?           snap,
-        MachineBaseline?             baseline)
+        MachineBaseline?             baseline,
+        SessionContext?              session = null)
     {
         // ── Classify insights by role ─────────────────────────────────────────
         bool isHealthy = all.Any(i => i.Id == "system.healthy");
@@ -126,15 +135,15 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
         // ── Build paragraphs ──────────────────────────────────────────────────
         var paragraphs = new List<string>(5);
 
-        Add(paragraphs, BuildStatusParagraph(state, snap, warnings.Count, recs.Count));
+        Add(paragraphs, BuildStatusParagraph(state, snap, warnings.Count, recs.Count, session));
 
         if (!isHealthy && all.Count > 0)
-            Add(paragraphs, BuildIssuesParagraph(state, warnings, recs, syntheses, snap));
+            Add(paragraphs, BuildIssuesParagraph(state, warnings, recs, syntheses, snap, session));
 
         Add(paragraphs, BuildAttributionParagraph(all));
 
         if (forecasts.Count > 0)
-            Add(paragraphs, BuildForecastParagraph(forecasts, snap));
+            Add(paragraphs, BuildForecastParagraph(forecasts, snap, session));
 
         if (anomalies.Count > 0 && baseline is not null)
             Add(paragraphs, BuildBaselineParagraph(anomalies, baseline, snap));
@@ -178,12 +187,13 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
     // ── Paragraph 1: Status + metrics ─────────────────────────────────────────
 
     private static string BuildStatusParagraph(
-        SystemHealthState state,
+        SystemHealthState  state,
         TelemetrySnapshot? snap,
-        int warningCount,
-        int recCount)
+        int                warningCount,
+        int                recCount,
+        SessionContext?    session = null)
     {
-        var sb = new StringBuilder(256);
+        var sb = new StringBuilder(320);
 
         // Opening clause — describes health tier.
         sb.Append(state switch
@@ -230,6 +240,34 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
             sb.Append('.');
         }
 
+        // ── Session phase context ─────────────────────────────────────────────
+        if (session is not null)
+        {
+            // Post-wake: most contextually important — mention it first.
+            if (session.TimeSinceWake is { } sinceWake && sinceWake.TotalMinutes < 30)
+            {
+                sb.Append($" The system resumed from sleep {SessionContext.FormatSpan(sinceWake)} ago.");
+            }
+            // Post-login startup settling window.
+            else if (session.IsStartupSettling)
+            {
+                sb.Append($" The system is in its post-login startup window");
+                sb.Append($" ({SessionContext.FormatSpan(session.SessionAge)} since launch).");
+            }
+            // Post-boot (but past startup settling).
+            else if (session.IsPostBoot)
+            {
+                sb.Append($" The system has been running for {session.FormatUptime()}.");
+            }
+
+            // Idle state — append regardless of phase.
+            if (session.IsIdle && session.IdleDuration is { } idleDur && idleDur.TotalMinutes >= 5)
+            {
+                sb.Append($" The system has been idle for {SessionContext.FormatSpan(idleDur)},");
+                sb.Append(" with CPU activity below the active-use threshold.");
+            }
+        }
+
         return sb.ToString();
     }
 
@@ -240,7 +278,8 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
         List<SystemInsight>  warnings,
         List<SystemInsight>  recs,
         List<SystemInsight>  syntheses,
-        TelemetrySnapshot?   snap)
+        TelemetrySnapshot?   snap,
+        SessionContext?      session = null)
     {
         if (warnings.Count == 0 && recs.Count == 0 && syntheses.Count == 0)
             return string.Empty;
@@ -255,17 +294,19 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
             sb.Append(LowercaseFirst(w.Title));
             sb.Append(" — ");
             sb.Append(GetIssueOneLiner(w, snap));
+            AppendOnsetContext(sb, w.Id, session);
             sb.Append('.');
         }
         else if (warnings.Count == 2)
         {
             sb.Append("There are two active issues. ");
             sb.Append(CapFirst(GetIssueOneLiner(warnings[0], snap)));
+            AppendOnsetContext(sb, warnings[0].Id, session);
             sb.Append(". Additionally, ");
             sb.Append(GetIssueOneLiner(warnings[1], snap));
+            AppendOnsetContext(sb, warnings[1].Id, session);
             sb.Append('.');
 
-            // Cross-warning synthesis hint when both are hardware-pressure issues.
             if (AreBothHardwarePressure(warnings[0].Id, warnings[1].Id))
                 sb.Append(" This combination of simultaneous hardware pressures can cause compounding slowdowns.");
         }
@@ -273,12 +314,14 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
         {
             sb.Append("Multiple hardware metrics are elevated simultaneously. ");
             sb.Append(CapFirst(GetIssueOneLiner(warnings[0], snap)));
+            AppendOnsetContext(sb, warnings[0].Id, session);
             sb.Append('.');
 
             for (int i = 1; i < Math.Min(warnings.Count, 3); i++)
             {
                 sb.Append(' ');
                 sb.Append(CapFirst(GetIssueOneLiner(warnings[i], snap)));
+                AppendOnsetContext(sb, warnings[i].Id, session);
                 sb.Append('.');
             }
 
@@ -289,9 +332,9 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
         // ── Recommendations (only when no critical warnings dominate) ─────────
         if (warnings.Count == 0 && recs.Count > 0)
         {
-            // Recs-only narrative — be constructive, not alarming.
             var primary = recs[0];
             sb.Append(CapFirst(GetIssueOneLiner(primary, snap)));
+            AppendOnsetContext(sb, primary.Id, session);
             sb.Append('.');
 
             if (recs.Count == 2)
@@ -308,7 +351,6 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
         }
         else if (warnings.Count > 0 && recs.Count > 0)
         {
-            // Append rec mention as a follow-on.
             sb.Append($" There {Is(recs.Count)} also {recs.Count} lower-priority");
             sb.Append($" suggestion{Plural(recs.Count)} that, while less urgent, are worth reviewing.");
         }
@@ -436,7 +478,8 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
 
     private static string BuildForecastParagraph(
         List<SystemInsight> forecasts,
-        TelemetrySnapshot?  snap)
+        TelemetrySnapshot?  snap,
+        SessionContext?     session = null)
     {
         if (forecasts.Count == 0) return string.Empty;
 
@@ -457,10 +500,25 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
             }
         }
 
-        // Add a closing action nudge for urgent forecasts.
+        // Urgent action nudge.
         bool hasUrgent = forecasts.Any(f => f.Severity == InsightSeverity.Warning);
         if (hasUrgent)
             sb.Append(" Acting now — before these thresholds are reached — is significantly more effective than waiting for reactive alerts.");
+
+        // ── Session-aware caveats ─────────────────────────────────────────────
+        // Post-wake and startup-settling phases produce transient spikes that
+        // can trigger forecasts. A brief caveat prevents unnecessary alarm.
+        if (session?.IsStartupSettling == true)
+        {
+            sb.Append(" Note: the system is still in its post-login startup window —");
+            sb.Append(" some of these trends may normalize as startup activity settles over the next few minutes.");
+        }
+        else if (session?.IsPostWake == true)
+        {
+            sb.Append(" Note: post-wake resource activity — from background sync,");
+            sb.Append(" indexing, and memory re-population — can produce short-lived spikes");
+            sb.Append(" that may not reflect the system's steady-state behaviour.");
+        }
 
         return sb.ToString().Trim();
     }
@@ -673,6 +731,44 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
     {
         if (!string.IsNullOrWhiteSpace(s))
             list.Add(s.Trim());
+    }
+
+    /// <summary>
+    /// Appends a parenthetical temporal context phrase for an insight to the
+    /// provided StringBuilder. The phrase captures:
+    ///   • Age of the finding ("active for 8 minutes")
+    ///   • Session-event correlation ("began shortly after waking from sleep")
+    ///   • Post-login startup framing ("started during post-login startup")
+    ///
+    /// Produces no output for very recent findings (&lt; 60 s) or when
+    /// session context is not available — avoids cluttering the text with
+    /// trivially short durations or unhelpful "just now" context.
+    /// </summary>
+    private static void AppendOnsetContext(StringBuilder sb, string insightId, SessionContext? session)
+    {
+        if (session is null) return;
+
+        var age = session.InsightAge(insightId);
+        if (age is null || age.Value.TotalSeconds < 60) return;
+
+        // Check for correlation with session events.
+        bool onsetNearWake    = session.InsightOnsetNear(insightId, session.LastWakeTime, windowMinutes: 5.0);
+        bool onsetDuringLogin = session.IsStartupSettling && age.Value.TotalMinutes < 5.0;
+
+        if (onsetNearWake && session.LastWakeTime is not null)
+        {
+            // Most contextually valuable: the finding appeared around the wake event.
+            sb.Append(" (this began shortly after the system woke from sleep)");
+        }
+        else if (onsetDuringLogin)
+        {
+            sb.Append(" (this began during the post-login startup period)");
+        }
+        else if (age.Value.TotalMinutes >= 5.0)
+        {
+            // Finding has been present long enough to note its persistence.
+            sb.Append($" (active for {session.FormatInsightAge(insightId)})");
+        }
     }
 
     private static string CapFirst(string s) =>
