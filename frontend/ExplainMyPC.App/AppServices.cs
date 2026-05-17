@@ -4,6 +4,7 @@ using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.Execution.Executors;
 using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
+using ExplainMyPC.Services.Narrative;
 using Microsoft.UI.Dispatching;
 
 namespace ExplainMyPC;
@@ -26,13 +27,14 @@ namespace ExplainMyPC;
 /// </summary>
 public static class AppServices
 {
-    private static ITelemetryService?        _telemetry;
-    private static ITelemetryHistoryBuffer?  _history;
-    private static ISystemBaselineService?   _baseline;
-    private static ISystemInsightEngine?     _intelligence;
-    private static ActionExecutorRegistry?   _executorRegistry;
-    private static IActionExecutionEngine?   _executionEngine;
-    private static IOperationHistoryService? _operationHistory;
+    private static ITelemetryService?           _telemetry;
+    private static ITelemetryHistoryBuffer?     _history;
+    private static ISystemBaselineService?      _baseline;
+    private static ISystemInsightEngine?        _intelligence;
+    private static IOperationalNarrativeEngine? _narrative;
+    private static ActionExecutorRegistry?      _executorRegistry;
+    private static IActionExecutionEngine?      _executionEngine;
+    private static IOperationHistoryService?    _operationHistory;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -68,6 +70,16 @@ public static class AppServices
     /// </summary>
     public static ISystemInsightEngine Intelligence =>
         _intelligence ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Deterministic narrative engine that synthesizes active intelligence findings
+    /// into multi-paragraph, human-readable system summaries.
+    /// Subscribes to InsightsUpdated and re-generates prose on each change.
+    /// </summary>
+    public static IOperationalNarrativeEngine Narrative =>
+        _narrative ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -130,9 +142,14 @@ public static class AppServices
         // correctness when background analysis threads read concurrently.
         _telemetry.ReadingAvailable += (_, snapshot) => _history.Record(snapshot);
 
+        // Narrative engine synthesizes active findings into human-readable prose.
+        // Created after the intelligence engine so it can subscribe to InsightsUpdated.
+        _narrative = new OperationalNarrativeEngine(_intelligence, _telemetry, _baseline);
+
         _telemetry.Start();
         _baseline.Start();      // must start after _telemetry so ReadingAvailable exists
         _intelligence.Start();
+        _narrative.Start();     // must start after _intelligence
 
         // ── Operational history ───────────────────────────────────────────────
         // Initialised before the execution engine so it is ready the moment
@@ -176,6 +193,9 @@ public static class AppServices
         _executionEngine  = null;
         _executorRegistry = null;
         _operationHistory = null;
+
+        _narrative?.Stop();
+        _narrative = null;
 
         _intelligence?.Stop();
         if (_intelligence is IDisposable id) id.Dispose();
