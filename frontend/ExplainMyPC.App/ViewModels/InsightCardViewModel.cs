@@ -50,9 +50,10 @@ public sealed partial class InsightCardViewModel : ObservableObject
     private static SolidColorBrush Mk(byte a, byte r, byte g, byte b) =>
         new(Color.FromArgb(a, r, g, b));
 
-    // ── Backing insight ───────────────────────────────────────────────────────
+    // ── Backing insight + derived actions ────────────────────────────────────
 
-    private SystemInsight _insight;
+    private SystemInsight                   _insight;
+    private IReadOnlyList<ActionCardViewModel> _actions;
 
     // ── Local view state ──────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ public sealed partial class InsightCardViewModel : ObservableObject
     public InsightCardViewModel(SystemInsight insight)
     {
         _insight = insight;
+        _actions = BuildActions();
     }
 
     /// <summary>
@@ -81,8 +83,17 @@ public sealed partial class InsightCardViewModel : ObservableObject
     public void Update(SystemInsight insight)
     {
         _insight = insight;
+        _actions = BuildActions();
         OnPropertyChanged(string.Empty);
     }
+
+    /// <summary>Wraps each recommended action in a display-layer view model.</summary>
+    private IReadOnlyList<ActionCardViewModel> BuildActions() =>
+        _insight.RecommendedActions.Count == 0
+            ? []
+            : _insight.RecommendedActions
+                      .Select(a => new ActionCardViewModel(a))
+                      .ToList();
 
     // ── Identity / grouping ───────────────────────────────────────────────────
 
@@ -182,6 +193,19 @@ public sealed partial class InsightCardViewModel : ObservableObject
     public bool       HasActionHint       => _insight.ActionHint is not null;
     public Visibility ActionHintVisibility =>
         HasActionHint ? Visibility.Visible : Visibility.Collapsed;
+
+    // ── Recommended actions ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Display-layer wrappers for the rule's recommended actions.
+    /// Empty list when the rule provides no actions (e.g. system.healthy).
+    /// Refreshed by <see cref="Update"/> when the engine republishes the finding.
+    /// </summary>
+    public IReadOnlyList<ActionCardViewModel> Actions           => _actions;
+
+    public bool       HasActions       => _actions.Count > 0;
+    public Visibility ActionsVisibility =>
+        HasActions ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>Expands or collapses the full detail panel.</summary>
     [RelayCommand]

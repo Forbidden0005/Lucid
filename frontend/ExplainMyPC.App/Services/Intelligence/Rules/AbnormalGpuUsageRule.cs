@@ -20,6 +20,30 @@ public sealed class AbnormalGpuUsageRule : IInsightRule
     private const double CpuLowThreshold  = 20.0;
     private const int    MinSamples       = 20;
 
+    // Allocated once at class load — no per-tick heap pressure.
+    private static readonly IReadOnlyList<SystemAction> s_actions =
+    [
+        new SystemAction(
+            Id:                   "action.gpu.inspect-processes",
+            Title:                "Inspect GPU Processes",
+            Description:          "Open Task Manager and navigate to the Performance → GPU tab to see which process is using the graphics card.",
+            Impact:               ActionImpact.Low,
+            Effort:               ActionEffort.Seconds,
+            Risk:                 ActionRisk.Safe,
+            RequiresConfirmation: false,
+            IsReversible:         true),
+
+        new SystemAction(
+            Id:                   "action.gpu.disable-browser-hwaccel",
+            Title:                "Disable Browser GPU",
+            Description:          "Disabling hardware acceleration in your browser's settings removes a common source of unexpected background GPU usage.",
+            Impact:               ActionImpact.Moderate,
+            Effort:               ActionEffort.FewMinutes,
+            Risk:                 ActionRisk.Safe,
+            RequiresConfirmation: false,
+            IsReversible:         true),
+    ];
+
     public string RuleId => "gpu.unexpected-load";
 
     public SystemInsight? Evaluate(TelemetrySnapshot current, ITelemetryHistoryBuffer history)
@@ -49,8 +73,9 @@ public sealed class AbnormalGpuUsageRule : IInsightRule
                                $"while CPU usage remained low ({cpuStats.Average:0}%). " +
                                $"This pattern is uncommon during typical productivity tasks and may indicate " +
                                $"a background process is using the graphics card.",
-            ActionHint:        "Open Task Manager → Performance → GPU to identify which process is responsible.",
-            DetectedAt:        DateTimeOffset.Now,
-            ConfidencePercent: confidence);
+            ActionHint:          "Open Task Manager → Performance → GPU to identify which process is responsible.",
+            DetectedAt:          DateTimeOffset.Now,
+            ConfidencePercent:   confidence,
+            RecommendedActions:  s_actions);
     }
 }

@@ -14,6 +14,31 @@ public sealed class ElevatedRamPressureRule : IInsightRule
 {
     private const double HighRamThreshold = 85.0;
 
+    // Allocated once at class load — no per-tick heap pressure.
+    private static readonly IReadOnlyList<SystemAction> s_actions =
+    [
+        new SystemAction(
+            Id:                   "action.ram.close-browser-tabs",
+            Title:                "Close Browser Tabs",
+            Description:          "Each open browser tab holds memory. Closing unused tabs is the fastest way to free RAM with no risk.",
+            Impact:               ActionImpact.Moderate,
+            Effort:               ActionEffort.Seconds,
+            Risk:                 ActionRisk.Safe,
+            RequiresConfirmation: false,
+            IsReversible:         true),
+
+        new SystemAction(
+            Id:                   "action.ram.restart-heavy-apps",
+            Title:                "Restart Heavy Apps",
+            Description:          "Applications like browsers and IDEs can accumulate memory over time. Restarting them reclaims leaked memory.",
+            Impact:               ActionImpact.High,
+            Effort:               ActionEffort.FewMinutes,
+            Risk:                 ActionRisk.Low,
+            RequiresConfirmation: true,
+            IsReversible:         true,
+            ConfirmationMessage:  "Restarting an app will close its current windows. Save your work before proceeding."),
+    ];
+
     public string RuleId => "ram.high-pressure";
 
     public SystemInsight? Evaluate(TelemetrySnapshot current, ITelemetryHistoryBuffer history)
@@ -34,7 +59,8 @@ public sealed class ElevatedRamPressureRule : IInsightRule
             Detail:     $"Your PC is using {current.RamUsedGb:F1} GB of {current.RamTotalGb:F0} GB RAM " +
                         $"({current.RamPercent:0}%), leaving only {freeGb:F1} GB free. " +
                         $"Windows may start swapping data to disk, which can cause noticeable slowdowns.",
-            ActionHint: "Close unused browser tabs or applications to free up memory.",
-            DetectedAt: DateTimeOffset.Now);
+            ActionHint:         "Close unused browser tabs or applications to free up memory.",
+            DetectedAt:         DateTimeOffset.Now,
+            RecommendedActions: s_actions);
     }
 }

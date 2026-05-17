@@ -54,4 +54,18 @@ public sealed record SystemInsight(
     /// Rules with direct sensor readings (disk space, temperature) report 100.
     /// History-based rules scale from ~70 % at MinSamples to ~98 % at a full window.
     /// </summary>
-    int             ConfidencePercent = 100);
+    int             ConfidencePercent = 100,
+    /// <summary>
+    /// Zero or more remediation steps the user can take to address this finding.
+    /// Actions are data-only — no execution engine is wired yet.
+    /// Allocated as static readonly fields on each rule to avoid per-tick heap churn.
+    /// </summary>
+    IReadOnlyList<SystemAction>? RecommendedActions = null)
+{
+    /// <summary>
+    /// The remediation steps attached to this finding.
+    /// Always returns a non-null list (empty when no actions are defined).
+    /// </summary>
+    public IReadOnlyList<SystemAction> RecommendedActions { get; } =
+        RecommendedActions ?? [];
+}
