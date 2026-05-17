@@ -1,3 +1,5 @@
+using ExplainMyPC.Services.Startup;
+
 namespace ExplainMyPC.Helpers;
 
 /// <summary>
@@ -19,6 +21,11 @@ namespace ExplainMyPC.Helpers;
 ///   TopProcesses — union of top-N by CPU and top-N by RAM, deduplicated by PID.
 ///   Used by insight rules for root-cause attribution ("Chrome is using 8 GB RAM").
 ///   First two ticks after startup always return an empty list (delta warm-up).
+///
+/// Startup fields (Phase 5) — populated every 40 ticks (~60 s) by StartupSampler.
+///   StartupEntries — all enabled startup apps from Run registry keys and Startup folder.
+///   Refreshed infrequently because the startup list changes rarely at runtime.
+///   Null until the first refresh cycle completes; rules must guard against null.
 /// </summary>
 public sealed record TelemetrySnapshot(
     // ── CPU ───────────────────────────────────────────────────────────────────
@@ -52,7 +59,12 @@ public sealed record TelemetrySnapshot(
     // ── Process samples (Phase 4) — null on first poll cycle; empty list
     //    thereafter until ProcessSampler produces its first delta sample.
     //    Callers always see a non-null list via the record body override below.
-    IReadOnlyList<ProcessSample>? TopProcesses = null)
+    IReadOnlyList<ProcessSample>? TopProcesses = null,
+
+    // ── Startup entries (Phase 5) — null until the first StartupSampler refresh
+    //    cycle completes (~60 s after app start). Insight rules that consume
+    //    this field must guard against null with an early return.
+    IReadOnlyList<StartupEntry>? StartupEntries = null)
 {
     /// <summary>
     /// Top processes by CPU and RAM usage for this snapshot.
@@ -60,4 +72,11 @@ public sealed record TelemetrySnapshot(
     /// yet produced results (first poll cycle, or ProcessSampler skipped).
     /// </summary>
     public IReadOnlyList<ProcessSample> TopProcesses { get; } = TopProcesses ?? [];
+
+    /// <summary>
+    /// All enabled startup applications visible to the current user.
+    /// Always non-null — returns an empty list until the first StartupSampler
+    /// refresh cycle completes (approximately 60 s after app start).
+    /// </summary>
+    public IReadOnlyList<StartupEntry> StartupEntries { get; } = StartupEntries ?? [];
 }

@@ -102,6 +102,13 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
         new WorseningThermalTrendRule(),
         new LongRunningDiskPressureRule(),
 
+        // ── Startup / boot intelligence ───────────────────────────────────────
+        // Populated after the first StartupSampler refresh cycle (~60 s).
+        // These rules are silent until StartupEntries arrives in the snapshot.
+        new StartupItemCountRule(),             // too many startup entries
+        new HighImpactStartupAppsRule(),        // specific heavy apps at startup
+        new StartupResourceCorrelationRule(),   // startup config + live resource pressure
+
         // ── All-clear ─────────────────────────────────────────────────────────
         new SystemRunningWellRule(),   // only fires when every rule above is silent
     ];

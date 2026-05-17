@@ -1,4 +1,5 @@
 using ExplainMyPC.Helpers;
+using ExplainMyPC.Services.Startup;
 using ExplainMyPC.Services.Telemetry.Samplers;
 using Microsoft.UI.Dispatching;
 
@@ -31,6 +32,7 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
     private const int PollIntervalMs        = 1_500;   // 1.5 s per cycle
     private const int ThermalIntervalTicks  = 5;       // sample thermal every 5 cycles (~7.5 s)
     private const int ProcessIntervalTicks  = 3;       // sample processes every 3 cycles (~4.5 s)
+    private const int StartupIntervalTicks  = 40;      // sample startup entries every 40 cycles (~60 s)
 
     private readonly DispatcherQueue _dispatcher;
 
@@ -41,13 +43,16 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
     private readonly DiskSampler    _disk    = new();
     private readonly ThermalSampler _thermal = new();
     private readonly ProcessSampler _process = new();
+    private readonly StartupSampler _startup = new();
 
     private CancellationTokenSource? _cts;
     private Task?                    _pollTask;
     private int                      _thermalTick;
     private int                      _processTick;
+    private int                      _startupTick;
     private ThermalSample            _lastThermal   = new(0, IsAvailable: false);
-    private IReadOnlyList<Helpers.ProcessSample> _lastProcesses = [];
+    private IReadOnlyList<Helpers.ProcessSample>          _lastProcesses = [];
+    private IReadOnlyList<StartupEntry>?                  _lastStartupEntries;
     private bool                     _disposed;
 
     public event EventHandler<TelemetrySnapshot>? ReadingAvailable;
@@ -124,6 +129,13 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
             _lastProcesses = _process.Sample();
         _processTick = (_processTick + 1) % ProcessIntervalTicks;
 
+        // Startup entries refresh every StartupIntervalTicks cycles (~60 s).
+        // The registry rarely changes at runtime, so sampling every tick is wasteful.
+        // Fires on tick 0 (initial population) and then every 40 ticks thereafter.
+        if (_startupTick == 0)
+            _lastStartupEntries = _startup.Sample();
+        _startupTick = (_startupTick + 1) % StartupIntervalTicks;
+
         var cpu  = _cpu.Read();
         var ram  = _ram.Read();
         var gpu  = _gpu.Read();
@@ -162,7 +174,10 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
             CpuTemperatureAvailable: _lastThermal.IsAvailable,
 
             // Process samples (Phase 4) — cached between sampling ticks
-            TopProcesses:            _lastProcesses);
+            TopProcesses:            _lastProcesses,
+
+            // Startup entries (Phase 5) — refreshed every ~60 s
+            StartupEntries:          _lastStartupEntries);
     }
 
     // ── IDisposable ───────────────────────────────────────────────────────────
