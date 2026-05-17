@@ -44,8 +44,10 @@
     <Compile Include="ViewModels\ActionCardViewModel.cs" />
     <Compile Include="ViewModels\ActionLogEntryViewModel.cs" />
     <Compile Include="ViewModels\ActionExecutionViewModel.cs" />
+    <Compile Include="ViewModels\InsightsPageViewModel.cs" />
+    <Compile Include="ViewModels\HistoryRecordViewModel.cs" />
     <None Include="ViewModels\**"
-          Exclude="ViewModels\DashboardViewModel.cs;ViewModels\InsightCardViewModel.cs;ViewModels\InsightGroupViewModel.cs;ViewModels\ActionCardViewModel.cs;ViewModels\ActionLogEntryViewModel.cs;ViewModels\ActionExecutionViewModel.cs" />
+          Exclude="ViewModels\DashboardViewModel.cs;ViewModels\InsightCardViewModel.cs;ViewModels\InsightGroupViewModel.cs;ViewModels\ActionCardViewModel.cs;ViewModels\ActionLogEntryViewModel.cs;ViewModels\ActionExecutionViewModel.cs;ViewModels\InsightsPageViewModel.cs;ViewModels\HistoryRecordViewModel.cs" />
 
     <!--
       Services: compile the live telemetry service and its samplers.

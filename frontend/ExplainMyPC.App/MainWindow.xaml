@@ -86,6 +86,13 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
+                <muxc:NavigationViewItem Tag="insights"
+                                         Content="Intelligence">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9CE;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
                 <muxc:NavigationViewItemSeparator />
 
                 <muxc:NavigationViewItem Tag="security"

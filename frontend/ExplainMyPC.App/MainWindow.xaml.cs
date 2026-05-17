@@ -47,6 +47,7 @@ public sealed partial class MainWindow : Window
         {
             "dashboard" => typeof(DashboardPage),
             "explain"   => typeof(ExplainPage),
+            "insights"  => typeof(InsightsPage),
             "security"  => typeof(SecurityPage),
             "processes" => typeof(ProcessesPage),
             "storage"   => typeof(StoragePage),

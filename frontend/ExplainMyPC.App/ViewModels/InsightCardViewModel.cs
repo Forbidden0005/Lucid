@@ -177,6 +177,35 @@ public sealed partial class InsightCardViewModel : ObservableObject
     public Visibility CorrelatedTagVisibility =>
         IsCorrelated ? Visibility.Visible : Visibility.Collapsed;
 
+    // ── Trend detection ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Rule IDs that belong to the temporal-trend analysis layer.
+    /// These rules require ≥2–8 min of history and use linear regression
+    /// or window-delta analysis rather than simple threshold checks.
+    /// </summary>
+    private static readonly HashSet<string> s_trendIds = new(StringComparer.Ordinal)
+    {
+        "ram.rising-trend",
+        "cpu.escalating",
+        "cpu.periodic-spikes",
+        "cpu.thermal-trend",
+        "disk.long-running-pressure",
+    };
+
+    /// <summary>
+    /// True when this insight was produced by a trend-aware rule that analyses
+    /// historical telemetry windows rather than the current snapshot.
+    /// </summary>
+    public bool IsTrend => s_trendIds.Contains(_insight.Id);
+
+    /// <summary>
+    /// Controls visibility of the small "Trend" chip shown in the card header
+    /// alongside the severity badge — only for trend-aware findings.
+    /// </summary>
+    public Visibility TrendTagVisibility =>
+        IsTrend ? Visibility.Visible : Visibility.Collapsed;
+
     /// <summary>Segoe MDL2 glyph matched to the rule category.</summary>
     public string IconGlyph => _insight.Id switch
     {
