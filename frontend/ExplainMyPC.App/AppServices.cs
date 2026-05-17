@@ -1,6 +1,7 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.Execution.Executors;
+using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using Microsoft.UI.Dispatching;
 
@@ -24,11 +25,12 @@ namespace ExplainMyPC;
 /// </summary>
 public static class AppServices
 {
-    private static ITelemetryService?       _telemetry;
-    private static ITelemetryHistoryBuffer? _history;
-    private static ISystemInsightEngine?    _intelligence;
-    private static ActionExecutorRegistry?  _executorRegistry;
-    private static IActionExecutionEngine?  _executionEngine;
+    private static ITelemetryService?        _telemetry;
+    private static ITelemetryHistoryBuffer?  _history;
+    private static ISystemInsightEngine?     _intelligence;
+    private static ActionExecutorRegistry?   _executorRegistry;
+    private static IActionExecutionEngine?   _executionEngine;
+    private static IOperationHistoryService? _operationHistory;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -79,6 +81,16 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Persistent operational history service. Records every execution and
+    /// rollback so users and developers can audit what the app has done.
+    /// All writes are best-effort; a failure never disrupts execution.
+    /// </summary>
+    public static IOperationHistoryService HistoryService =>
+        _operationHistory ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -100,6 +112,11 @@ public static class AppServices
 
         _telemetry.Start();
         _intelligence.Start();
+
+        // ── Operational history ───────────────────────────────────────────────
+        // Initialised before the execution engine so it is ready the moment
+        // the first action completes. JSON file created lazily on first write.
+        _operationHistory = new OperationHistoryService();
 
         // ── Remediation execution engine ──────────────────────────────────────
         // Phase 1 — safe open-application executors (no system modification).
@@ -137,6 +154,7 @@ public static class AppServices
     {
         _executionEngine  = null;
         _executorRegistry = null;
+        _operationHistory = null;
 
         _intelligence?.Stop();
         if (_intelligence is IDisposable id) id.Dispose();

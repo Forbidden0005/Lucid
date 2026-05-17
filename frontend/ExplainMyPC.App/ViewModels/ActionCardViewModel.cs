@@ -58,6 +58,7 @@ public sealed class ActionCardViewModel
         _action   = action;
         Execution = new ActionExecutionViewModel(
             actionId:             action.Id,
+            actionTitle:          action.Title,
             requiresConfirmation: action.RequiresConfirmation,
             confirmationMessage:  action.ConfirmationMessage);
     }

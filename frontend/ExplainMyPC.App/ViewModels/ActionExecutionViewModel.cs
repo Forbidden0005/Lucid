@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExplainMyPC.Services.Execution;
+using ExplainMyPC.Services.History;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -99,6 +100,7 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
     // ── Dependencies ──────────────────────────────────────────────────────────
 
     private readonly string                 _actionId;
+    private readonly string                 _actionTitle;
     private readonly bool                   _requiresConfirmation;
     private readonly string?                _confirmationMessage;
     private readonly IActionExecutionEngine _engine;
@@ -108,6 +110,17 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
 
     private CancellationTokenSource? _cts;
     private string?                  _rollbackToken;
+
+    /// <summary>
+    /// History record ID of the most recent successful execution that has a
+    /// rollback snapshot. Set when a successful result with
+    /// <see cref="ActionExecutionResult.CanRollback"/> is recorded; cleared
+    /// when the rollback is performed or the card is reset.
+    ///
+    /// Used by <see cref="RecordToHistory"/> to mark the original execution
+    /// record as rolled-back after a successful rollback completes.
+    /// </summary>
+    private string? _lastHistoryRecordId;
 
     // ── Observable properties ─────────────────────────────────────────────────
 
@@ -149,10 +162,12 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
     /// </summary>
     public ActionExecutionViewModel(
         string                 actionId,
+        string                 actionTitle,
         bool                   requiresConfirmation,
         string?                confirmationMessage)
     {
         _actionId             = actionId;
+        _actionTitle          = actionTitle;
         _requiresConfirmation = requiresConfirmation;
         _confirmationMessage  = confirmationMessage;
         _engine               = AppServices.ExecutionEngine;
@@ -349,10 +364,11 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
     private void ResetToIdle()
     {
         _cts?.Cancel();
-        _cts           = null;
-        _rollbackToken = null;
-        CanRollback    = false;
-        StatusMessage  = string.Empty;
+        _cts                 = null;
+        _rollbackToken       = null;
+        _lastHistoryRecordId = null;
+        CanRollback          = false;
+        StatusMessage        = string.Empty;
         LogEntries.Clear();
         State = ActionExecutionState.Idle;
     }
@@ -416,6 +432,9 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
             foreach (var entry in result.Log)
                 LogEntries.Add(new ActionLogEntryViewModel(entry));
         }
+
+        // Persist the result to operational history (fire-and-forget).
+        RecordToHistory(result, isRollback);
     }
 
     // ── Live log helper ───────────────────────────────────────────────────────
@@ -438,4 +457,72 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
                     LogEntries.Add(new ActionLogEntryViewModel(entry)));
             }
         });
+
+    // ── History recording ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Persists the execution result to <see cref="IOperationHistoryService"/>
+    /// as a fire-and-forget background task.
+    ///
+    /// Pre-flight failures (executor not found, requires elevation, requires
+    /// confirmation) are not recorded — the executor was never reached, so
+    /// there is no meaningful system-level event to audit.
+    ///
+    /// For successful rollbacks, the original execution record is also updated
+    /// via <see cref="IOperationHistoryService.MarkRolledBackAsync"/> so the
+    /// history reflects the full forward-and-back lifecycle.
+    /// </summary>
+    private void RecordToHistory(ActionExecutionResult result, bool isRollback)
+    {
+        // Skip pre-flight failures — no executor was invoked, nothing happened.
+        if (result.Status is ActionExecutionStatus.ExecutorNotFound
+                          or ActionExecutionStatus.RequiresElevation
+                          or ActionExecutionStatus.RequiresConfirmation)
+            return;
+
+        // Extract Warning and Error log lines for the persistent record.
+        // The full per-file log is transient and not stored.
+        var warnings = result.Log
+            .Where(e => e.Level == ActionLogLevel.Warning)
+            .Select(e => e.Message)
+            .ToList();
+        var errors = result.Log
+            .Where(e => e.Level == ActionLogLevel.Error)
+            .Select(e => e.Message)
+            .ToList();
+
+        var record = new OperationRecord
+        {
+            ActionId        = _actionId,
+            ActionTitle     = _actionTitle,
+            ExecutedAt      = result.ExecutedAt,
+            DurationMs      = (long)result.Duration.TotalMilliseconds,
+            Status          = result.Status.ToString(),
+            IsSuccess       = result.IsSuccess,
+            IsDryRun        = result.IsDryRun,
+            IsRollback      = isRollback,
+            Message         = result.Message,
+            CanRollback     = result.CanRollback,
+            RollbackToken   = result.RollbackToken,
+            TotalLogEntries = result.Log.Count,
+            Warnings        = warnings,
+            Errors          = errors,
+        };
+
+        // Capture the record ID before the async write so the rollback path
+        // can reference it synchronously without waiting for the I/O to finish.
+        if (!isRollback && result.CanRollback)
+            _lastHistoryRecordId = record.Id;
+
+        var svc = AppServices.HistoryService;
+        _ = svc.RecordAsync(record);
+
+        // When a rollback succeeds, mark the original forward-execution record.
+        if (isRollback && result.IsSuccess && _lastHistoryRecordId is not null)
+        {
+            var originalId       = _lastHistoryRecordId;
+            _lastHistoryRecordId = null;
+            _ = svc.MarkRolledBackAsync(originalId, DateTimeOffset.Now);
+        }
+    }
 }
