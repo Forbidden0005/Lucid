@@ -145,6 +145,37 @@ public static class AnimationHelper
         sb.Begin();
     }
 
+    /// <summary>
+    /// Smoothly transitions a ProgressBar from its current animated value to
+    /// <paramref name="targetValue"/>, without resetting to zero first.
+    ///
+    /// Use this for live telemetry updates after the initial
+    /// <see cref="AnimateProgressBar"/> entrance has run.
+    /// Because <see cref="AnimateProgressBar"/> leaves the bar held by a
+    /// <c>FillBehavior.HoldEnd</c> Storyboard, x:Bind cannot move it; starting
+    /// a new Storyboard on the same property overrides the previous one and
+    /// (with <c>From</c> omitted) naturally starts from the current held value.
+    /// </summary>
+    public static void UpdateProgressBar(
+        ProgressBar bar,
+        double      targetValue,
+        int         durationMs = 350)
+    {
+        var animation = new DoubleAnimation
+        {
+            To             = targetValue,   // no From — picks up from current animated value
+            Duration       = new Duration(TimeSpan.FromMilliseconds(durationMs)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            EnableDependentAnimation = true
+        };
+
+        var sb = new Storyboard();
+        sb.Children.Add(animation);
+        Storyboard.SetTarget(animation, bar);
+        Storyboard.SetTargetProperty(animation, "Value");
+        sb.Begin();
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // Internal helpers
     // ════════════════════════════════════════════════════════════════════

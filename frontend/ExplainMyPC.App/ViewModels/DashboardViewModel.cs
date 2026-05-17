@@ -1,21 +1,32 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using ExplainMyPC.Helpers;
+using Microsoft.UI.Dispatching;
 
 namespace ExplainMyPC.ViewModels;
 
 /// <summary>
-/// ViewModel for DashboardPage — Phase 1 (mock data, no services).
+/// ViewModel for DashboardPage — Phase 2 (real hardware telemetry).
 ///
-/// Property names and structure are designed so upgrading to live telemetry
-/// later requires only adding a constructor parameter and hooking a service —
-/// not renaming bindings or touching the XAML.
+/// Live metrics (CPU %, frequency, RAM, disk, GPU) are updated by
+/// <see cref="TelemetryPoller"/> every ~1.5 s on the UI thread via
+/// DispatcherQueue, so properties can be set directly without additional
+/// marshalling in <see cref="OnReadingAvailable"/>.
 ///
-/// Live telemetry wiring happens in Phase 2 when ITelemetryService is introduced.
+/// Health scores, weekly trends, and insight cards remain mock data until
+/// Phase 3 introduces the intelligence engine and scan history.
+///
+/// Lifetime constraint:
+///   This class must be constructed on the UI thread because the
+///   TelemetryPoller captures <c>DispatcherQueue.GetForCurrentThread()</c>
+///   in its constructor. Call <see cref="Cleanup"/> from
+///   <c>DashboardPage.Unloaded</c> to stop the background poller.
 /// </summary>
 public partial class DashboardViewModel : ObservableObject
 {
-    // ── Health Score ──────────────────────────────────────────────────────
+    private readonly TelemetryPoller _poller;
 
-    /// <summary>Overall health score 0–100. Typed as double for ProgressRing.Value.</summary>
+    // ── Health Score (Phase 2: mock — replaced by intelligence engine in Phase 3) ──
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HealthScoreText))]
     private double _healthScore = 87;
@@ -36,14 +47,13 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private string _systemStatusText = "All systems normal";
 
-    /// <summary>Week-over-week score change. Positive values display as "+3".</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TrendLabel))]
     private int _trendDelta = 3;
 
     public string TrendLabel => TrendDelta >= 0 ? $"+{TrendDelta}" : $"{TrendDelta}";
 
-    // ── Sub-scores ────────────────────────────────────────────────────────
+    // ── Sub-scores (Phase 2: mock) ────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PerformanceScoreText))]
@@ -69,94 +79,144 @@ public partial class DashboardViewModel : ObservableObject
 
     public string PrivacyScoreText => $"Privacy {PrivacyScore}";
 
-    // ── CPU ───────────────────────────────────────────────────────────────
+    // ── CPU — real data ───────────────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CpuDisplay))]
-    [NotifyPropertyChangedFor(nameof(CpuDetail))]
-    private double _cpuPercent = 23;
+    private double _cpuPercent;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CpuDetail))]
-    private double _cpuTemperature = 42;
+    private double _cpuFrequencyGhz;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CpuDetail))]
-    private double _cpuFrequencyGhz = 3.80;
+    private int _cpuCoreCount = Environment.ProcessorCount;
 
     public string CpuDisplay => $"{CpuPercent:0}%";
-    public string CpuDetail  => $"{CpuTemperature:0}°C  •  {CpuFrequencyGhz:F2} GHz";
 
-    // ── RAM ───────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Shows real clock speed and logical-core count.
+    /// CPU temperature requires hardware-sensor integration (Phase 3).
+    /// </summary>
+    public string CpuDetail => CpuFrequencyGhz > 0
+        ? $"{CpuFrequencyGhz:F2} GHz  •  {CpuCoreCount} cores"
+        : $"{CpuCoreCount} cores";
+
+    // ── RAM — real data ───────────────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RamDisplay))]
-    [NotifyPropertyChangedFor(nameof(RamDetail))]
-    private double _ramPercent = 61;
+    private double _ramPercent;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RamDetail))]
-    private double _ramUsedGb = 9.8;
+    private double _ramUsedGb;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RamDetail))]
-    private double _ramTotalGb = 16;
+    private double _ramTotalGb;
 
-    public string RamDisplay => $"{RamPercent:0}%";
-    public string RamDetail  => $"{RamUsedGb:F1} GB / {RamTotalGb:F0} GB";
+    public string RamDisplay => RamPercent > 0 ? $"{RamPercent:0}%" : "—";
+    public string RamDetail  => RamTotalGb > 0 ? $"{RamUsedGb:F1} GB / {RamTotalGb:F0} GB" : "Loading…";
 
-    // ── GPU ───────────────────────────────────────────────────────────────
+    // ── GPU — real data when available, graceful N/A otherwise ───────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GpuDisplay))]
-    [NotifyPropertyChangedFor(nameof(GpuDetail))]
-    private double _gpuPercent = 12;
+    private double _gpuPercent;
 
+    /// <summary>True once TelemetryPoller confirms a GPU Engine counter exists.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GpuDisplay))]
     [NotifyPropertyChangedFor(nameof(GpuDetail))]
-    private double _gpuTemperature = 38;
+    private bool _gpuAvailable;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(GpuDetail))]
-    private double _gpuVramUsedGb = 1.2;
+    public string GpuDisplay => GpuAvailable ? $"{GpuPercent:0}%" : "—";
 
-    public string GpuDisplay => $"{GpuPercent:0}%";
-    public string GpuDetail  => $"{GpuTemperature:0}°C  •  {GpuVramUsedGb:F1} GB VRAM";
+    /// <summary>
+    /// GPU VRAM usage and temperature require DirectX / hardware-sensor
+    /// integration (Phase 3). For now we report engine availability only.
+    /// </summary>
+    public string GpuDetail  => GpuAvailable ? "3D Engine" : "Monitoring N/A";
 
-    // ── Disk ─────────────────────────────────────────────────────────────
+    // ── Disk — real data ──────────────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDisplay))]
-    [NotifyPropertyChangedFor(nameof(DiskDetail))]
-    private double _diskPercent = 46;
+    private double _diskPercent;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDetail))]
-    private double _diskUsedGb = 237;
+    private double _diskUsedGb;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDetail))]
-    private double _diskTotalGb = 512;
+    private double _diskTotalGb;
 
-    public string DiskDisplay => $"{DiskPercent:0}%";
-    public string DiskDetail  => $"{DiskUsedGb:F0} GB / {DiskTotalGb:F0} GB";
+    public string DiskDisplay => DiskPercent > 0 ? $"{DiskPercent:0}%" : "—";
+    public string DiskDetail  => DiskTotalGb > 0 ? $"{DiskUsedGb:F0} GB / {DiskTotalGb:F0} GB" : "Loading…";
 
-    // ── Trends ────────────────────────────────────────────────────────────
+    // ── Trends (Phase 2: mock) ────────────────────────────────────────────
 
     [ObservableProperty] private string _bootTimeValue = "18s";
     [ObservableProperty] private string _bootTimeDelta = "↓ 2s faster";
-
-    [ObservableProperty] private string _cpuAvgValue = "31%";
-    [ObservableProperty] private string _cpuAvgDelta = "↑ 4% higher";
-
+    [ObservableProperty] private string _cpuAvgValue   = "31%";
+    [ObservableProperty] private string _cpuAvgDelta   = "↑ 4% higher";
     [ObservableProperty] private string _diskFreeValue = "275 GB";
     [ObservableProperty] private string _diskFreeDelta = "↓ 12 GB lost";
 
-    // ── Insights ──────────────────────────────────────────────────────────
+    // ── Insights (Phase 2: mock) ──────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(InsightCountText))]
     private int _insightCount = 3;
 
     public string InsightCountText => $"{InsightCount} finding{(InsightCount == 1 ? "" : "s")}";
+
+    // ── Constructor ───────────────────────────────────────────────────────
+
+    public DashboardViewModel()
+    {
+        // Must run on the UI thread — TelemetryPoller captures the dispatcher here.
+        _poller = new TelemetryPoller(DispatcherQueue.GetForCurrentThread());
+        _poller.ReadingAvailable += OnReadingAvailable;
+        _poller.Start();
+    }
+
+    // ── Telemetry intake ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called on the UI thread by TelemetryPoller via DispatcherQueue.
+    /// Safe to set properties directly — no additional dispatching needed.
+    /// </summary>
+    private void OnReadingAvailable(object? sender, TelemetrySnapshot s)
+    {
+        CpuPercent      = s.CpuPercent;
+        CpuFrequencyGhz = s.CpuFrequencyGhz;
+        CpuCoreCount    = s.CpuCoreCount;
+
+        RamPercent = s.RamPercent;
+        RamUsedGb  = s.RamUsedGb;
+        RamTotalGb = s.RamTotalGb;
+
+        GpuPercent   = s.GpuPercent;
+        GpuAvailable = s.GpuAvailable;
+
+        DiskPercent = s.DiskPercent;
+        DiskUsedGb  = s.DiskUsedGb;
+        DiskTotalGb = s.DiskTotalGb;
+    }
+
+    // ── Cleanup ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Stops the background poller and releases performance counter handles.
+    /// Call this from <c>DashboardPage.Unloaded</c>.
+    /// </summary>
+    public void Cleanup()
+    {
+        _poller.ReadingAvailable -= OnReadingAvailable;
+        _poller.Dispose();
+    }
 }
