@@ -48,14 +48,17 @@
     -->
     <Compile Remove="Services\**" />
     <Compile Include="Services\ITelemetryService.cs" />
+    <Compile Include="Services\ITelemetryHistoryBuffer.cs" />
     <Compile Include="Services\WindowsTelemetryService.cs" />
+    <Compile Include="Services\TelemetryHistoryBuffer.cs" />
+    <Compile Include="Services\Telemetry\TelemetryHistory.cs" />
     <Compile Include="Services\Telemetry\Samplers\CpuSampler.cs" />
     <Compile Include="Services\Telemetry\Samplers\RamSampler.cs" />
     <Compile Include="Services\Telemetry\Samplers\GpuSampler.cs" />
     <Compile Include="Services\Telemetry\Samplers\DiskSampler.cs" />
     <Compile Include="Services\Telemetry\Samplers\ThermalSampler.cs" />
     <None Include="Services\**"
-          Exclude="Services\ITelemetryService.cs;Services\WindowsTelemetryService.cs;Services\Telemetry\Samplers\CpuSampler.cs;Services\Telemetry\Samplers\RamSampler.cs;Services\Telemetry\Samplers\GpuSampler.cs;Services\Telemetry\Samplers\DiskSampler.cs;Services\Telemetry\Samplers\ThermalSampler.cs" />
+          Exclude="Services\ITelemetryService.cs;Services\ITelemetryHistoryBuffer.cs;Services\WindowsTelemetryService.cs;Services\TelemetryHistoryBuffer.cs;Services\Telemetry\TelemetryHistory.cs;Services\Telemetry\Samplers\CpuSampler.cs;Services\Telemetry\Samplers\RamSampler.cs;Services\Telemetry\Samplers\GpuSampler.cs;Services\Telemetry\Samplers\DiskSampler.cs;Services\Telemetry\Samplers\ThermalSampler.cs" />
 
     <!-- Future feature code — excluded until ready to wire up -->
     <Compile Remove="Controls\**" />

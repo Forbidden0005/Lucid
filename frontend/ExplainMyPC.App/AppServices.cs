@@ -21,13 +21,27 @@ namespace ExplainMyPC;
 /// </summary>
 public static class AppServices
 {
-    private static ITelemetryService? _telemetry;
+    private static ITelemetryService?       _telemetry;
+    private static ITelemetryHistoryBuffer? _history;
+
+    // ── Service accessors ─────────────────────────────────────────────────────
 
     /// <summary>Live hardware telemetry — CPU, RAM, GPU, Disk, Thermal.</summary>
     public static ITelemetryService Telemetry =>
         _telemetry ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Rolling 30-minute telemetry history buffer.
+    /// Feeds trend analysis, anomaly detection, and the Explain My PC engine.
+    /// </summary>
+    public static ITelemetryHistoryBuffer History =>
+        _history ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Creates and starts all application services.
@@ -37,6 +51,14 @@ public static class AppServices
     public static void Initialize(DispatcherQueue uiDispatcher)
     {
         _telemetry = new WindowsTelemetryService(uiDispatcher);
+        _history   = new TelemetryHistoryBuffer();
+
+        // Every snapshot flows into the history buffer automatically.
+        // ReadingAvailable fires on the UI thread, so Record() is always
+        // called from a single thread — the write lock is still held for
+        // correctness when background analysis threads read concurrently.
+        _telemetry.ReadingAvailable += (_, snapshot) => _history.Record(snapshot);
+
         _telemetry.Start();
 
         // Future services registered here, e.g.:
@@ -52,7 +74,9 @@ public static class AppServices
     public static void Shutdown()
     {
         _telemetry?.Stop();
-        if (_telemetry is IDisposable d) d.Dispose();
+        if (_telemetry is IDisposable td) td.Dispose();
+        if (_history  is IDisposable hd) hd.Dispose();
         _telemetry = null;
+        _history   = null;
     }
 }
