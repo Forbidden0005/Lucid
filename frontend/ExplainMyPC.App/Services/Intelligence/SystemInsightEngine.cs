@@ -7,10 +7,25 @@ namespace ExplainMyPC.Services.Intelligence;
 /// Runs registered <see cref="IInsightRule"/> heuristics on every telemetry
 /// tick and publishes findings when the active set changes.
 ///
+/// Evaluation pipeline:
+///   Phase 1 — Base rules: each <see cref="IInsightRule"/> examines the current
+///     telemetry snapshot and produces an insight if its threshold is met.
+///     All base insights carry process attributions when process samples are
+///     available (~4.5 s warm-up after startup).
+///
+///   Phase 2 — Synthesis: <see cref="InsightSynthesisEngine"/> examines the
+///     full set of base findings and runs <see cref="ISynthesisRule"/> heuristics
+///     that look for cross-insight patterns (e.g. the same process attributed as
+///     the cause of both CPU and RAM pressure). Synthesized insights are appended
+///     to the active set with IDs starting with "synthesis.".
+///
+///   Phase 3 — Sort and publish: combined list sorted highest severity first.
+///     InsightsUpdated fires only when the (Id, Severity) fingerprint changes.
+///
 /// Rule evaluation:
-///   All rules are evaluated synchronously on the UI thread (telemetry
-///   readings are already marshalled there). Each rule call is ≤1 µs —
-///   a history GetStats() is a single locked linear scan over ≤1200 doubles.
+///   All phases run synchronously on the UI thread (telemetry readings are
+///   already marshalled there). Each base rule call is ≤1 µs. Synthesis is
+///   pure LINQ over in-memory lists — also ≤1 µs per rule.
 ///
 /// Change detection:
 ///   A compact signature of (Id, Severity) pairs tracks the previous
@@ -23,13 +38,16 @@ namespace ExplainMyPC.Services.Intelligence;
 ///   is omitted for that tick; it cannot crash the engine or other rules.
 ///
 /// Extending:
-///   Add a new IInsightRule to CreateRules(). No other changes needed.
+///   Base rules: add a new IInsightRule to CreateRules().
+///   Synthesis rules: add a new ISynthesisRule to CreateSynthesisRules().
+///   No other changes needed in either case.
 /// </summary>
 public sealed class SystemInsightEngine : ISystemInsightEngine
 {
-    private readonly ITelemetryService       _telemetry;
-    private readonly ITelemetryHistoryBuffer _history;
+    private readonly ITelemetryService           _telemetry;
+    private readonly ITelemetryHistoryBuffer     _history;
     private readonly IReadOnlyList<IInsightRule> _rules;
+    private readonly InsightSynthesisEngine      _synthesizer;
 
     // Tracks (Id, Severity) from the last InsightsUpdated notification.
     // Comparing this set against the freshly-evaluated set determines
@@ -43,13 +61,14 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
 
     public SystemInsightEngine(ITelemetryService telemetry, ITelemetryHistoryBuffer history)
     {
-        _telemetry = telemetry;
-        _history   = history;
-        _rules     = CreateRules();
+        _telemetry   = telemetry;
+        _history     = history;
+        _rules       = CreateRules();
+        _synthesizer = new InsightSynthesisEngine(CreateSynthesisRules());
     }
 
     /// <summary>
-    /// The ordered list of heuristics evaluated each tick.
+    /// Phase 1 heuristics — evaluated against each telemetry snapshot.
     /// SystemRunningWellRule is last so it only fires when no other
     /// conditions would logically precede an "all-clear" message.
     /// </summary>
@@ -62,6 +81,15 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
         new HighDiskThroughputRule(),
         new HighCpuTemperatureRule(),
         new SystemRunningWellRule(),   // "all clear" — intentionally last
+    ];
+
+    /// <summary>
+    /// Phase 2 heuristics — evaluated against the full set of active base findings.
+    /// Add new ISynthesisRule implementations here as cross-insight patterns are identified.
+    /// </summary>
+    private static IReadOnlyList<ISynthesisRule> CreateSynthesisRules() =>
+    [
+        new SharedProcessSynthesisRule(),   // same process in 2+ distinct insights
     ];
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -94,7 +122,8 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
 
     private List<SystemInsight> EvaluateAll(TelemetrySnapshot snapshot)
     {
-        var results = new List<SystemInsight>(_rules.Count);
+        // ── Phase 1: base rule evaluation ─────────────────────────────────────
+        var baseResults = new List<SystemInsight>(_rules.Count);
 
         foreach (var rule in _rules)
         {
@@ -102,7 +131,7 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
             {
                 var insight = rule.Evaluate(snapshot, _history);
                 if (insight is not null)
-                    results.Add(insight);
+                    baseResults.Add(insight);
             }
             catch
             {
@@ -111,10 +140,21 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
             }
         }
 
+        // ── Phase 2: cross-insight synthesis ──────────────────────────────────
+        // Pass only base findings so synthesis rules never see stale synthesis.
+        var synthesized = _synthesizer.Synthesize(baseResults);
+
+        // ── Phase 3: combine and sort ─────────────────────────────────────────
+        var combined = new List<SystemInsight>(baseResults.Count + synthesized.Count);
+        combined.AddRange(baseResults);
+        combined.AddRange(synthesized);
+
         // Highest severity first so the most actionable findings lead the list.
-        results.Sort(static (a, b) =>
+        // Synthesis insights sort at their max-contributor severity, naturally
+        // surfacing above or beside the individual findings they explain.
+        combined.Sort(static (a, b) =>
             ((int)b.Severity).CompareTo((int)a.Severity));
 
-        return results;
+        return combined;
     }
 }

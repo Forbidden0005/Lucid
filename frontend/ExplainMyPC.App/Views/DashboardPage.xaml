@@ -458,7 +458,7 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Severity badge + expand toggle -->
+                        <!-- Severity badge + correlation tag + expand toggle -->
                         <StackPanel Grid.Column="2"
                                     VerticalAlignment="Top"
                                     HorizontalAlignment="Right"
@@ -471,6 +471,28 @@
                                            FontWeight="SemiBold"
                                            Foreground="{x:Bind AccentBrush, Mode=OneWay}" />
                             </Border>
+
+                            <!-- Correlated tag — only visible for synthesis insights -->
+                            <Border Visibility="{x:Bind CorrelatedTagVisibility, Mode=OneWay}"
+                                    Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,5"
+                                    HorizontalAlignment="Right">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE71B;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="10"
+                                              Foreground="{StaticResource TextSecondaryBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Correlated"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Border>
+
                             <Button Command="{x:Bind ToggleExpandedCommand}"
                                     HorizontalAlignment="Center"
                                     Background="Transparent"

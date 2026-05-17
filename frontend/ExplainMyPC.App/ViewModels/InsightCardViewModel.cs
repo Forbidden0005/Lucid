@@ -160,6 +160,23 @@ public sealed partial class InsightCardViewModel : ObservableObject
     /// <summary>Very subtle tint background for the action-hint chip.</summary>
     public SolidColorBrush ActionHintBackground    => Subtle(_insight.Severity, _insight.Id);
 
+    // ── Correlation detection ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// True when this insight is a synthesized cross-insight correlation.
+    /// Synthesis insight IDs always begin with "synthesis." — this is the
+    /// only detection mechanism used throughout the codebase.
+    /// </summary>
+    public bool IsCorrelated =>
+        _insight.Id.StartsWith("synthesis.", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Controls visibility of the small "Correlated" chip shown in the card
+    /// header alongside the severity badge — only for synthesis insights.
+    /// </summary>
+    public Visibility CorrelatedTagVisibility =>
+        IsCorrelated ? Visibility.Visible : Visibility.Collapsed;
+
     /// <summary>Segoe MDL2 glyph matched to the rule category.</summary>
     public string IconGlyph => _insight.Id switch
     {
