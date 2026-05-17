@@ -72,6 +72,17 @@ public sealed class ActionExecutionContext
     /// into the <see cref="ActionExecutionResult"/>.
     ///
     /// Never null — always initialised to a fresh empty log.
+    ///
+    /// The ViewModel layer should supply a pre-configured log that includes a
+    /// live-streaming callback so log entries appear in the UI in real time:
+    /// <code>
+    ///   var context = new ActionExecutionContext
+    ///   {
+    ///       Log = new ActionExecutionLog(entry => dispatcher.TryEnqueue(
+    ///                 () => LogEntries.Add(new ActionLogEntryViewModel(entry)))),
+    ///       ...
+    ///   };
+    /// </code>
     /// </summary>
-    public ActionExecutionLog Log { get; } = new();
+    public ActionExecutionLog Log { get; init; } = new();
 }

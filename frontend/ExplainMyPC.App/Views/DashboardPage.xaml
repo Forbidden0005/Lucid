@@ -132,7 +132,13 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- ── Confirmation warning — hidden when not needed ── -->
+                    <!-- ── Static confirmation risk notice ───────────────────
+                         Shown whenever RequiresConfirmation=true so the user
+                         always sees the risk text before clicking Run.
+                         This is the static note from SystemAction; the
+                         interactive confirmation panel is handled by the
+                         Execution sub-ViewModel below.
+                    ──────────────────────────────────────────────────────── -->
                     <Border Visibility="{x:Bind ConfirmationVisibility}"
                             Background="{StaticResource StatusModerateSubtleBrush}"
                             CornerRadius="6"
@@ -149,6 +155,244 @@
                                        Style="{StaticResource CaptionTextStyle}"
                                        Foreground="{StaticResource StatusModerateBrush}"
                                        TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══════════════════════════════════════════════════════
+                         EXECUTION PANEL
+                         All states driven by Execution (ActionExecutionViewModel).
+                         Only one state-section is visible at a time.
+                    ══════════════════════════════════════════════════════ -->
+
+                    <!-- Thin separator between static info and interactive UI -->
+                    <Border Height="1"
+                            Background="{StaticResource BorderSubtleBrush}"
+                            Margin="44,2,0,2" />
+
+                    <!-- ── IDLE: Run + Preview buttons ──────────────────────
+                         Visible when State=Idle and an executor is registered.
+                    ──────────────────────────────────────────────────────── -->
+                    <StackPanel Visibility="{x:Bind Execution.IdleControlsVisibility, Mode=OneWay}"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="44,0,0,0">
+
+                        <!-- Preview (dry-run) -->
+                        <Button Command="{x:Bind Execution.DryRunCommand}"
+                                CornerRadius="5"
+                                Padding="10,5">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <FontIcon Glyph="&#xE946;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="11"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Preview"
+                                           FontSize="12"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Run -->
+                        <Button Command="{x:Bind Execution.RunCommand}"
+                                Background="{StaticResource StatusInfoTintBrush}"
+                                CornerRadius="5"
+                                Padding="10,5">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <FontIcon Glyph="&#xE768;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="11"
+                                          Foreground="{StaticResource StatusInfoBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Run"
+                                           FontSize="12"
+                                           Foreground="{StaticResource StatusInfoBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- ── IDLE: Coming soon chip ───────────────────────────
+                         Visible when no executor is registered for this action.
+                    ──────────────────────────────────────────────────────── -->
+                    <Border Visibility="{x:Bind Execution.NotImplementedVisibility}"
+                            Background="#08FFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="9,4"
+                            Margin="44,0,0,0"
+                            HorizontalAlignment="Left">
+                        <TextBlock Text="Coming soon"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Border>
+
+                    <!-- ── CONFIRMATION PENDING ─────────────────────────────
+                         Visible when the user clicked Run on a risky action.
+                         Shows the risk description and Confirm / Cancel buttons.
+                    ──────────────────────────────────────────────────────── -->
+                    <Border Visibility="{x:Bind Execution.ConfirmationVisibility, Mode=OneWay}"
+                            Background="{StaticResource StatusModerateSubtleBrush}"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="44,0,0,0">
+                        <StackPanel Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE7BA;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="13"
+                                          Foreground="{StaticResource StatusModerateBrush}"
+                                          VerticalAlignment="Top"
+                                          Margin="0,2,0,0" />
+                                <TextBlock Text="{x:Bind Execution.ConfirmationMessage}"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           Foreground="{StaticResource StatusModerateBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Command="{x:Bind Execution.ConfirmCommand}"
+                                        CornerRadius="5"
+                                        Padding="12,5">
+                                    <TextBlock Text="Confirm"
+                                               FontSize="12" />
+                                </Button>
+                                <Button Command="{x:Bind Execution.CancelConfirmationCommand}"
+                                        CornerRadius="5"
+                                        Padding="12,5">
+                                    <TextBlock Text="Cancel"
+                                               FontSize="12" />
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── RUNNING / DRY-RUNNING ────────────────────────────
+                         Spinner + status label + Cancel link.
+                    ──────────────────────────────────────────────────────── -->
+                    <StackPanel Visibility="{x:Bind Execution.ProgressVisibility, Mode=OneWay}"
+                                Orientation="Horizontal"
+                                Spacing="10"
+                                Margin="44,0,0,0">
+                        <ProgressRing IsActive="{x:Bind Execution.IsRunning, Mode=OneWay}"
+                                      Width="16"
+                                      Height="16" />
+                        <TextBlock Text="{x:Bind Execution.StatusMessage, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   VerticalAlignment="Center" />
+                        <Button Command="{x:Bind Execution.CancelExecutionCommand}"
+                                CornerRadius="4"
+                                Padding="8,3"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Cancel"
+                                       FontSize="11" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- ── RESULT ───────────────────────────────────────────
+                         State icon + outcome message.
+                         Rollback button: visible only when executor captured
+                         a rollback snapshot (CanRollback=true).
+                         Run again: always visible to reset and retry.
+                    ──────────────────────────────────────────────────────── -->
+                    <StackPanel Visibility="{x:Bind Execution.ResultVisibility, Mode=OneWay}"
+                                Spacing="6"
+                                Margin="44,0,0,0">
+
+                        <!-- Icon + message row -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="{x:Bind Execution.StateGlyph, Mode=OneWay}"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="14"
+                                      Foreground="{x:Bind Execution.StateBrush, Mode=OneWay}"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="{x:Bind Execution.StatusMessage, Mode=OneWay}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="{x:Bind Execution.StateBrush, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Action links row -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+
+                            <!-- Rollback — only when executor captured a snapshot -->
+                            <Button Visibility="{x:Bind Execution.RollbackVisibility, Mode=OneWay}"
+                                    Command="{x:Bind Execution.RollbackCommand}"
+                                    CornerRadius="5"
+                                    Padding="10,4">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE72C;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="11"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Undo"
+                                               FontSize="11"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Run again -->
+                            <HyperlinkButton Command="{x:Bind Execution.ResetToIdleCommand}"
+                                             Content="Run again"
+                                             FontSize="11"
+                                             Padding="0"
+                                             VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- ── LOG PANEL ────────────────────────────────────────
+                         Live-updating execution log. Entries stream in as the
+                         executor writes them. Visible whenever LogEntries has
+                         at least one entry. Persists after execution.
+                    ──────────────────────────────────────────────────────── -->
+                    <Border Visibility="{x:Bind Execution.LogVisibility, Mode=OneWay}"
+                            Background="#07FFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,8"
+                            Margin="44,0,0,0">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="EXECUTION LOG"
+                                       FontSize="9"
+                                       FontWeight="SemiBold"
+                                       CharacterSpacing="100"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,0,0,4" />
+                            <ItemsRepeater ItemsSource="{x:Bind Execution.LogEntries, Mode=OneWay}">
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="3" Orientation="Vertical" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ActionLogEntryViewModel">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{x:Bind Timestamp}"
+                                                       FontSize="10"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{x:Bind LevelLabel}"
+                                                       FontSize="10"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       Foreground="{x:Bind LevelBrush}"
+                                                       VerticalAlignment="Top" />
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{x:Bind Message}"
+                                                       FontSize="11"
+                                                       Foreground="{x:Bind LevelBrush}"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Top" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
                         </StackPanel>
                     </Border>
 

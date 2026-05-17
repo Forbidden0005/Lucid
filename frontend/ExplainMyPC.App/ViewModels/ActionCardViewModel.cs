@@ -53,7 +53,26 @@ public sealed class ActionCardViewModel
 
     private readonly SystemAction _action;
 
-    public ActionCardViewModel(SystemAction action) => _action = action;
+    public ActionCardViewModel(SystemAction action)
+    {
+        _action   = action;
+        Execution = new ActionExecutionViewModel(
+            actionId:             action.Id,
+            requiresConfirmation: action.RequiresConfirmation,
+            confirmationMessage:  action.ConfirmationMessage);
+    }
+
+    // ── Execution sub-ViewModel ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Drives the execution UX for this action — confirmation, live log,
+    /// dry-run preview, result display, and rollback.
+    ///
+    /// Created once at construction and stable for the card's lifetime.
+    /// Observable internally; the XAML binds through this property to reach
+    /// <see cref="ActionExecutionViewModel"/>'s reactive surface.
+    /// </summary>
+    public ActionExecutionViewModel Execution { get; }
 
     // ── Raw model pass-through ────────────────────────────────────────────────
 

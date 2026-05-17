@@ -46,7 +46,25 @@ public sealed record ActionLogEntry(
 /// </summary>
 public sealed class ActionExecutionLog
 {
-    private readonly List<ActionLogEntry> _entries = new();
+    private readonly List<ActionLogEntry>   _entries = new();
+    private readonly Action<ActionLogEntry>? _onEntryAdded;
+
+    /// <summary>
+    /// Creates a log builder with no live-streaming callback.
+    /// Entries accumulate silently until <see cref="Build"/> is called.
+    /// </summary>
+    public ActionExecutionLog() { }
+
+    /// <summary>
+    /// Creates a log builder that invokes <paramref name="onEntryAdded"/>
+    /// synchronously on the writing thread each time an entry is appended.
+    ///
+    /// The ViewModel passes a callback that marshals the entry to the UI
+    /// thread and adds it to an <c>ObservableCollection</c>, giving the user
+    /// a live view of execution progress without waiting for <see cref="Build"/>.
+    /// </summary>
+    public ActionExecutionLog(Action<ActionLogEntry> onEntryAdded) =>
+        _onEntryAdded = onEntryAdded;
 
     // ── Write ─────────────────────────────────────────────────────────────────
 
@@ -59,8 +77,12 @@ public sealed class ActionExecutionLog
     /// <summary>Appends an <see cref="ActionLogLevel.Error"/> entry.</summary>
     public void Error(string message) => Append(ActionLogLevel.Error,   message);
 
-    private void Append(ActionLogLevel level, string message) =>
-        _entries.Add(new ActionLogEntry(DateTimeOffset.Now, level, message));
+    private void Append(ActionLogLevel level, string message)
+    {
+        var entry = new ActionLogEntry(DateTimeOffset.Now, level, message);
+        _entries.Add(entry);
+        _onEntryAdded?.Invoke(entry);
+    }
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
