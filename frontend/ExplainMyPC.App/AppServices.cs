@@ -6,6 +6,7 @@ using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using ExplainMyPC.Services.Narrative;
 using ExplainMyPC.Services.Session;
+using ExplainMyPC.Services.Startup;
 using ExplainMyPC.Services.Timeline;
 using Microsoft.UI.Dispatching;
 
@@ -40,6 +41,7 @@ public static class AppServices
     private static IActionExecutionEngine?      _executionEngine;
     private static IOperationHistoryService?    _operationHistory;
     private static ITimelineAggregationService? _timeline;
+    private static IStartupManagementService?   _startupManagement;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -141,6 +143,16 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Read/write access to Windows startup entries.
+    /// Enables and disables startup items via the StartupApproved registry
+    /// mechanism (the same mechanism Windows Task Manager uses).
+    /// </summary>
+    public static IStartupManagementService StartupManagement =>
+        _startupManagement ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -189,24 +201,38 @@ public static class AppServices
         // the first action completes. JSON file created lazily on first write.
         _operationHistory = new OperationHistoryService();
 
+        // ── Startup management service ────────────────────────────────────────
+        // Write-side complement to StartupSampler. Uses the Windows
+        // StartupApproved registry mechanism to enable/disable entries.
+        // Created before the executor registry so executors can share the instance.
+        _startupManagement = new StartupManagementService();
+
         // ── Remediation execution engine ──────────────────────────────────────
-        // Phase 1 — safe open-application executors (no system modification).
-        // Add new executors here as capabilities are implemented.
         _executorRegistry = new ActionExecutorRegistry();
         _executorRegistry.RegisterAll([
-            // Phase 1 — guided navigation: open the relevant system tool and let
-            // the user act. Completely safe, no system modification.
+            // ── Guided navigation (Phase 1) ───────────────────────────────────
+            // Open the relevant system tool — completely safe, no modification.
             new OpenTaskManagerExecutor(),      // action.cpu.open-task-manager
             new OpenStorageSenseExecutor(),     // action.disk.run-storage-sense
             new OpenStartupAppsExecutor(),      // action.startup.open-startup-apps
             new OpenWindowsSecurityExecutor(),  // action.security.open-windows-security
 
-            // Phase 2 — real cleanup: scans known-safe temp directories and moves
-            // stale files to a rollback staging area (atomic rename on same drive).
-            // Supports dry-run preview, per-file logging, cancellation, and rollback.
+            // ── Disk cleanup (Phase 2) ────────────────────────────────────────
+            // Staging-based safe cleanup with dry-run preview and rollback.
             new TempFileCleanupExecutor(),      // action.disk.clean-temp-files
 
-            // Phase 3 (planned): startup management — enumerate + toggle startup entries
+            // ── Disk cleanup (Phase 3 — operational tools) ────────────────────
+            new RecycleBinCleanupExecutor(),              // action.disk.empty-recycle-bin
+            new WindowsUpdateCacheExecutor(),             // action.disk.clean-windows-update-cache
+            new DeliveryOptimizationCacheExecutor(),      // action.disk.clean-delivery-optimization
+            new BrowserCacheCleanupExecutor(),            // action.disk.clean-browser-cache
+
+            // ── Startup management (Phase 3) ──────────────────────────────────
+            new StartupAppDisableExecutor(_startupManagement),      // action.startup.disable-startup-app
+            new StartupAppEnableExecutor(_startupManagement),       // action.startup.enable-startup-app
+            new StartupStateBackupExecutor(_startupManagement),     // action.startup.backup-startup-state
+            new StartupStateRestoreExecutor(_startupManagement),    // action.startup.restore-startup-state
+
             // Phase 4 (planned): repair commands — SFC /scannow, DISM, network reset
         ]);
         _executionEngine  = new ActionExecutionEngine(_executorRegistry);
@@ -232,9 +258,10 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
-        _executionEngine  = null;
-        _executorRegistry = null;
-        _operationHistory = null;
+        _executionEngine    = null;
+        _executorRegistry   = null;
+        _operationHistory   = null;
+        _startupManagement  = null;
 
         // Timeline must stop before narrative/session/intelligence —
         // it holds subscriptions to all three.

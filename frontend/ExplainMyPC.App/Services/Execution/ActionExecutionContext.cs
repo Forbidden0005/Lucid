@@ -63,6 +63,21 @@ public sealed class ActionExecutionContext
     public string RequestedBy { get; init; } = "user";
 
     /// <summary>
+    /// Optional key-value parameters passed to the executor by the ViewModel.
+    ///
+    /// Used for parameterised executors that operate on a specific target
+    /// chosen at call time (e.g. a startup entry name, a specific drive).
+    /// Well-known keys are declared as constants on each executor class.
+    ///
+    /// Keys are case-insensitive. Values are always strings; executors are
+    /// responsible for parsing or validating them before use.
+    ///
+    /// Never null — defaults to an empty dictionary.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Parameters { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Mutable log the engine and executor both write progress messages into.
     ///
     /// The engine writes a dispatch entry before calling the executor.
