@@ -233,7 +233,17 @@ public static class AppServices
             new StartupStateBackupExecutor(_startupManagement),     // action.startup.backup-startup-state
             new StartupStateRestoreExecutor(_startupManagement),    // action.startup.restore-startup-state
 
-            // Phase 4 (planned): repair commands — SFC /scannow, DISM, network reset
+            // ── Repair & recovery (Phase 4) ───────────────────────────────────
+            // Safe wrappers around trusted Windows repair tools. All stream
+            // live output, support dry-run explanation mode, and are
+            // elevation-aware.  None support rollback (system repairs are
+            // one-way by nature).
+            new SfcScanExecutor(),               // action.repair.sfc-scannow
+            new DismRestoreHealthExecutor(),      // action.repair.dism-restore-health
+            new FlushDnsExecutor(),               // action.network.flush-dns
+            new WinsockResetExecutor(),           // action.network.winsock-reset
+            new WindowsStoreResetExecutor(),      // action.apps.reset-windows-store
+            new NetworkAdapterResetExecutor(),    // action.network.reset-adapter
         ]);
         _executionEngine  = new ActionExecutionEngine(_executorRegistry);
 
