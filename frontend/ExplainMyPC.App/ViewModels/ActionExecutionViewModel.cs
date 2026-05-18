@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Security.Principal;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExplainMyPC.Services.Execution;
@@ -86,6 +87,13 @@ public enum ActionExecutionState
 /// </summary>
 public sealed partial class ActionExecutionViewModel : ObservableObject
 {
+    // ── Process elevation ─────────────────────────────────────────────────────
+    // Evaluated once per process lifetime; elevation cannot change mid-session.
+
+    private static readonly bool s_isElevated =
+        new WindowsPrincipal(WindowsIdentity.GetCurrent())
+            .IsInRole(WindowsBuiltInRole.Administrator);
+
     // ── Static brush palette ── one allocation per outcome tier, ever ─────────
 
     private static readonly SolidColorBrush s_successBrush  = Mk(255,  87, 214, 141); // Green  #57D68D
@@ -392,7 +400,7 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
         var context = new ActionExecutionContext
         {
             IsDryRun            = isDryRun,
-            IsElevated          = false,          // no elevation path yet
+            IsElevated          = s_isElevated,
             ConfirmationGranted = confirmationGranted || !_requiresConfirmation,
             RequestedBy         = "user",
             Log                 = log,

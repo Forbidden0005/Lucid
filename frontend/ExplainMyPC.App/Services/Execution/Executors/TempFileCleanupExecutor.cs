@@ -355,9 +355,11 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
         context.Log.Info($"Done. {msg}");
 
         // Partial success when some files were cleaned but others were skipped.
+        // Pass the rollback token so the user can restore the files that were moved.
         if (totalFiles > 0 && skipped > 0)
             return ActionExecutionResult.PartiallySucceeded(
-                ActionId, msg, sw.Elapsed, context.Log.Build());
+                ActionId, msg, sw.Elapsed, context.Log.Build(),
+                rollbackToken: rollbackToken);
 
         return ActionExecutionResult.Succeeded(
             ActionId, msg, sw.Elapsed, context.Log.Build(),

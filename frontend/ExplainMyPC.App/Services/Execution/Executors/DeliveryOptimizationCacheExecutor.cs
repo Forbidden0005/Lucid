@@ -246,7 +246,8 @@ internal sealed class DeliveryOptimizationCacheExecutor : IActionExecutor
 
         if (totalFiles > 0 && skipped > 0)
             return ActionExecutionResult.PartiallySucceeded(
-                ActionId, msg, sw.Elapsed, context.Log.Build());
+                ActionId, msg, sw.Elapsed, context.Log.Build(),
+                rollbackToken: rollbackToken);
 
         return ActionExecutionResult.Succeeded(
             ActionId, msg, sw.Elapsed, context.Log.Build(),

@@ -193,19 +193,25 @@ public sealed class ActionExecutionResult
     /// <summary>
     /// Creates a partial-success result for actions that completed with caveats
     /// (e.g. some files deleted but others skipped due to locks).
+    /// Pass a non-null <paramref name="rollbackToken"/> when the executor staged
+    /// the files it did remove and rollback is therefore possible for the subset
+    /// of changes that were applied.
     /// </summary>
     public static ActionExecutionResult PartiallySucceeded(
         string                       actionId,
         string                       message,
         TimeSpan                     duration,
-        IReadOnlyList<ActionLogEntry> log) => new()
+        IReadOnlyList<ActionLogEntry> log,
+        string?                      rollbackToken = null) => new()
     {
-        ActionId   = actionId,
-        Status     = ActionExecutionStatus.PartialSuccess,
-        Message    = message,
-        ExecutedAt = DateTimeOffset.Now,
-        Duration   = duration,
-        Log        = log,
+        ActionId      = actionId,
+        Status        = ActionExecutionStatus.PartialSuccess,
+        Message       = message,
+        ExecutedAt    = DateTimeOffset.Now,
+        Duration      = duration,
+        Log           = log,
+        CanRollback   = rollbackToken is not null,
+        RollbackToken = rollbackToken,
     };
 
     /// <summary>
