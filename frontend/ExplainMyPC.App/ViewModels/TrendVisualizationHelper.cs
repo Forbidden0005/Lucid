@@ -29,7 +29,12 @@ public static class TrendVisualizationHelper
 {
     // ── Metric mapping ────────────────────────────────────────────────────────
 
-    private static TelemetryMetric? MetricFor(string id) => id switch
+    /// <summary>
+    /// Maps an insight rule ID to the telemetry metric it monitors.
+    /// Internal so <see cref="InsightDetailViewModel"/> can reuse the mapping.
+    /// Returns null for forecast, synthesis, session, and healthy insights.
+    /// </summary>
+    internal static TelemetryMetric? MetricFor(string id) => id switch
     {
         "cpu.sustained-high"         => TelemetryMetric.Cpu,
         "cpu.escalating"             => TelemetryMetric.Cpu,

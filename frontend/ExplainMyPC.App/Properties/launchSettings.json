@@ -1,7 +1,8 @@
-{
+﻿{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
   "profiles": {
     "ExplainMyPC.App (Unpackaged)": {
-      "commandName": "MsixPackage",
+      "commandName": "Project",
       "nativeDebugging": false
     }
   }
