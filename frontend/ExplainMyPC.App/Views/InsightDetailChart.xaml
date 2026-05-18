@@ -1,0 +1,33 @@
+<UserControl
+    x:Class="ExplainMyPC.Views.InsightDetailChart"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        InsightDetailChart — Expanded canvas chart for the investigation workspace.
+
+        The Canvas (180 px) is the only visual element here.
+        All rendering — grid lines, value/time axis labels, baseline band,
+        area fill, history line, forecast (dashed), "Now" indicator, and
+        event markers — is drawn entirely in code-behind via Redraw().
+
+        Chart layout constants (see code-behind):
+          Left margin  44 px  — value axis labels
+          Right margin  8 px
+          Top margin    8 px
+          Bottom margin 24 px — time axis labels
+
+        Dependency property: ChartData (InsightDetailChartData)
+        Trigger: SizeChanged or ChartData change → Redraw()
+    -->
+    <Border Background="#07FFFFFF"
+            BorderBrush="#18FFFFFF"
+            BorderThickness="1"
+            CornerRadius="10">
+        <Canvas x:Name="ChartCanvas"
+                MinHeight="180"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                SizeChanged="OnCanvasSizeChanged" />
+    </Border>
+</UserControl>

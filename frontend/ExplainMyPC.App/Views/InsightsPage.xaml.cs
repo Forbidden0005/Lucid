@@ -1,6 +1,7 @@
 using ExplainMyPC.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace ExplainMyPC.Views;
 
@@ -26,6 +27,12 @@ public sealed partial class InsightsPage : Page
     public InsightsPage()
     {
         InitializeComponent();
+
+        // Wire the navigation callback so insight cards can drill into the
+        // InsightDetailPage without a hard Frame reference in the ViewModel.
+        ViewModel.SetNavigationCallback(id =>
+            Frame.Navigate(typeof(InsightDetailPage), id,
+                           new DrillInNavigationTransitionInfo()));
 
         Unloaded += (_, _) => ViewModel.Cleanup();
     }

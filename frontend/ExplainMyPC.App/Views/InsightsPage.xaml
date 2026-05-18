@@ -623,6 +623,29 @@
                             </ItemsRepeater>
                         </StackPanel>
 
+                        <!-- Investigate link — drill into the full workspace -->
+                        <Border Height="1"
+                                Background="{StaticResource BorderSubtleBrush}" />
+                        <Button Command="{x:Bind ViewDetailsCommand}"
+                                HorizontalAlignment="Right"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,2"
+                                CornerRadius="4">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock Text="Investigate"
+                                           FontFamily="Segoe UI Variable"
+                                           FontSize="12"
+                                           Foreground="{x:Bind AccentBrush, Mode=OneWay}"
+                                           VerticalAlignment="Center" />
+                                <FontIcon Glyph="&#xE76C;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="10"
+                                          Foreground="{x:Bind AccentBrush, Mode=OneWay}"
+                                          VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
                     </StackPanel>
                 </StackPanel>
             </Border>

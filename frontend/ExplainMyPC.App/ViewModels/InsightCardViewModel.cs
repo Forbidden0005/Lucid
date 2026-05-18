@@ -290,6 +290,19 @@ public sealed partial class InsightCardViewModel : ObservableObject
     public Visibility SparklineVisibility =>
         SparklineData is not null ? Visibility.Visible : Visibility.Collapsed;
 
+    // ── Navigation ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Callback set by <see cref="InsightsPageViewModel.SetNavigationCallback"/>
+    /// so the card can trigger navigation without a hard dependency on Frame.
+    /// Null until the page wires it up.
+    /// </summary>
+    public Action<string>? RequestNavigateToDetail { get; set; }
+
+    /// <summary>Opens the full investigation workspace for this finding.</summary>
+    [RelayCommand]
+    private void ViewDetails() => RequestNavigateToDetail?.Invoke(_insight.Id);
+
     // ── Severity → visual mapping ─────────────────────────────────────────────
 
     // "system.healthy" is an Info finding but deserves green, not blue.

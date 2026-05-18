@@ -233,6 +233,22 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     /// </summary>
     private readonly Dictionary<string, InsightCardViewModel> _cardCache = new();
 
+    // ── Navigation callback ───────────────────────────────────────────────────
+
+    private Action<string>? _navigateToDetail;
+
+    /// <summary>
+    /// Registers the callback used by insight cards to navigate to the
+    /// InsightDetailPage. Call once from InsightsPage code-behind after
+    /// ViewModel construction so all current and future cards are wired.
+    /// </summary>
+    public void SetNavigationCallback(Action<string> callback)
+    {
+        _navigateToDetail = callback;
+        foreach (var card in _cardCache.Values)
+            card.RequestNavigateToDetail = callback;
+    }
+
     // ── History ───────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -329,7 +345,10 @@ public sealed partial class InsightsPageViewModel : ObservableObject
             if (_cardCache.TryGetValue(insight.Id, out var existing))
                 existing.Update(insight);
             else
-                _cardCache[insight.Id] = new InsightCardViewModel(insight);
+                _cardCache[insight.Id] = new InsightCardViewModel(insight)
+                {
+                    RequestNavigateToDetail = _navigateToDetail,
+                };
         }
 
         // ── Recompute stats ───────────────────────────────────────────────────
