@@ -50,8 +50,11 @@
     <Compile Include="ViewModels\TimelineEventViewModel.cs" />
     <Compile Include="ViewModels\TimelineGroupHeaderViewModel.cs" />
     <Compile Include="ViewModels\TimelinePageViewModel.cs" />
+    <Compile Include="ViewModels\SparklinePoint.cs" />
+    <Compile Include="ViewModels\SparklineData.cs" />
+    <Compile Include="ViewModels\TrendVisualizationHelper.cs" />
     <None Include="ViewModels\**"
-          Exclude="ViewModels\DashboardViewModel.cs;ViewModels\InsightCardViewModel.cs;ViewModels\InsightGroupViewModel.cs;ViewModels\ActionCardViewModel.cs;ViewModels\ActionLogEntryViewModel.cs;ViewModels\ActionExecutionViewModel.cs;ViewModels\InsightsPageViewModel.cs;ViewModels\HistoryRecordViewModel.cs;ViewModels\NarrativeViewModel.cs;ViewModels\TimelineEventViewModel.cs;ViewModels\TimelineGroupHeaderViewModel.cs;ViewModels\TimelinePageViewModel.cs" />
+          Exclude="ViewModels\DashboardViewModel.cs;ViewModels\InsightCardViewModel.cs;ViewModels\InsightGroupViewModel.cs;ViewModels\ActionCardViewModel.cs;ViewModels\ActionLogEntryViewModel.cs;ViewModels\ActionExecutionViewModel.cs;ViewModels\InsightsPageViewModel.cs;ViewModels\HistoryRecordViewModel.cs;ViewModels\NarrativeViewModel.cs;ViewModels\TimelineEventViewModel.cs;ViewModels\TimelineGroupHeaderViewModel.cs;ViewModels\TimelinePageViewModel.cs;ViewModels\SparklinePoint.cs;ViewModels\SparklineData.cs;ViewModels\TrendVisualizationHelper.cs" />
 
     <!--
       Services: compile the live telemetry service and its samplers.

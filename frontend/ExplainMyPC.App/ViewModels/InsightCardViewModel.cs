@@ -70,8 +70,9 @@ public sealed partial class InsightCardViewModel : ObservableObject
 
     public InsightCardViewModel(SystemInsight insight)
     {
-        _insight = insight;
-        _actions = BuildActions();
+        _insight      = insight;
+        _actions      = BuildActions();
+        SparklineData = TrendVisualizationHelper.Build(_insight.Id, _insight.Severity);
     }
 
     /// <summary>
@@ -82,8 +83,9 @@ public sealed partial class InsightCardViewModel : ObservableObject
     /// </summary>
     public void Update(SystemInsight insight)
     {
-        _insight = insight;
-        _actions = BuildActions();
+        _insight      = insight;
+        _actions      = BuildActions();
+        SparklineData = TrendVisualizationHelper.Build(_insight.Id, _insight.Severity);
         OnPropertyChanged(string.Empty);
     }
 
@@ -273,6 +275,20 @@ public sealed partial class InsightCardViewModel : ObservableObject
     /// <summary>Expands or collapses the full detail panel.</summary>
     [RelayCommand]
     private void ToggleExpanded() => IsExpanded = !IsExpanded;
+
+    // ── Sparkline ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Pre-built sparkline data for the compact metric history visualizer.
+    /// Null for insights without a direct metric mapping (forecast, synthesis,
+    /// session, system.healthy-like cases without telemetry).
+    /// Refreshed on every <see cref="Update"/> call.
+    /// </summary>
+    public SparklineData? SparklineData { get; private set; }
+
+    /// <summary>Controls whether the sparkline strip is shown on the card.</summary>
+    public Visibility SparklineVisibility =>
+        SparklineData is not null ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Severity → visual mapping ─────────────────────────────────────────────
 

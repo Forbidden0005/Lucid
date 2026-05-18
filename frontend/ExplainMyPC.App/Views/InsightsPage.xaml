@@ -2,6 +2,7 @@
     x:Class="ExplainMyPC.Views.InsightsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ExplainMyPC.Views"
     xmlns:vm="using:ExplainMyPC.ViewModels"
     xmlns:intel="using:ExplainMyPC.Services.Intelligence"
     Background="{StaticResource AppBackgroundBrush}">
@@ -486,6 +487,12 @@
                             </Button>
                         </StackPanel>
                     </Grid>
+
+                    <!-- ── Sparkline strip (metric history + trend) ─────── -->
+                    <local:SparklineControl
+                        Visibility="{x:Bind SparklineVisibility, Mode=OneWay}"
+                        SparklineData="{x:Bind SparklineData, Mode=OneWay}"
+                        Margin="0,4,0,0" />
 
                     <!-- ── Expandable detail panel ───────────────────────── -->
                     <StackPanel Visibility="{x:Bind ExpandedVisibility, Mode=OneWay}"
