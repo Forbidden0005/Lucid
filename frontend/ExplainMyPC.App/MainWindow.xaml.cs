@@ -54,6 +54,7 @@ public sealed partial class MainWindow : Window
             "apps"      => typeof(AppsPage),
             "privacy"   => typeof(PrivacyPage),
             "repairs"   => typeof(RepairsPage),
+            "timeline"  => typeof(TimelinePage),
             "settings"  => typeof(SettingsPage),
             _ => null
         };

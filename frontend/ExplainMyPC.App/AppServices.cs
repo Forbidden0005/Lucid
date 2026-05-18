@@ -6,6 +6,7 @@ using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using ExplainMyPC.Services.Narrative;
 using ExplainMyPC.Services.Session;
+using ExplainMyPC.Services.Timeline;
 using Microsoft.UI.Dispatching;
 
 
@@ -38,6 +39,7 @@ public static class AppServices
     private static ActionExecutorRegistry?      _executorRegistry;
     private static IActionExecutionEngine?      _executionEngine;
     private static IOperationHistoryService?    _operationHistory;
+    private static ITimelineAggregationService? _timeline;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -129,6 +131,16 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Unified event stream aggregating intelligence findings, session events,
+    /// narrative checkpoints, and action history into a single chronological log.
+    /// Powers the Operational Timeline page.
+    /// </summary>
+    public static ITimelineAggregationService Timeline =>
+        _timeline ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -199,6 +211,15 @@ public static class AppServices
         ]);
         _executionEngine  = new ActionExecutionEngine(_executorRegistry);
 
+        // ── Operational Timeline ──────────────────────────────────────────────
+        // Aggregates events from intelligence, session, narrative, and history.
+        // Created after all of its upstream services are running.
+        // Passes the DispatcherQueue so history load results can be marshalled
+        // back to the UI thread from the thread-pool read.
+        _timeline = new TimelineAggregationService(
+            _intelligence, _session, _narrative, _operationHistory, uiDispatcher);
+        _timeline.Start(); // must start after narrative (subscribes to NarrativeUpdated)
+
         // Future services registered here, e.g.:
         // _storage  = new WindowsStorageService();
         // _process  = new WindowsProcessService();
@@ -214,6 +235,11 @@ public static class AppServices
         _executionEngine  = null;
         _executorRegistry = null;
         _operationHistory = null;
+
+        // Timeline must stop before narrative/session/intelligence —
+        // it holds subscriptions to all three.
+        _timeline?.Stop();
+        _timeline = null;
 
         _narrative?.Stop();
         _narrative = null;

@@ -137,6 +137,15 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
+                <muxc:NavigationViewItemSeparator />
+
+                <muxc:NavigationViewItem Tag="timeline"
+                                         Content="Timeline">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE823;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
             </muxc:NavigationView.MenuItems>
 
             <!-- ── Footer: Settings ────────────────────────────────────── -->
