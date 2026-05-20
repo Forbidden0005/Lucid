@@ -1,15 +1,14 @@
-using ExplainMyPC.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
 namespace ExplainMyPC.Views;
 
+/// <summary>
+/// Repairs page — safe fix and rollback workflows.
+/// </summary>
 public sealed partial class RepairsPage : Page
 {
-    public RepairsViewModel ViewModel { get; }
-
     public RepairsPage()
     {
         InitializeComponent();
-        ViewModel = App.GetService<RepairsViewModel>();
     }
 }

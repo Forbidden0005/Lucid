@@ -4,82 +4,85 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{StaticResource AppBackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Padding="32,28,32,32" Spacing="20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
 
-            <!-- Header -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Processes"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Live CPU, memory, and disk usage broken down by process."
+                <TextBlock Text="Live CPU, RAM, and process activity"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- Live telemetry summary -->
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+            <!-- Top processes placeholder -->
+            <TextBlock Text="Top Processes by CPU"
+                       Style="{StaticResource SectionTitleStyle}" />
 
-                <Border Grid.Column="0" Style="{StaticResource CardStyle}">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Processes"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.TotalProcessCount, Mode=OneWay}"
-                                   Style="{StaticResource MetricLargeStyle}"
-                                   Foreground="{StaticResource AccentBlueBrush}" />
-                        <TextBlock Text="running"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Column="1" Style="{StaticResource CardStyle}">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="CPU"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.SystemCpuPercent, Mode=OneWay}"
-                                   Style="{StaticResource MetricLargeStyle}"
-                                   Foreground="{StaticResource AccentCyanBrush}" />
-                        <TextBlock Text="% system"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Column="2" Style="{StaticResource CardStyle}">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Memory"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.SystemRamPercent, Mode=OneWay}"
-                                   Style="{StaticResource MetricLargeStyle}"
-                                   Foreground="{StaticResource WarningBrush}" />
-                        <TextBlock Text="% in use"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Process list placeholder -->
-            <Border Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="12">
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="14">
+                    <!-- Process row 1 -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="80" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0"
-                                   Text="Process List"
-                                   Style="{StaticResource SectionTitleStyle}" />
-                        <Button Grid.Column="1"
-                                Content="Start Monitoring"
-                                Command="{x:Bind ViewModel.StartMonitoringCommand}"
-                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <TextBlock Text="Chrome (12 tabs)" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="8.2%" Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Grid.Column="2" Text="1.4 GB" Style="{StaticResource CaptionTextStyle}" />
                     </Grid>
-                    <TextBlock Text="Live process monitoring — with CPU%, memory, disk I/O, and process trees — is available in Phase 2."
-                               Style="{StaticResource BodyTextStyle}"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
+                    <!-- Process row 2 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Visual Studio" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="5.1%" Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Grid.Column="2" Text="890 MB" Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <!-- Process row 3 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Spotify" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="2.3%" Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Grid.Column="2" Text="320 MB" Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <!-- Process row 4 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Discord" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="1.8%" Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Grid.Column="2" Text="280 MB" Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <!-- Process row 5 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Windows Explorer" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="0.9%" Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Grid.Column="2" Text="110 MB" Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

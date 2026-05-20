@@ -4,81 +4,72 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{StaticResource AppBackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Padding="32,28,32,32" Spacing="20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
 
-            <!-- Header -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Security"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Monitor your system for suspicious processes, startup entries, and persistence changes."
+                <TextBlock Text="Threat visibility and protection status"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- Status summary card -->
-            <Border Style="{StaticResource CardStyle}">
-                <Grid ColumnSpacing="20">
+            <!-- Status card -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="24"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="12">
-                        <TextBlock Text="Security Status"
-                                   Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.SecuritySummary, Mode=OneWay}"
-                                   Style="{StaticResource DiagnosticBodyStyle}" />
 
-                        <!-- Threat / Warning counts -->
-                        <StackPanel Orientation="Horizontal" Spacing="16">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Border Style="{StaticResource StatusBadgeStyle}"
-                                        Background="{StaticResource DangerBrush}">
-                                    <TextBlock Text="{x:Bind ViewModel.ThreatCount, Mode=OneWay}"
-                                               FontSize="12" FontWeight="SemiBold"
-                                               Foreground="White" />
-                                </Border>
-                                <TextBlock Text="Threats"
-                                           Style="{StaticResource CaptionTextStyle}"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Border Style="{StaticResource StatusBadgeStyle}"
-                                        Background="{StaticResource WarningBrush}">
-                                    <TextBlock Text="{x:Bind ViewModel.WarningCount, Mode=OneWay}"
-                                               FontSize="12" FontWeight="SemiBold"
-                                               Foreground="White" />
-                                </Border>
-                                <TextBlock Text="Warnings"
-                                           Style="{StaticResource CaptionTextStyle}"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </StackPanel>
+                    <Border Width="48" Height="48" CornerRadius="24"
+                            Background="#1E57D68D" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="20" Foreground="{StaticResource SuccessBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="4">
+                        <TextBlock Text="Protection Active"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="Windows Defender real-time protection is enabled. No threats detected."
+                                   Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
-
-                    <Button Grid.Column="1"
-                            Content="Run Scan"
-                            Command="{x:Bind ViewModel.RunSecurityScanCommand}"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            VerticalAlignment="Center" />
                 </Grid>
             </Border>
 
-            <!-- Scan categories coming in Phase 2 -->
-            <Border Style="{StaticResource CardStyle}">
+            <!-- Placeholder items -->
+            <TextBlock Text="Security Checks"
+                       Style="{StaticResource SectionTitleStyle}" />
+
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="What Security Monitors"
-                               Style="{StaticResource SectionTitleStyle}" />
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="• Unsigned startup executables"  Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Suspicious persistence entries (registry, scheduled tasks)"  Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Hosts file modifications"  Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• DNS configuration changes"  Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• PowerShell execution policy anomalies"  Style="{StaticResource BodyTextStyle}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <FontIcon Glyph="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="14" Foreground="{StaticResource SuccessBrush}" />
+                        <TextBlock Text="Firewall enabled" Style="{StaticResource BodyTextStyle}" />
                     </StackPanel>
-                    <TextBlock Text="Security scanning is available in Phase 2."
-                               Style="{StaticResource CaptionTextStyle}"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <FontIcon Glyph="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="14" Foreground="{StaticResource SuccessBrush}" />
+                        <TextBlock Text="Virus definitions up to date" Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <FontIcon Glyph="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="14" Foreground="{StaticResource SuccessBrush}" />
+                        <TextBlock Text="No suspicious startup entries" Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="14" Foreground="{StaticResource WarningBrush}" />
+                        <TextBlock Text="2 apps have broad network access" Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

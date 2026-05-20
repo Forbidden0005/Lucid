@@ -4,72 +4,65 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{StaticResource AppBackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Padding="32,28,32,32" Spacing="20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
 
-            <!-- Header -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Apps"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Review installed applications, startup entries, and their impact on system performance."
+                <TextBlock Text="Installed applications and startup impact"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- Summary metrics -->
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+            <!-- Startup apps -->
+            <TextBlock Text="Startup Apps (12)"
+                       Style="{StaticResource SectionTitleStyle}" />
 
-                <Border Grid.Column="0" Style="{StaticResource CardStyle}">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Installed Apps"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.InstalledAppCount, Mode=OneWay}"
-                                   Style="{StaticResource MetricLargeStyle}"
-                                   Foreground="{StaticResource AccentBlueBrush}" />
-                        <TextBlock Text="applications"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Column="1" Style="{StaticResource CardStyle}">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Startup Apps"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.StartupAppCount, Mode=OneWay}"
-                                   Style="{StaticResource MetricLargeStyle}"
-                                   Foreground="{StaticResource WarningBrush}" />
-                        <TextBlock Text="launch at boot"
-                                   Style="{StaticResource CaptionTextStyle}" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Apps list placeholder -->
-            <Border Style="{StaticResource CardStyle}">
-                <StackPanel Spacing="12">
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="14">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0"
-                                   Text="Application List"
-                                   Style="{StaticResource SectionTitleStyle}" />
-                        <Button Grid.Column="1"
-                                Content="Load Apps"
-                                Command="{x:Bind ViewModel.LoadAppsCommand}"
-                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <TextBlock Text="Spotify" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="High impact"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource DangerBrush}" />
                     </Grid>
-                    <TextBlock Text="Installed app scanning with startup impact ratings is available in Phase 2."
-                               Style="{StaticResource BodyTextStyle}"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
-                    <TextBlock Text="Uninstall actions will always create a restore point before making changes."
-                               Style="{StaticResource CaptionTextStyle}"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Discord" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="High impact"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource DangerBrush}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="OneDrive" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="Medium impact"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource WarningBrush}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Windows Security" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="Low impact"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource SuccessBrush}" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

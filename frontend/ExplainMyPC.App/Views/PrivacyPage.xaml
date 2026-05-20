@@ -4,57 +4,62 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="{StaticResource AppBackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Padding="32,28,32,32" Spacing="20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
 
-            <!-- Header -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Privacy"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Review app permissions, data access, and privacy exposure on this device."
+                <TextBlock Text="Data exposure and permission visibility"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- Status card -->
-            <Border Style="{StaticResource CardStyle}">
-                <Grid ColumnSpacing="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Spacing="12">
-                        <TextBlock Text="Privacy Status"
-                                   Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.PrivacySummary, Mode=OneWay}"
-                                   Style="{StaticResource DiagnosticBodyStyle}" />
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="Scan"
-                            Command="{x:Bind ViewModel.RunPrivacyScanCommand}"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            VerticalAlignment="Center" />
-                </Grid>
-            </Border>
-
-            <!-- What privacy checks -->
-            <Border Style="{StaticResource CardStyle}">
+            <!-- Privacy status -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="24"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
                 <StackPanel Spacing="16">
-                    <TextBlock Text="Privacy Analysis — Phase 5"
+                    <TextBlock Text="Permission Summary"
                                Style="{StaticResource SectionTitleStyle}" />
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="• App permission usage (camera, microphone, location)"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Windows telemetry configuration"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Browser data exposure indicators"
-                                   Style="{StaticResource BodyTextStyle}" />
-                        <TextBlock Text="• Third-party data collection assessment"
-                                   Style="{StaticResource BodyTextStyle}" />
-                    </StackPanel>
-                    <TextBlock Text="All analysis is local. No personal data leaves this device."
-                               Style="{StaticResource CaptionTextStyle}"
-                               Foreground="{StaticResource TextSecondaryBrush}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Camera access" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="3 apps"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Microphone access" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="5 apps"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Location access" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="2 apps"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Background app refresh" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="8 apps"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource WarningBrush}" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

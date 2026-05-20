@@ -1,0 +1,81 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        ExplainMyPC Card Styles
+
+        ⚠️  IMPORTANT — CompositeTransform shared-instance rule:
+        RenderTransform is intentionally NOT included in these styles.
+        In WinUI 3, Setter.Value objects are shared across all elements
+        that apply the same Style — so one shared CompositeTransform
+        would cause all card hover animations to move simultaneously.
+
+        Every animated card MUST declare its own transform inline:
+
+            <Border Style="{StaticResource CardSurface}" ...>
+                <Border.RenderTransform>
+                    <CompositeTransform />
+                </Border.RenderTransform>
+                ...content...
+            </Border>
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── Card surface variants ─────────────────────────────────────  -->
+
+    <!--
+        CardSurface — the standard interactive card.
+        Uses the AppSurface background (#171A21).
+        Add an inline CompositeTransform when the card needs hover animation.
+    -->
+    <Style x:Key="CardSurface" TargetType="Border">
+        <Setter Property="Background"           Value="{StaticResource AppSurfaceBrush}" />
+        <Setter Property="CornerRadius"         Value="10" />
+        <Setter Property="BorderBrush"          Value="{StaticResource BorderSubtleBrush}" />
+        <Setter Property="BorderThickness"      Value="1" />
+        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+    </Style>
+
+    <!--
+        CardElevated — hero / summary card with a slightly brighter surface.
+        Uses the AppElevatedSurface background (#1E2430).
+        BasedOn CardSurface so it inherits corner radius, border thickness, etc.
+    -->
+    <Style x:Key="CardElevated" TargetType="Border"
+           BasedOn="{StaticResource CardSurface}">
+        <Setter Property="Background"  Value="{StaticResource AppElevatedSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderDefaultBrush}" />
+    </Style>
+
+    <!-- ── Icon container styles ─────────────────────────────────────
+         Fixed-corner-radius tinted panels that hold a FontIcon glyph.
+         Set Width and Height inline — see IconContainerSM/MD/LG tokens.  -->
+
+    <Style x:Key="IconContainerBlue" TargetType="Border">
+        <Setter Property="Background"  Value="{StaticResource StatusInfoTintBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <Style x:Key="IconContainerGreen" TargetType="Border">
+        <Setter Property="Background"  Value="{StaticResource StatusGoodTintBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <Style x:Key="IconContainerWarning" TargetType="Border">
+        <Setter Property="Background"  Value="{StaticResource StatusModerateTintBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <Style x:Key="IconContainerDanger" TargetType="Border">
+        <Setter Property="Background"  Value="{StaticResource StatusCriticalTintBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <Style x:Key="IconContainerCyan" TargetType="Border">
+        <Setter Property="Background"  Value="{StaticResource AccentCyanTintBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+</ResourceDictionary>

@@ -74,6 +74,46 @@
 
     <!--
         ════════════════════════════════════════════════════════════════
+        Semantic status aliases
+        Named by purpose, not by hue — prefer these over raw colours
+        so severity meaning is clear at the call site.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <SolidColorBrush x:Key="StatusGoodBrush"
+                     Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="StatusModerateBrush"
+                     Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="StatusCriticalBrush"
+                     Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="StatusInfoBrush"
+                     Color="{StaticResource AccentBlueColor}" />
+
+    <!--
+        Tint brushes — #26 alpha (38%) overlay of the status colour.
+        Use for icon container backgrounds and severity badge backgrounds.
+    -->
+    <SolidColorBrush x:Key="StatusGoodTintBrush"     Color="#2657D68D" />
+    <SolidColorBrush x:Key="StatusModerateTintBrush" Color="#26FFB347" />
+    <SolidColorBrush x:Key="StatusCriticalTintBrush" Color="#26FF6B6B" />
+    <SolidColorBrush x:Key="StatusInfoTintBrush"     Color="#264EA1FF" />
+
+    <!--
+        Subtle tint brushes — #1A alpha (26%) overlay.
+        Use for impact chip / tag backgrounds inside cards.
+    -->
+    <SolidColorBrush x:Key="StatusGoodSubtleBrush"     Color="#1A57D68D" />
+    <SolidColorBrush x:Key="StatusModerateSubtleBrush" Color="#1AFFB347" />
+    <SolidColorBrush x:Key="StatusCriticalSubtleBrush" Color="#1AFF6B6B" />
+    <SolidColorBrush x:Key="StatusInfoSubtleBrush"     Color="#1A4EA1FF" />
+
+    <!-- Cyan tint — RAM / secondary accent -->
+    <SolidColorBrush x:Key="AccentCyanTintBrush" Color="#2655D6FF" />
+
+    <!-- Bar track — very subtle white overlay used as ProgressBar Background -->
+    <SolidColorBrush x:Key="BarTrackBrush" Color="#1AFFFFFF" />
+
+    <!--
+        ════════════════════════════════════════════════════════════════
         NavigationView theme resource overrides
         These keys are consumed by the WinUI NavigationView control
         template. Placing them here (merged before XamlControlsResources

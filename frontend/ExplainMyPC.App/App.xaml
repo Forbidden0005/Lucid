@@ -6,15 +6,29 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!--
-                    XamlControlsResources must come first so our overrides
-                    in subsequent dictionaries take precedence.
-                -->
+                <!-- WinUI base styles (must come first) -->
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+
+                <!--
+                    ── ExplainMyPC Design System ──────────────────────────
+                    Merge order matters: AppColors must come first because
+                    all other dictionaries reference its brush keys.
+                -->
+
+                <!-- 1. Colour palette + semantic status aliases -->
                 <ResourceDictionary Source="ms-appx:///Styles/AppColors.xaml" />
+
+                <!-- 2. Spacing / thickness / corner-radius tokens -->
+                <ResourceDictionary Source="ms-appx:///Styles/AppSpacing.xaml" />
+
+                <!-- 3. Typography -->
                 <ResourceDictionary Source="ms-appx:///Styles/AppTypography.xaml" />
-                <ResourceDictionary Source="ms-appx:///Styles/AppControls.xaml" />
-                <ResourceDictionary Source="ms-appx:///Styles/GraphStyles.xaml" />
+
+                <!-- 4. Component styles (each depends on AppColors) -->
+                <ResourceDictionary Source="ms-appx:///Styles/AppCards.xaml" />
+                <ResourceDictionary Source="ms-appx:///Styles/AppBadges.xaml" />
+                <ResourceDictionary Source="ms-appx:///Styles/AppProgress.xaml" />
+                <ResourceDictionary Source="ms-appx:///Styles/AppButtons.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

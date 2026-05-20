@@ -1,203 +1,199 @@
-using ExplainMyPC.Models;
+using ExplainMyPC.Helpers;
+using ExplainMyPC.Services.Startup;
 using ExplainMyPC.Services.Telemetry.Samplers;
-using Microsoft.Extensions.Logging;
+using Microsoft.UI.Dispatching;
 
 namespace ExplainMyPC.Services;
 
 /// <summary>
-/// Production telemetry service that reads real hardware data from Windows
-/// Performance Counters and the Win32 API.
+/// Production implementation of ITelemetryService.
 ///
-/// Architecture:
-///   • Each hardware subsystem is isolated in its own sampler class (ICpuSampler,
-///     IRamSampler, IGpuSampler, IDiskSampler, IThermalSampler). Samplers handle
-///     counter lifetime, fallback logic, and unit conversion independently.
-///   • The main poll loop runs on a dedicated Task (ThreadPool thread). All
-///     callers that subscribe to ReadingUpdated MUST marshal to the UI thread
-///     (DispatcherQueue.TryEnqueue) before touching WinUI objects.
-///   • A CancellationTokenSource drives clean shutdown. Stop() signals the token
-///     and awaits the loop task; Dispose() does the same and releases sampler
-///     resources.
+/// Coordinates five sampler classes on a background ThreadPool task and
+/// marshals each completed TelemetrySnapshot to the UI thread via
+/// DispatcherQueue before raising ReadingAvailable.
 ///
-/// Polling intervals:
-///   Hardware counters  →  1 second  (CPU, RAM, GPU, Disk I/O)
-///   Thermal zones      →  5 seconds (ACPI reads change slowly; reduces overhead)
+/// Sampler schedule:
+///   CPU, RAM, GPU, Disk  — every poll cycle (~1.5 s)
+///   Thermal              — every ThermalIntervalTicks cycles (~7.5 s)
+///   Temperature changes slowly; sampling it every cycle adds overhead with
+///   no perceptible benefit.
 ///
-/// Fallback:
-///   If any sampler fails on a given tick (counter disappeared, access denied,
-///   etc.) the exception is caught and logged. The previous value for that metric
-///   is reused so downstream consumers never receive NaN or garbage.
+/// All sampler initialisation (counter discovery, registry reads, warm-up
+/// samples) runs on the background thread so the UI thread stays responsive
+/// at app startup.
 ///
-/// Thread safety:
-///   _cpuTemp / _gpuTemp fields are only written from the poll task and only read
-///   while assembling the reading on the same task — no locking required.
+/// Lifetime:
+///   Created and started by AppServices.Initialize().
+///   Disposed by AppServices.Shutdown() when the main window closes.
 /// </summary>
 public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
 {
-    public event EventHandler<TelemetryReading>? ReadingUpdated;
+    private const int WarmupDelayMs         = 1_000;   // let rate counters settle
+    private const int PollIntervalMs        = 1_500;   // 1.5 s per cycle
+    private const int ThermalIntervalTicks  = 5;       // sample thermal every 5 cycles (~7.5 s)
+    private const int ProcessIntervalTicks  = 3;       // sample processes every 3 cycles (~4.5 s)
+    private const int StartupIntervalTicks  = 40;      // sample startup entries every 40 cycles (~60 s)
 
-    private static readonly TimeSpan PollInterval    = TimeSpan.FromMilliseconds(1000);
-    private const int ThermalPollInterval            = 5; // ticks between thermal reads
+    private readonly DispatcherQueue _dispatcher;
 
-    private readonly ILogger<WindowsTelemetryService> _logger;
-
-    private readonly ICpuSampler     _cpu;
-    private readonly IRamSampler     _ram;
-    private readonly IGpuSampler     _gpu;
-    private readonly IDiskSampler    _disk;
-    private readonly IThermalSampler _thermal;
-
-    // Last-known thermal values; reused between thermal poll ticks.
-    private double _lastCpuTempC;
-    private bool   _thermalAvailable;
+    // Samplers — created on the UI thread, initialised on the background thread.
+    private readonly CpuSampler     _cpu     = new();
+    private readonly RamSampler     _ram     = new();
+    private readonly GpuSampler     _gpu     = new();
+    private readonly DiskSampler    _disk    = new();
+    private readonly ThermalSampler _thermal = new();
+    private readonly ProcessSampler _process = new();
+    private readonly StartupSampler _startup = new();
 
     private CancellationTokenSource? _cts;
     private Task?                    _pollTask;
-    private int                      _thermalTickCounter;
+    private int                      _thermalTick;
+    private int                      _processTick;
+    private int                      _startupTick;
+    private ThermalSample            _lastThermal   = new(0, IsAvailable: false);
+    private IReadOnlyList<Helpers.ProcessSample>          _lastProcesses = [];
+    private IReadOnlyList<StartupEntry>?                  _lastStartupEntries;
+    private bool                     _disposed;
 
-    public WindowsTelemetryService(ILogger<WindowsTelemetryService> logger)
+    public event EventHandler<TelemetrySnapshot>? ReadingAvailable;
+    public TelemetrySnapshot? LastReading { get; private set; }
+
+    public bool IsRunning =>
+        _cts is { IsCancellationRequested: false } &&
+        _pollTask is { IsCompleted: false };
+
+    public WindowsTelemetryService(DispatcherQueue dispatcher)
     {
-        _logger  = logger;
-        _cpu     = new CpuSampler();
-        _ram     = new RamSampler();
-        _gpu     = new GpuSampler();
-        _disk    = new DiskSampler();
-        _thermal = new ThermalSampler();
+        _dispatcher = dispatcher;
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     public void Start()
     {
-        if (_pollTask is { IsCompleted: false }) return;
+        if (_disposed) throw new ObjectDisposedException(nameof(WindowsTelemetryService));
+        if (IsRunning) return;
 
         _cts      = new CancellationTokenSource();
-        _pollTask = Task.Run(() => RunPollLoopAsync(_cts.Token));
+        _pollTask = Task.Run(() => PollLoopAsync(_cts.Token));
     }
 
-    public void Stop()
+    public void Stop() => _cts?.Cancel();
+
+    // ── Background loop ───────────────────────────────────────────────────────
+
+    private async Task PollLoopAsync(CancellationToken ct)
     {
-        _cts?.Cancel();
-        try   { _pollTask?.Wait(TimeSpan.FromSeconds(3)); }
-        catch (AggregateException ex) when (ex.InnerException is OperationCanceledException) { }
-        catch (Exception ex) { _logger.LogWarning(ex, "Telemetry poll task did not stop cleanly."); }
+        // Initialise all samplers on the background thread — counter discovery,
+        // registry reads, and warm-up samples must not block the UI.
+        _cpu.Initialize();
+        _gpu.Initialize();
+        _disk.Initialize();
+        _thermal.Initialize();
+        // RamSampler is stateless — no initialisation required.
 
-        _cts?.Dispose();
-        _cts      = null;
-        _pollTask = null;
+        try { await Task.Delay(WarmupDelayMs, ct).ConfigureAwait(false); }
+        catch (OperationCanceledException) { return; }
+
+        while (!ct.IsCancellationRequested)
+        {
+            TelemetrySnapshot snapshot;
+            try   { snapshot = Sample(); }
+            catch { break; }   // unexpected error — stop cleanly
+
+            // Marshal to UI thread before raising the event so subscribers
+            // can update ObservableObject properties without extra dispatching.
+            _dispatcher.TryEnqueue(() =>
+            {
+                LastReading = snapshot;
+                ReadingAvailable?.Invoke(this, snapshot);
+            });
+
+            try { await Task.Delay(PollIntervalMs, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { break; }
+        }
     }
+
+    // ── Sampling ──────────────────────────────────────────────────────────────
+
+    private TelemetrySnapshot Sample()
+    {
+        // Thermal changes slowly — only refresh every ThermalIntervalTicks cycles.
+        if (_thermalTick == 0)
+            _lastThermal = _thermal.Read();
+        _thermalTick = (_thermalTick + 1) % ThermalIntervalTicks;
+
+        // Process list refreshes every ProcessIntervalTicks cycles (~4.5 s).
+        // Enumeration is fast but CPU-delta accuracy doesn't benefit from sub-second sampling.
+        if (_processTick == 0)
+            _lastProcesses = _process.Sample();
+        _processTick = (_processTick + 1) % ProcessIntervalTicks;
+
+        // Startup entries refresh every StartupIntervalTicks cycles (~60 s).
+        // The registry rarely changes at runtime, so sampling every tick is wasteful.
+        // Fires on tick 0 (initial population) and then every 40 ticks thereafter.
+        if (_startupTick == 0)
+            _lastStartupEntries = _startup.Sample();
+        _startupTick = (_startupTick + 1) % StartupIntervalTicks;
+
+        var cpu  = _cpu.Read();
+        var ram  = _ram.Read();
+        var gpu  = _gpu.Read();
+        var disk = _disk.Read();
+
+        // RamSampler returns MiB; TelemetrySnapshot and ViewModel use GB.
+        const double MibPerGib = 1024.0;
+        double ramUsedGb  = Math.Round(ram.UsedMb  / MibPerGib, 1);
+        double ramTotalGb = Math.Round(ram.TotalMb / MibPerGib, 0);
+
+        // DiskSampler aggregates all fixed drives; compute overall usage %.
+        double diskPct = disk.TotalGb > 0
+            ? Math.Round((double)disk.UsedGb / disk.TotalGb * 100.0, 1)
+            : 0;
+
+        return new TelemetrySnapshot(
+            // Core
+            CpuPercent:    Math.Round(cpu.UsagePercent, 1),
+            CpuFrequencyGhz: Math.Round(cpu.FrequencyGhz, 2),
+            CpuCoreCount:  Environment.ProcessorCount,
+            RamPercent:    Math.Round(ram.UsagePercent, 1),
+            RamUsedGb:     ramUsedGb,
+            RamTotalGb:    ramTotalGb,
+            DiskPercent:   diskPct,
+            DiskUsedGb:    disk.UsedGb,
+            DiskTotalGb:   disk.TotalGb,
+            GpuPercent:    Math.Round(gpu.UsagePercent, 1),
+            GpuAvailable:  _gpu.IsAvailable,
+
+            // Extended (Phase 3)
+            GpuVramUsedGb:           Math.Round(gpu.VramUsedGb,  1),
+            GpuVramTotalGb:          Math.Round(gpu.VramTotalGb, 1),
+            DiskReadMbps:            Math.Round(disk.ReadMbps,   1),
+            DiskWriteMbps:           Math.Round(disk.WriteMbps,  1),
+            CpuTemperatureCelsius:   Math.Round(_lastThermal.CpuCelsius, 1),
+            CpuTemperatureAvailable: _lastThermal.IsAvailable,
+
+            // Process samples (Phase 4) — cached between sampling ticks
+            TopProcesses:            _lastProcesses,
+
+            // Startup entries (Phase 5) — refreshed every ~60 s
+            StartupEntries:          _lastStartupEntries);
+    }
+
+    // ── IDisposable ───────────────────────────────────────────────────────────
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         Stop();
+
         _cpu.Dispose();
         _gpu.Dispose();
         _disk.Dispose();
         _thermal.Dispose();
-        // RamSampler is not IDisposable (pure P/Invoke, no handles held).
-    }
-
-    // ── Poll loop ─────────────────────────────────────────────────────────────
-
-    private async Task RunPollLoopAsync(CancellationToken ct)
-    {
-        InitializeSamplers();
-
-        while (!ct.IsCancellationRequested)
-        {
-            var deadline = DateTimeOffset.UtcNow.Add(PollInterval);
-
-            try
-            {
-                var reading = BuildReading();
-                ReadingUpdated?.Invoke(this, reading);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unhandled error assembling telemetry reading.");
-            }
-
-            // Sleep for the remainder of the 1-second window so drift doesn't
-            // accumulate when sampling takes non-trivial time.
-            var remaining = deadline - DateTimeOffset.UtcNow;
-            if (remaining > TimeSpan.Zero)
-            {
-                try { await Task.Delay(remaining, ct); }
-                catch (OperationCanceledException) { break; }
-            }
-        }
-    }
-
-    private void InitializeSamplers()
-    {
-        SafeInit("CPU",     _cpu.Initialize);
-        SafeInit("GPU",     _gpu.Initialize);
-        SafeInit("Disk",    _disk.Initialize);
-        SafeInit("Thermal", _thermal.Initialize);
-        // RamSampler requires no initialization.
-    }
-
-    private void SafeInit(string name, Action init)
-    {
-        try   { init(); }
-        catch (Exception ex) { _logger.LogWarning(ex, "{Sampler} sampler failed to initialize.", name); }
-    }
-
-    // ── Reading assembly ──────────────────────────────────────────────────────
-
-    private TelemetryReading BuildReading()
-    {
-        var cpu  = SafeRead("CPU",  () => _cpu.Read(),  new CpuSample(0, 3.0));
-        var ram  = SafeRead("RAM",  () => _ram.Read(),  new RamSample(0, 0, 0));
-        var gpu  = SafeRead("GPU",  () => _gpu.Read(),  new GpuSample(0, 0, 0));
-        var disk = SafeRead("Disk", () => _disk.Read(), new DiskSample(0, 0, 0, 0));
-
-        RefreshThermalIfDue();
-
-        double diskIoPct = disk.ReadMbps + disk.WriteMbps > 0
-            ? Math.Clamp((disk.ReadMbps + disk.WriteMbps) / 3.7 * 100.0, 0, 100)
-            : 0;
-
-        return new TelemetryReading(
-            Timestamp:            DateTimeOffset.Now,
-
-            CpuPercent:           cpu.UsagePercent,
-            CpuTemperatureCelsius: _thermalAvailable ? _lastCpuTempC : 0,
-            CpuFrequencyGhz:      cpu.FrequencyGhz,
-
-            RamPercent:           ram.UsagePercent,
-            RamUsedMb:            ram.UsedMb,
-            RamTotalMb:           ram.TotalMb,
-
-            GpuPercent:           gpu.UsagePercent,
-            GpuTemperatureCelsius: 0,            // requires kernel driver (Phase 3)
-            GpuVramUsedGb:        gpu.VramUsedGb,
-            GpuVramTotalGb:       gpu.VramTotalGb,
-
-            DiskReadMbps:         disk.ReadMbps,
-            DiskWriteMbps:        disk.WriteMbps,
-            DiskUsagePercent:     diskIoPct,
-            DiskUsedGb:           disk.UsedGb,
-            DiskTotalGb:          disk.TotalGb);
-    }
-
-    private void RefreshThermalIfDue()
-    {
-        if (++_thermalTickCounter < ThermalPollInterval) return;
-        _thermalTickCounter = 0;
-
-        var t = SafeRead("Thermal", () => _thermal.Read(), new ThermalSample(0, false));
-        _thermalAvailable = t.IsAvailable;
-        if (t.IsAvailable) _lastCpuTempC = t.CpuCelsius;
-    }
-
-    private T SafeRead<T>(string name, Func<T> read, T fallback)
-    {
-        try   { return read(); }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "{Sampler} sampler read failed; using fallback.", name);
-            return fallback;
-        }
+        _process.Dispose();
+        // RamSampler holds no resources.
     }
 }

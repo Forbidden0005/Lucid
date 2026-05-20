@@ -1,28 +1,46 @@
-using ExplainMyPC.Models;
+using ExplainMyPC.Helpers;
 
 namespace ExplainMyPC.Services;
 
 /// <summary>
-/// Produces periodic system telemetry readings.
+/// Contract for the live hardware telemetry feed.
 ///
-/// Phase 1: implemented by MockTelemetryService (random data).
-/// Phase 2: implemented by a Rust FFI bridge that calls real Windows APIs.
+/// Implementations sample CPU, RAM, GPU, Disk, and thermal data on a
+/// background thread and raise ReadingAvailable on the UI thread so
+/// ViewModels can update ObservableObject properties directly without
+/// additional dispatcher calls.
 ///
-/// Polling contract (per architecture.md):
-///   CPU / RAM / GPU  →  ReadingUpdated fires ~every 1 second
-///   Disk I/O          →  included in the same reading but at ~2s fidelity
+/// Lifetime:
+///   The service is started once from AppServices.Initialize() and runs for
+///   the application lifetime. Individual ViewModels subscribe/unsubscribe
+///   to ReadingAvailable as they load and unload — they must NOT call
+///   Start() or Stop() directly.
+///
+/// Back-navigation:
+///   Use LastReading to seed ViewModel state immediately when a page is
+///   navigated back to, avoiding a blank display until the next poll fires.
 /// </summary>
 public interface ITelemetryService
 {
     /// <summary>
-    /// Raised on a background thread when a new telemetry snapshot is ready.
-    /// Subscribers MUST marshal to the UI thread before touching WinUI objects.
+    /// Raised on the UI thread after each successful poll cycle.
+    /// Safe to update ObservableObject properties directly from handlers.
     /// </summary>
-    event EventHandler<TelemetryReading> ReadingUpdated;
+    event EventHandler<TelemetrySnapshot>? ReadingAvailable;
 
-    /// <summary>Start emitting readings.</summary>
+    /// <summary>
+    /// The most recent snapshot, or null before the first reading arrives.
+    /// Subscribers should use this to initialize ViewModel state immediately
+    /// when a page loads mid-session.
+    /// </summary>
+    TelemetrySnapshot? LastReading { get; }
+
+    /// <summary>True while the background poll loop is active.</summary>
+    bool IsRunning { get; }
+
+    /// <summary>Starts the background polling loop. Called once from AppServices.</summary>
     void Start();
 
-    /// <summary>Stop emitting readings without disposing the service.</summary>
+    /// <summary>Signals the poll loop to stop. Resources remain available.</summary>
     void Stop();
 }
