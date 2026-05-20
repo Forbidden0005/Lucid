@@ -15,6 +15,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <!--
+      Disable XBind diagnostics on CLI builds.
+      The 2-pass XAML pipeline (Pass1 → XamlPreCompile → Pass2) requires an
+      intermediate DLL that only VS design-time builds produce. Disabling this
+      lets dotnet build complete cleanly; x:Bind still works at runtime.
+      Visual Studio re-enables it automatically via its own build path.
+    -->
+    <EnableXBindDiagnostics>false</EnableXBindDiagnostics>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,6 +35,10 @@
     <PackageReference Include="CommunityToolkit.Mvvm"
                       Version="8.2.2" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter"
+                      Version="8.0.0" />
+    <PackageReference Include="System.Management"
+                      Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController"
                       Version="8.0.0" />
   </ItemGroup>
 
@@ -55,8 +67,12 @@
     <Compile Include="ViewModels\TrendVisualizationHelper.cs" />
     <Compile Include="ViewModels\InsightDetailChartData.cs" />
     <Compile Include="ViewModels\InsightDetailViewModel.cs" />
+    <Compile Include="ViewModels\RepairsViewModel.cs" />
+    <Compile Include="ViewModels\StorageViewModel.cs" />
+    <Compile Include="ViewModels\ProcessesViewModel.cs" />
+    <Compile Include="ViewModels\SecurityViewModel.cs" />
     <None Include="ViewModels\**"
-          Exclude="ViewModels\DashboardViewModel.cs;ViewModels\InsightCardViewModel.cs;ViewModels\InsightGroupViewModel.cs;ViewModels\ActionCardViewModel.cs;ViewModels\ActionLogEntryViewModel.cs;ViewModels\ActionExecutionViewModel.cs;ViewModels\InsightsPageViewModel.cs;ViewModels\HistoryRecordViewModel.cs;ViewModels\NarrativeViewModel.cs;ViewModels\TimelineEventViewModel.cs;ViewModels\TimelineGroupHeaderViewModel.cs;ViewModels\TimelinePageViewModel.cs;ViewModels\SparklinePoint.cs;ViewModels\SparklineData.cs;ViewModels\TrendVisualizationHelper.cs;ViewModels\InsightDetailChartData.cs;ViewModels\InsightDetailViewModel.cs" />
+          Exclude="ViewModels\DashboardViewModel.cs;ViewModels\InsightCardViewModel.cs;ViewModels\InsightGroupViewModel.cs;ViewModels\ActionCardViewModel.cs;ViewModels\ActionLogEntryViewModel.cs;ViewModels\ActionExecutionViewModel.cs;ViewModels\InsightsPageViewModel.cs;ViewModels\HistoryRecordViewModel.cs;ViewModels\NarrativeViewModel.cs;ViewModels\TimelineEventViewModel.cs;ViewModels\TimelineGroupHeaderViewModel.cs;ViewModels\TimelinePageViewModel.cs;ViewModels\SparklinePoint.cs;ViewModels\SparklineData.cs;ViewModels\TrendVisualizationHelper.cs;ViewModels\InsightDetailChartData.cs;ViewModels\InsightDetailViewModel.cs;ViewModels\RepairsViewModel.cs" />
 
     <!--
       Services: compile the live telemetry service and its samplers.
@@ -162,6 +178,26 @@
     <Compile Include="Services\Timeline\TimelineEvent.cs" />
     <Compile Include="Services\Timeline\ITimelineAggregationService.cs" />
     <Compile Include="Services\Timeline\TimelineAggregationService.cs" />
+    <Compile Include="Services\Storage\StorageModels.cs" />
+    <Compile Include="Services\Storage\FileSystemScanner.cs" />
+    <Compile Include="Services\Storage\StorageCategoryAnalyzer.cs" />
+    <Compile Include="Services\Storage\DuplicateDetectionService.cs" />
+    <Compile Include="Services\Storage\StorageAnalysisService.cs" />
+    <Compile Include="Services\Execution\Executors\DeleteLargeFileExecutor.cs" />
+    <Compile Include="Services\Execution\Executors\DeleteDuplicateGroupExecutor.cs" />
+    <Compile Include="Services\Execution\Executors\CleanOldDownloadsExecutor.cs" />
+    <Compile Include="Services\Process\ProcessRecord.cs" />
+    <Compile Include="Services\Process\ProcessClassifier.cs" />
+    <Compile Include="Services\Process\ProcessBehaviorTracker.cs" />
+    <Compile Include="Services\Process\ProcessIntelligenceService.cs" />
+    <Compile Include="Services\Execution\Executors\TerminateProcessExecutor.cs" />
+    <Compile Include="Services\Execution\Executors\OpenProcessLocationExecutor.cs" />
+    <Compile Include="Services\Security\SecurityModels.cs" />
+    <Compile Include="Services\Security\SignatureVerificationService.cs" />
+    <Compile Include="Services\Security\WindowsSecurityStatusReader.cs" />
+    <Compile Include="Services\Security\PersistenceScanner.cs" />
+    <Compile Include="Services\Security\SecurityIntelligenceService.cs" />
+    <Compile Include="Services\Execution\Executors\OpenVirusTotalExecutor.cs" />
     <None Include="Services\**"
           Exclude="Services\ITelemetryService.cs;Services\ITelemetryHistoryBuffer.cs;Services\WindowsTelemetryService.cs;Services\TelemetryHistoryBuffer.cs;Services\Telemetry\TelemetryHistory.cs;Services\Telemetry\Samplers\CpuSampler.cs;Services\Telemetry\Samplers\RamSampler.cs;Services\Telemetry\Samplers\GpuSampler.cs;Services\Telemetry\Samplers\DiskSampler.cs;Services\Telemetry\Samplers\ThermalSampler.cs;Services\Telemetry\Samplers\ProcessSampler.cs;Services\Intelligence\SystemInsight.cs;Services\Intelligence\SystemAction.cs;Services\Intelligence\IInsightRule.cs;Services\Intelligence\ISynthesisRule.cs;Services\Intelligence\InsightSynthesisEngine.cs;Services\Intelligence\TrendAnalysis.cs;Services\Intelligence\ISystemInsightEngine.cs;Services\Intelligence\SystemInsightEngine.cs;Services\Intelligence\ProcessAttribution.cs;Services\Intelligence\ProcessAttributionHelper.cs;Services\Intelligence\Rules\SustainedHighCpuRule.cs;Services\Intelligence\Rules\ElevatedRamPressureRule.cs;Services\Intelligence\Rules\AbnormalGpuUsageRule.cs;Services\Intelligence\Rules\LowDiskSpaceRule.cs;Services\Intelligence\Rules\HighDiskThroughputRule.cs;Services\Intelligence\Rules\HighCpuTemperatureRule.cs;Services\Intelligence\Rules\SystemRunningWellRule.cs;Services\Intelligence\Rules\SharedProcessSynthesisRule.cs;Services\Intelligence\Rules\RisingRamTrendRule.cs;Services\Intelligence\Rules\CpuEscalationRule.cs;Services\Intelligence\Rules\PeriodicCpuSpikeRule.cs;Services\Intelligence\Rules\WorseningThermalTrendRule.cs;Services\Intelligence\Rules\LongRunningDiskPressureRule.cs;Services\Startup\StartupEntry.cs;Services\Startup\StartupSampler.cs;Services\Startup\IStartupManagementService.cs;Services\Startup\StartupManagementService.cs;Services\Startup\StartupBackupSnapshot.cs;Services\Intelligence\Rules\StartupItemCountRule.cs;Services\Intelligence\Rules\HighImpactStartupAppsRule.cs;Services\Intelligence\Rules\StartupResourceCorrelationRule.cs;Services\Baseline\WelfordStats.cs;Services\Baseline\MachineBaseline.cs;Services\Baseline\ISystemBaselineService.cs;Services\Baseline\SystemBaselineService.cs;Services\Intelligence\Rules\BaselineCpuAnomalyRule.cs;Services\Intelligence\Rules\BaselineRamAnomalyRule.cs;Services\Intelligence\Rules\BaselineThermalAnomalyRule.cs;Services\Intelligence\Forecasting\ForecastHelper.cs;Services\Intelligence\Rules\RamPressureForecastRule.cs;Services\Intelligence\Rules\DiskExhaustionForecastRule.cs;Services\Intelligence\Rules\ThermalRunawayForecastRule.cs;Services\Intelligence\Rules\StartupDegradationForecastRule.cs;Services\Narrative\OperationalNarrative.cs;Services\Narrative\IOperationalNarrativeEngine.cs;Services\Narrative\OperationalNarrativeEngine.cs;Services\Execution\ActionExecutionLog.cs;Services\Execution\ActionExecutionContext.cs;Services\Execution\ActionExecutionResult.cs;Services\Execution\IActionExecutor.cs;Services\Execution\ActionExecutorRegistry.cs;Services\Execution\IActionExecutionEngine.cs;Services\Execution\ActionExecutionEngine.cs;Services\Execution\Executors\OpenApplicationExecutorBase.cs;Services\Execution\Executors\OpenTaskManagerExecutor.cs;Services\Execution\Executors\OpenStorageSenseExecutor.cs;Services\Execution\Executors\OpenStartupAppsExecutor.cs;Services\Execution\Executors\OpenWindowsSecurityExecutor.cs;Services\Execution\Executors\TempFileCleanupExecutor.cs;Services\Cleanup\CleanupScanner.cs;Services\Execution\Executors\RecycleBinCleanupExecutor.cs;Services\Execution\Executors\WindowsUpdateCacheExecutor.cs;Services\Execution\Executors\DeliveryOptimizationCacheExecutor.cs;Services\Execution\Executors\BrowserCacheCleanupExecutor.cs;Services\Execution\Executors\StartupAppDisableExecutor.cs;Services\Execution\Executors\StartupAppEnableExecutor.cs;Services\Execution\Executors\StartupStateBackupExecutor.cs;Services\Execution\Executors\StartupStateRestoreExecutor.cs;Services\Repair\ProcessExecutionHelper.cs;Services\Repair\CommandOutputParser.cs;Services\Repair\RepairOperationMetadata.cs;Services\Execution\Executors\SfcScanExecutor.cs;Services\Execution\Executors\DismRestoreHealthExecutor.cs;Services\Execution\Executors\FlushDnsExecutor.cs;Services\Execution\Executors\WinsockResetExecutor.cs;Services\Execution\Executors\WindowsStoreResetExecutor.cs;Services\Execution\Executors\NetworkAdapterResetExecutor.cs;Services\History\OperationRecord.cs;Services\History\IOperationHistoryService.cs;Services\History\OperationHistoryService.cs;Services\Session\SessionEvent.cs;Services\Session\SessionContext.cs;Services\Session\ISessionContextService.cs;Services\Session\SessionContextService.cs;Services\Timeline\TimelineEvent.cs;Services\Timeline\ITimelineAggregationService.cs;Services\Timeline\TimelineAggregationService.cs" />
 

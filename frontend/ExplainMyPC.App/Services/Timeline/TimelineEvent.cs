@@ -51,6 +51,22 @@ public enum TimelineEventType
     ActionRollback      = 32,
     /// <summary>An action execution failed.</summary>
     ActionFailed        = 33,
+
+    // ── Storage ───────────────────────────────────────────────────────────────
+    /// <summary>A storage intelligence scan has started.</summary>
+    StorageScanStarted   = 40,
+    /// <summary>A storage intelligence scan completed and produced results.</summary>
+    StorageScanCompleted = 41,
+
+    // ── Process ───────────────────────────────────────────────────────────────
+    /// <summary>A process behavioral anomaly was detected.</summary>
+    ProcessAnomaly       = 50,
+
+    // ── Security ──────────────────────────────────────────────────────────────
+    /// <summary>A security intelligence scan has started.</summary>
+    SecurityScanStarted   = 60,
+    /// <summary>A security intelligence scan completed and produced results.</summary>
+    SecurityScanCompleted = 61,
 }
 
 /// <summary>

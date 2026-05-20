@@ -341,3 +341,50 @@ ExplainMyPC should eventually feel like:
 
 The app should make users feel:
 > “For the first time, I actually understand my computer.”
+
+---
+
+# Build Commands
+
+## Frontend (WinUI 3)
+
+`dotnet build` **must** include `-p:Platform=x64` (or x86/arm64).
+`WindowsAppSDKSelfContained=true` does not support AnyCPU — the build hard-fails without a platform.
+
+```
+# Debug build (run from frontend/)
+dotnet build ExplainMyPC.slnx -c Debug -p:Platform=x64
+
+# Release build
+dotnet build ExplainMyPC.slnx -c Release -p:Platform=x64
+```
+
+Warning `NETSDK1206` (version-specific RIDs) is non-critical — it comes from the Windows App SDK NuGet, not your code. Ignore it.
+
+
+---
+
+# XAML Build Pipeline Notes
+
+## XamlPreCompile — known CLI limitation
+
+`XamlPreCompile` (the step that produces `obj/x64/Debug/.../intermediatexaml/ExplainMyPC.App.dll`) is
+defined in Visual Studio's `Microsoft.CSharp.CurrentVersion.targets` — **not** in the .NET SDK.
+
+**Consequence:** `dotnet build` silently skips `XamlPreCompile`. This works fine incrementally because
+the intermediate DLL from the previous VS/MSBuild run is reused. If that DLL is ever deleted (e.g. after
+`dotnet clean`, or a git clean), `dotnet build` will fail with:
+
+```
+Microsoft.UI.Xaml.Markup.Compiler.interop.targets(590): error MSB3073:
+XamlCompiler.exe ... exited with code 1
+```
+
+**Fix:** Run the VS MSBuild reset script once:
+
+```bat
+C:\Users\tyler\build_vs.bat
+```
+
+This calls `VsDevCmd.bat` + VS `msbuild.exe`, which runs `XamlPreCompile` properly, regenerates the
+intermediate DLL, and `dotnet build` works again from that point.

@@ -2,102 +2,352 @@
     x:Class="ExplainMyPC.Views.RepairsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Background="{StaticResource AppBackgroundBrush}">
+    xmlns:vm="using:ExplainMyPC.ViewModels"
+    Background="{StaticResource AppBackgroundBrush}"
+    Loaded="Page_Loaded">
+
+    <!--
+        RepairsPage.xaml — Repair Center
+        Six repair actions, each with live log streaming, dry-run preview,
+        elevation awareness, and restart-required warnings.
+
+        Binding model:
+          Page → RepairsViewModel (x:Bind, OneWay)
+          Cards ListView → RepairCardViewModel list via DataTemplate x:DataType
+    -->
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Padding="32" Spacing="24">
+        <StackPanel Padding="32,32,32,48" Spacing="24">
 
+            <!-- ═══════════════════════════════════════════════════════
+                 PAGE HEADER
+            ═══════════════════════════════════════════════════════ -->
             <StackPanel Spacing="4">
-                <TextBlock Text="Repairs"
+                <TextBlock Text="Repair Center"
                            Style="{StaticResource PageTitleStyle}" />
-                <TextBlock Text="Safe fix and rollback workflows"
+                <TextBlock Text="Safe, transparent wrappers around trusted Windows repair tools"
                            Style="{StaticResource PageSubtitleStyle}" />
             </StackPanel>
 
-            <!-- Available repairs -->
-            <TextBlock Text="Available Repairs"
-                       Style="{StaticResource SectionTitleStyle}" />
-
-            <!-- SFC -->
-            <Border Background="{StaticResource AppSurfaceBrush}"
-                    CornerRadius="10" Padding="20"
-                    BorderBrush="{StaticResource BorderSubtleBrush}"
+            <!-- ═══════════════════════════════════════════════════════
+                 ELEVATION WARNING BANNER
+            ═══════════════════════════════════════════════════════ -->
+            <Border Visibility="{x:Bind ViewModel.ElevationWarningVisibility, Mode=OneWay}"
+                    Background="{StaticResource StatusModerateSubtleBrush}"
+                    CornerRadius="10" Padding="16,12"
+                    BorderBrush="{StaticResource StatusModerateBrush}"
                     BorderThickness="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <Border Width="40" Height="40" CornerRadius="8"
-                            Background="#1E4EA1FF" VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE90F;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="18" Foreground="{StaticResource AccentBlueBrush}"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-
-                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="2">
-                        <TextBlock Text="System File Checker (SFC)"
-                                   Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="Scans and repairs protected Windows system files. Safe and non-destructive."
-                                   Style="{StaticResource CaptionTextStyle}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <FontIcon Glyph="&#xE7BA;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="16"
+                              Foreground="{StaticResource StatusModerateBrush}"
+                              VerticalAlignment="Center" />
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Not running as administrator"
+                                   Style="{StaticResource CardTitleStyle}"
+                                   Foreground="{StaticResource StatusModerateBrush}" />
+                        <TextBlock Text="Repair tools that modify system files require administrator privileges. Re-launch ExplainMyPC as administrator to enable them."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
-                </Grid>
+                </StackPanel>
             </Border>
 
-            <!-- DISM -->
-            <Border Background="{StaticResource AppSurfaceBrush}"
-                    CornerRadius="10" Padding="20"
-                    BorderBrush="{StaticResource BorderSubtleBrush}"
-                    BorderThickness="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+            <!-- ═══════════════════════════════════════════════════════
+                 REPAIR CARDS
+            ═══════════════════════════════════════════════════════ -->
+            <ItemsControl ItemsSource="{x:Bind ViewModel.RepairCards, Mode=OneWay}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="16" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RepairCardViewModel">
+                        <Border Style="{StaticResource CardSurface}" Padding="0">
+                            <StackPanel>
 
-                    <Border Width="40" Height="40" CornerRadius="8"
-                            Background="#1E4EA1FF" VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE90F;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="18" Foreground="{StaticResource AccentBlueBrush}"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                                <!-- ── Card header ─────────────────────── -->
+                                <Grid Padding="20,18,20,16" ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="2">
-                        <TextBlock Text="DISM Health Restore"
-                                   Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="Repairs the Windows component store. Run this if SFC reports issues it cannot fix."
-                                   Style="{StaticResource CaptionTextStyle}" />
-                    </StackPanel>
-                </Grid>
-            </Border>
+                                    <!-- Icon -->
+                                    <Border Width="40" Height="40" CornerRadius="8"
+                                            Background="{StaticResource StatusInfoSubtleBrush}">
+                                        <FontIcon Glyph="&#xE90F;"
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="18"
+                                                  Foreground="{StaticResource AccentBlueBrush}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                    </Border>
 
-            <!-- Disk cleanup -->
-            <Border Background="{StaticResource AppSurfaceBrush}"
-                    CornerRadius="10" Padding="20"
-                    BorderBrush="{StaticResource BorderSubtleBrush}"
-                    BorderThickness="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                                    <!-- Name + purpose -->
+                                    <StackPanel Grid.Column="1" Spacing="3"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind DisplayName}"
+                                                   Style="{StaticResource CardTitleStyle}" />
+                                        <TextBlock Text="{x:Bind Purpose}"
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
 
-                    <Border Width="40" Height="40" CornerRadius="8"
-                            Background="#1E57D68D" VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
-                                  FontSize="18" Foreground="{StaticResource SuccessBrush}"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                                    <!-- Risk badge -->
+                                    <Border Grid.Column="2" CornerRadius="6"
+                                            Padding="8,4" VerticalAlignment="Top"
+                                            Background="{StaticResource AppBackgroundBrush}"
+                                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                                            BorderThickness="1">
+                                        <TextBlock Text="{x:Bind RiskLabel}"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </Border>
+                                </Grid>
 
-                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="2">
-                        <TextBlock Text="Safe Disk Cleanup"
-                                   Style="{StaticResource CardTitleStyle}" />
-                        <TextBlock Text="Removes temporary files, caches, and update leftovers. Always explains what will be deleted."
-                                   Style="{StaticResource CaptionTextStyle}" />
-                    </StackPanel>
-                </Grid>
-            </Border>
+                                <!-- ── Metadata chips ──────────────────── -->
+                                <StackPanel Orientation="Horizontal" Spacing="8"
+                                            Padding="20,0,20,14">
+                                    <!-- Duration -->
+                                    <Border Background="{StaticResource AppBackgroundBrush}"
+                                            CornerRadius="6" Padding="8,3"
+                                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <FontIcon Glyph="&#xE916;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="10"
+                                                      Foreground="{StaticResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{x:Bind ExpectedDuration}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Restart required chip -->
+                                    <Border Background="{StaticResource StatusModerateSubtleBrush}"
+                                            CornerRadius="6" Padding="8,3"
+                                            Visibility="{x:Bind MetadataRestartWarningVisibility}">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <FontIcon Glyph="&#xE777;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="10"
+                                                      Foreground="{StaticResource StatusModerateBrush}" />
+                                            <TextBlock Text="Restart required"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource StatusModerateBrush}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Elevation blocked chip -->
+                                    <Border Background="{StaticResource StatusModerateSubtleBrush}"
+                                            CornerRadius="6" Padding="8,3"
+                                            Visibility="{x:Bind ElevationBlockedVisibility}">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <FontIcon Glyph="&#xE7EF;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="10"
+                                                      Foreground="{StaticResource StatusModerateBrush}" />
+                                            <TextBlock Text="Needs admin"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource StatusModerateBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- ── How-it-works (collapsible) ─────── -->
+                                <Border Padding="20,0,20,12"
+                                        Visibility="{x:Bind IsExpanded, Mode=OneWay}">
+                                    <Border Background="{StaticResource AppBackgroundBrush}"
+                                            CornerRadius="8" Padding="14,10">
+                                        <TextBlock Text="{x:Bind HowItWorks}"
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   TextWrapping="Wrap" />
+                                    </Border>
+                                </Border>
+
+                                <!-- ── Restart warning (metadata) ─────── -->
+                                <Border Padding="20,0,20,12"
+                                        Visibility="{x:Bind MetadataRestartWarningVisibility}">
+                                    <Border Background="{StaticResource StatusModerateSubtleBrush}"
+                                            CornerRadius="8" Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE7BA;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="13"
+                                                      Foreground="{StaticResource StatusModerateBrush}"
+                                                      VerticalAlignment="Center" />
+                                            <TextBlock TextWrapping="Wrap"
+                                                       Style="{StaticResource CaptionTextStyle}"
+                                                       Foreground="{StaticResource StatusModerateBrush}">
+                                                <Run FontWeight="SemiBold" Text="Restart required: " />
+                                                <Run Text="{x:Bind RestartReason}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </Border>
+
+                                <!-- ── Divider ─────────────────────────── -->
+                                <Border Height="1"
+                                        Background="{StaticResource BorderSubtleBrush}"
+                                        Margin="0,0,0,14" />
+
+                                <!-- ── Button row ──────────────────────── -->
+                                <StackPanel Orientation="Horizontal" Spacing="10"
+                                            Padding="20,0,20,16">
+
+                                    <!-- Run button -->
+                                    <Button Style="{StaticResource PrimaryButton}"
+                                            Visibility="{x:Bind RunButtonVisibility, Mode=OneWay}"
+                                            Command="{x:Bind RunCommand}"
+                                            IsEnabled="{x:Bind IsAppsElevated}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE768;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="13" />
+                                            <TextBlock Text="Run" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Preview button -->
+                                    <Button Style="{StaticResource SecondaryButton}"
+                                            Visibility="{x:Bind PreviewButtonVisibility, Mode=OneWay}"
+                                            Command="{x:Bind PreviewCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE8FF;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="13" />
+                                            <TextBlock Text="Preview" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Cancel button (shown while running) -->
+                                    <Button Style="{StaticResource SecondaryButton}"
+                                            Visibility="{x:Bind CancelButtonVisibility, Mode=OneWay}"
+                                            Command="{x:Bind CancelCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE711;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="13" />
+                                            <TextBlock Text="Cancel" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- How it works toggle -->
+                                    <Button Style="{StaticResource SecondaryButton}"
+                                            Command="{x:Bind ToggleHowItWorksCommand}"
+                                            Visibility="{x:Bind RunButtonVisibility, Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE946;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="13" />
+                                            <TextBlock Text="How it works" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Running indicator -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                VerticalAlignment="Center"
+                                                Visibility="{x:Bind IsRunning, Mode=OneWay}">
+                                        <ProgressRing IsActive="{x:Bind IsRunning, Mode=OneWay}"
+                                                      Width="16" Height="16"
+                                                      Foreground="{StaticResource AccentBlueBrush}" />
+                                        <TextBlock Text="Running…"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- ── Result banner ───────────────────── -->
+                                <Border Margin="20,0,20,14"
+                                        CornerRadius="8" Padding="12,10"
+                                        Visibility="{x:Bind ResultBannerVisibility, Mode=OneWay}"
+                                        Background="{StaticResource StatusGoodSubtleBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <FontIcon Glyph="&#xE73E;"
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="14"
+                                                  Foreground="{StaticResource StatusGoodBrush}"
+                                                  VerticalAlignment="Center" />
+                                        <TextBlock Text="{x:Bind ResultMessage, Mode=OneWay}"
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   Foreground="{StaticResource StatusGoodBrush}"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- ── Restart required after execution ── -->
+                                <Border Margin="20,0,20,14"
+                                        CornerRadius="8" Padding="12,10"
+                                        Visibility="{x:Bind ResultRestartWarningVisibility, Mode=OneWay}"
+                                        Background="{StaticResource StatusModerateSubtleBrush}"
+                                        BorderBrush="{StaticResource StatusModerateBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <FontIcon Glyph="&#xE777;"
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="14"
+                                                  Foreground="{StaticResource StatusModerateBrush}"
+                                                  VerticalAlignment="Center" />
+                                        <TextBlock Text="Restart Windows now for this change to take effect."
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   Foreground="{StaticResource StatusModerateBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- ── Live log panel ──────────────────── -->
+                                <Border Margin="20,0,20,16"
+                                        Visibility="{x:Bind LogVisibility, Mode=OneWay}"
+                                        Background="{StaticResource AppBackgroundBrush}"
+                                        CornerRadius="8"
+                                        MaxHeight="240">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  Padding="12,8">
+                                        <ItemsControl ItemsSource="{x:Bind LogEntries, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ActionLogEntryViewModel">
+                                                    <Grid ColumnSpacing="8" Margin="0,1">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{x:Bind Timestamp}"
+                                                                   FontFamily="Consolas"
+                                                                   FontSize="10"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   VerticalAlignment="Top" />
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{x:Bind LevelLabel}"
+                                                                   FontFamily="Consolas"
+                                                                   FontSize="10"
+                                                                   Foreground="{x:Bind LevelBrush}"
+                                                                   VerticalAlignment="Top" />
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="{x:Bind Message}"
+                                                                   FontFamily="Consolas"
+                                                                   FontSize="10"
+                                                                   Foreground="{x:Bind LevelBrush}"
+                                                                   TextWrapping="Wrap" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
         </StackPanel>
     </ScrollViewer>
