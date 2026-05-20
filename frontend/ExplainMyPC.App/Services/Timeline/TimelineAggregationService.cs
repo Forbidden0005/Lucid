@@ -82,6 +82,15 @@ public sealed class TimelineAggregationService : ITimelineAggregationService
     public IReadOnlyList<TimelineEvent> Events => _events.AsReadOnly();
     public event EventHandler<TimelineEvent>? NewEventAdded;
 
+    // ── External event injection ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Allows external services (e.g. StorageAnalysisService) to inject
+    /// timeline events directly without going through intelligence/session feeds.
+    /// Always call from the UI thread or marshal first.
+    /// </summary>
+    public void AddStorageEvent(TimelineEvent ev) => AddEvent(ev);
+
     // ── Construction ──────────────────────────────────────────────────────────
 
     public TimelineAggregationService(

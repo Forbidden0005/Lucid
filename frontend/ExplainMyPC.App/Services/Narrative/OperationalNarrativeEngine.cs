@@ -36,6 +36,19 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
     private readonly ISystemBaselineService? _baseline;
     private readonly ISessionContextService? _session;
 
+    // ── Recent repair context ─────────────────────────────────────────────────
+    // Set by RepairsPage via NotifyRepairCompleted. Included in the next
+    // narrative cycle when the repair is recent (< 10 minutes old).
+
+    private sealed record RepairContext(
+        string         ActionId,
+        string         DisplayName,
+        bool           Succeeded,
+        bool           RequiresRestart,
+        DateTimeOffset CompletedAt);
+
+    private RepairContext? _lastRepair;
+
     public OperationalNarrative? CurrentNarrative { get; private set; }
     public event EventHandler<OperationalNarrative>? NarrativeUpdated;
 
@@ -62,16 +75,40 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
 
     public void Stop() => _insights.InsightsUpdated -= OnInsightsUpdated;
 
+    // ── Repair notification ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by the Repairs page after an execution completes.
+    /// Stores the repair result and triggers a narrative regeneration so the
+    /// next narrative includes a repair activity paragraph.
+    /// </summary>
+    public void NotifyRepairCompleted(
+        string actionId,
+        string displayName,
+        bool   succeeded,
+        bool   requiresRestart)
+    {
+        _lastRepair = new RepairContext(
+            actionId, displayName, succeeded, requiresRestart, DateTimeOffset.Now);
+        Regenerate(_insights.CurrentInsights);
+    }
+
     private void OnInsightsUpdated(object? sender, IReadOnlyList<SystemInsight> insights)
         => Regenerate(insights);
 
     private void Regenerate(IReadOnlyList<SystemInsight> insights)
     {
+        // Discard repair context older than 10 minutes.
+        if (_lastRepair is not null &&
+            (DateTimeOffset.Now - _lastRepair.CompletedAt).TotalMinutes > 10)
+            _lastRepair = null;
+
         var narrative = BuildNarrative(
             insights,
             _telemetry.LastReading,
             _baseline?.CurrentBaseline,
-            _session?.Current);
+            _session?.Current,
+            _lastRepair);
         CurrentNarrative = narrative;
         NarrativeUpdated?.Invoke(this, narrative);
     }
@@ -86,7 +123,8 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
         IReadOnlyList<SystemInsight> all,
         TelemetrySnapshot?           snap,
         MachineBaseline?             baseline,
-        SessionContext?              session = null)
+        SessionContext?              session = null,
+        RepairContext?               repair  = null)
     {
         // ── Classify insights by role ─────────────────────────────────────────
         bool isHealthy = all.Any(i => i.Id == "system.healthy");
@@ -147,6 +185,9 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
 
         if (anomalies.Count > 0 && baseline is not null)
             Add(paragraphs, BuildBaselineParagraph(anomalies, baseline, snap));
+
+        if (repair is not null)
+            Add(paragraphs, BuildRepairParagraph(repair));
 
         int activeFindings = all.Count(i => i.Id != "system.healthy");
 
@@ -722,6 +763,34 @@ public sealed class OperationalNarrativeEngine : IOperationalNarrativeEngine
             return end >= 0 ? tail[..end] : tail;
         }
         return "soon";
+    }
+
+    // ── Paragraph 6: Recent repair activity ──────────────────────────────────
+
+    private static string BuildRepairParagraph(RepairContext repair)
+    {
+        var age = DateTimeOffset.Now - repair.CompletedAt;
+        string when = age.TotalMinutes < 1
+            ? "just now"
+            : age.TotalMinutes < 5
+                ? $"{(int)age.TotalMinutes} minute{(age.TotalMinutes >= 2 ? "s" : "")} ago"
+                : $"{(int)age.TotalMinutes} minutes ago";
+
+        if (repair.Succeeded)
+        {
+            string restartNote = repair.RequiresRestart
+                ? " A restart is required before the change takes full effect."
+                : string.Empty;
+            return
+                $"{repair.DisplayName} completed successfully {when}.{restartNote} " +
+                $"The operation has been recorded in the Repairs history.";
+        }
+        else
+        {
+            return
+                $"{repair.DisplayName} did not complete successfully {when}. " +
+                $"Check the Repair Center log for details — the system was not modified.";
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

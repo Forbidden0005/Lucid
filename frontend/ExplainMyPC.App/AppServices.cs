@@ -5,8 +5,10 @@ using ExplainMyPC.Services.Execution.Executors;
 using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using ExplainMyPC.Services.Narrative;
+using ExplainMyPC.Services.Security;
 using ExplainMyPC.Services.Session;
 using ExplainMyPC.Services.Startup;
+using ExplainMyPC.Services.Storage;
 using ExplainMyPC.Services.Timeline;
 using Microsoft.UI.Dispatching;
 
@@ -244,6 +246,18 @@ public static class AppServices
             new WinsockResetExecutor(),           // action.network.winsock-reset
             new WindowsStoreResetExecutor(),      // action.apps.reset-windows-store
             new NetworkAdapterResetExecutor(),    // action.network.reset-adapter
+
+            // ── Storage intelligence (Phase 5) ────────────────────────────────
+            new DeleteLargeFileExecutor(),        // action.storage.delete-large-file
+            new DeleteDuplicateGroupExecutor(),   // action.storage.delete-duplicate-group
+            new CleanOldDownloadsExecutor(),      // action.storage.clean-old-downloads
+
+            // ── Process intelligence (Phase 6) ────────────────────────────────
+            new TerminateProcessExecutor(),       // action.process.terminate
+            new OpenProcessLocationExecutor(),    // action.process.open-location
+
+            // ── Security intelligence (Phase 7) ───────────────────────────────
+            new OpenVirusTotalExecutor(),         // action.security.open-virustotal
         ]);
         _executionEngine  = new ActionExecutionEngine(_executorRegistry);
 
