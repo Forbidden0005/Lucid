@@ -2,6 +2,7 @@ using ExplainMyPC.Services;
 using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.Execution.Executors;
+using ExplainMyPC.Services.Explain;
 using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using ExplainMyPC.Services.Narrative;
@@ -44,6 +45,7 @@ public static class AppServices
     private static IOperationHistoryService?    _operationHistory;
     private static ITimelineAggregationService? _timeline;
     private static IStartupManagementService?   _startupManagement;
+    private static IExplainMyPcEngine?          _explainEngine;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -152,6 +154,16 @@ public static class AppServices
     /// </summary>
     public static IStartupManagementService StartupManagement =>
         _startupManagement ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// ExplainMyPC operational reasoning engine — the flagship feature.
+    /// Synthesizes insights, timeline events, narrative, and baseline data into
+    /// a single coherent OperationalExplanation that drives the Explain My PC page.
+    /// </summary>
+    public static IExplainMyPcEngine ExplainEngine =>
+        _explainEngine ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -270,10 +282,12 @@ public static class AppServices
             _intelligence, _session, _narrative, _operationHistory, uiDispatcher);
         _timeline.Start(); // must start after narrative (subscribes to NarrativeUpdated)
 
-        // Future services registered here, e.g.:
-        // _storage  = new WindowsStorageService();
-        // _process  = new WindowsProcessService();
-        // _security = new WindowsSecurityService();
+        // ── ExplainMyPC flagship engine ───────────────────────────────────────
+        // Must start after narrative and timeline — subscribes to both.
+        // Seeds from current state immediately if insights already exist.
+        _explainEngine = new ExplainMyPcEngine(
+            _intelligence, _timeline, _narrative, _baseline, _history);
+        _explainEngine.Start();
     }
 
     /// <summary>
@@ -286,6 +300,11 @@ public static class AppServices
         _executorRegistry   = null;
         _operationHistory   = null;
         _startupManagement  = null;
+
+        // ExplainEngine must stop before timeline and narrative —
+        // it holds subscriptions to both.
+        _explainEngine?.Stop();
+        _explainEngine = null;
 
         // Timeline must stop before narrative/session/intelligence —
         // it holds subscriptions to all three.

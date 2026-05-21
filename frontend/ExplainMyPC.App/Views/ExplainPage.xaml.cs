@@ -1,4 +1,5 @@
 using ExplainMyPC.Helpers;
+using ExplainMyPC.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -6,42 +7,30 @@ using Microsoft.UI.Xaml.Input;
 namespace ExplainMyPC.Views;
 
 /// <summary>
-/// Explain My PC page — conversational system analysis with diagnostic
-/// findings and actionable recommendations.
+/// Explain My PC flagship page — operational reasoning workspace.
 ///
-/// Code-behind is intentionally thin:
-///   • Staggered card entrance + confidence bar fill delegated to AnimationHelper.
-///   • Card hover effects (scale + border) delegated to AnimationHelper.
-///   • No business logic lives here.
+/// Code-behind responsibilities:
+///   • Set DataContext to ExplainViewModel wired to the live engine.
+///   • Animate the hero card entrance on page load.
+///   • Delegate hover effects to AnimationHelper.
+///
+/// All business logic lives in ExplainViewModel and the ExplainMyPcEngine.
+/// The page is purely a display surface.
 /// </summary>
 public sealed partial class ExplainPage : Page
 {
     public ExplainPage()
     {
         InitializeComponent();
+
+        // Wire ViewModel to the live engine registered in AppServices
+        DataContext = new ExplainViewModel(AppServices.ExplainEngine);
     }
 
     private void Page_Loaded(object sender, RoutedEventArgs e)
     {
-        // All named cards slide up and fade in with 80 ms staggered delay.
-        Border[] cards =
-        [
-            CardSummary,
-            CardFinding1, CardFinding2, CardFinding3,
-            CardFinding4, CardFinding5,
-            CardRec1, CardRec2, CardRec3,
-        ];
-
-        for (int i = 0; i < cards.Length; i++)
-            AnimationHelper.AnimateEntrance(cards[i], delayMs: i * 80);
-
-        // Confidence bars fill after the cards have settled on screen.
-        int barDelay = cards.Length * 80 + 100;
-        AnimationHelper.AnimateProgressBar(ConfBar1, 94, barDelay);
-        AnimationHelper.AnimateProgressBar(ConfBar2, 89, barDelay +  60);
-        AnimationHelper.AnimateProgressBar(ConfBar3, 98, barDelay + 120);
-        AnimationHelper.AnimateProgressBar(ConfBar4, 97, barDelay + 180);
-        AnimationHelper.AnimateProgressBar(ConfBar5, 95, barDelay + 240);
+        // Hero card slides up and fades in as the flagship visual anchor
+        AnimationHelper.AnimateEntrance(CardHero, delayMs: 0);
     }
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)
