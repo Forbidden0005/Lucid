@@ -40,17 +40,26 @@ public sealed class GovernanceAwareExecutionEngine : IActionExecutionEngine
     private readonly IActionExecutionEngine      _inner;
     private readonly IRuntimeGovernanceService   _governance;
 
+    /// <summary>
+    /// Optional callback invoked after each execution with (actionId, success, errorDetail).
+    /// Used by the diagnostics layer to track executor health without creating a direct dependency.
+    /// Never throws — exceptions from the callback are swallowed.
+    /// </summary>
+    private readonly Action<string, bool, string?>? _onExecutionResult;
+
     // ── Construction ──────────────────────────────────────────────────────────
 
     public GovernanceAwareExecutionEngine(
-        IActionExecutionEngine    inner,
-        IRuntimeGovernanceService governance)
+        IActionExecutionEngine      inner,
+        IRuntimeGovernanceService   governance,
+        Action<string, bool, string?>? onExecutionResult = null)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(governance);
 
-        _inner      = inner;
-        _governance = governance;
+        _inner             = inner;
+        _governance        = governance;
+        _onExecutionResult = onExecutionResult;
     }
 
     // ── IActionExecutionEngine ────────────────────────────────────────────────
@@ -86,7 +95,18 @@ public sealed class GovernanceAwareExecutionEngine : IActionExecutionEngine
 
         try
         {
-            return await _inner.ExecuteAsync(actionId, context, cancellationToken).ConfigureAwait(false);
+            var result = await _inner.ExecuteAsync(actionId, context, cancellationToken).ConfigureAwait(false);
+
+            // Notify diagnostics callback (fire-and-forget, never throws).
+            try
+            {
+                bool success = result.IsSuccess || result.IsDryRun;
+                _onExecutionResult?.Invoke(actionId, success,
+                    success ? null : result.ErrorDetail ?? result.Message);
+            }
+            catch { /* diagnostics callback must never break execution */ }
+
+            return result;
         }
         finally
         {

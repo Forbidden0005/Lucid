@@ -1,6 +1,7 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Analytics;
 using ExplainMyPC.Services.Baseline;
+using ExplainMyPC.Services.Diagnostics;
 using ExplainMyPC.Services.Governance;
 using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Execution;
@@ -69,6 +70,9 @@ public static class AppServices
     private static ExecutionPriorityQueue?     _executionQueue;
     private static PollingCoordinator?         _pollingCoordinator;
     private static IRuntimeGovernanceService?  _governance;
+
+    // ── Internal diagnostics layer ────────────────────────────────────────────
+    private static InternalDiagnosticsService? _diagnostics;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -234,6 +238,17 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Internal diagnostics service.
+    /// Tracks service health, sampler failures, executor crash history,
+    /// runtime anomalies, and exposes actionable recovery operations.
+    /// All methods are fire-and-forget and never throw.
+    /// </summary>
+    public static IInternalDiagnosticsService Diagnostics =>
+        _diagnostics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -340,6 +355,29 @@ public static class AppServices
             _telemetry, _pollingCoordinator!, _concurrencyBudget!, _executionQueue!, uiDispatcher);
         _governance.Start();
 
+        // ── Internal diagnostics service ──────────────────────────────────────
+        // Created after governance so all platform components exist.
+        // Uses concrete type internally so we can call diagnostics-internal methods
+        // (OnTelemetryReceived, OnGovernanceModeChanged) not on the public interface.
+        _diagnostics = new InternalDiagnosticsService(
+            uiDispatcher,
+            _persistence,
+            _concurrencyBudget,
+            _pollingCoordinator,
+            _executionQueue);
+
+        // Wire telemetry heartbeat + overrun detection.
+        _telemetry.ReadingAvailable += (_, snapshot) =>
+            _diagnostics.OnTelemetryReceived(
+                DateTimeOffset.Now,
+                _pollingCoordinator!.CurrentTelemetryInterval);
+
+        // Wire governance mode-change notifications to diagnostics.
+        _governance.ModeChanged += (_, args) =>
+            _diagnostics.OnGovernanceModeChanged(args.PreviousMode, args.NewMode, args.Reasons);
+
+        _diagnostics.Start();
+
         // ── Operational history ───────────────────────────────────────────────
         // Initialised before the execution engine so it is ready the moment
         // the first action completes. JSON file created lazily on first write.
@@ -404,8 +442,14 @@ public static class AppServices
         // Wrap in GovernanceAwareExecutionEngine so heavy actions check the
         // concurrency budget before dispatching. Lightweight navigation-only
         // actions are passed through without governance overhead.
+        // The diagnostics callback forwards execution results so the diagnostics
+        // layer can track executor health without a direct dependency.
         var rawEngine = new ActionExecutionEngine(_executorRegistry);
-        _executionEngine = new GovernanceAwareExecutionEngine(rawEngine, _governance!);
+        _executionEngine = new GovernanceAwareExecutionEngine(
+            rawEngine,
+            _governance!,
+            onExecutionResult: (actionId, success, errorDetail) =>
+                _diagnostics?.RecordExecutorResult(actionId, success, errorDetail));
 
         // ── Operational Timeline ──────────────────────────────────────────────
         // Aggregates events from intelligence, session, narrative, and history.
@@ -461,8 +505,12 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
-        // Stop governance first — it holds a ReadingAvailable subscription
-        // and must be detached before the telemetry service stops.
+        // Stop diagnostics first — it holds subscriptions to telemetry and governance.
+        _diagnostics?.Stop();
+        if (_diagnostics is IDisposable dd) dd.Dispose();
+        _diagnostics = null;
+
+        // Stop governance — it holds a ReadingAvailable subscription.
         _governance?.Stop();
         if (_governance is IDisposable gd) gd.Dispose();
         _governance         = null;

@@ -114,6 +114,12 @@ public sealed class SQLitePersistenceService : IDisposable
     /// <summary>Full path to the database file.</summary>
     public string DatabasePath => _dbPath;
 
+    /// <summary>
+    /// Number of write actions currently pending in the batch queue.
+    /// Used by the diagnostics layer to detect write stalls.
+    /// </summary>
+    public int PendingWriteCount => _writeQueue.Count;
+
     // ── Write API ─────────────────────────────────────────────────────────────
 
     /// <summary>
