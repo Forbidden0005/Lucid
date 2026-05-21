@@ -1,6 +1,7 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Analytics;
 using ExplainMyPC.Services.Baseline;
+using ExplainMyPC.Services.Governance;
 using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.Execution.Executors;
@@ -62,6 +63,12 @@ public static class AppServices
     private static IHistoricalAnalyticsEngine?      _historicalAnalytics;
     private static HashSet<string>                  _lastInsightIds = [];
     private static System.Threading.Timer?          _downsampleTimer;
+
+    // ── Runtime governance layer ──────────────────────────────────────────────
+    private static ConcurrencyBudget?          _concurrencyBudget;
+    private static ExecutionPriorityQueue?     _executionQueue;
+    private static PollingCoordinator?         _pollingCoordinator;
+    private static IRuntimeGovernanceService?  _governance;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -215,6 +222,18 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Runtime governance service.
+    /// Monitors system pressure (CPU, GPU, battery, thermal) and manages
+    /// concurrency budgets, adaptive polling rates, and workload deferral.
+    /// All services that run heavy background work consult this service
+    /// before starting to ensure ExplainMyPC stays lightweight.
+    /// </summary>
+    public static IRuntimeGovernanceService Governance =>
+        _governance ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -239,8 +258,19 @@ public static class AppServices
             _telHistoryRepo, _insightHistoryRepo, _timelineEventRepo);
         _persistence = dbService;
 
+        // ── Runtime governance layer ──────────────────────────────────────────
+        // Created before telemetry so we can register the telemetry service as
+        // an adaptive target immediately after it is constructed.
+        _concurrencyBudget  = new ConcurrencyBudget(initialMaxBackground: 3);
+        _executionQueue     = new ExecutionPriorityQueue();
+        _pollingCoordinator = new PollingCoordinator();
+
         _telemetry = new WindowsTelemetryService(uiDispatcher);
         _history   = new TelemetryHistoryBuffer();
+
+        // Register the telemetry service as the adaptive target so the governance
+        // layer can adjust polling intervals when the runtime mode changes.
+        _pollingCoordinator.RegisterTarget((WindowsTelemetryService)_telemetry);
 
         // Adaptive baseline service — learns this machine's normal operating
         // ranges over time and persists them to %LOCALAPPDATA%\ExplainMyPC\.
@@ -303,6 +333,13 @@ public static class AppServices
         _session.Start();       // must start after _intelligence (subscribes to InsightsUpdated)
         _narrative.Start();     // must start after _intelligence
 
+        // ── Runtime governance service ────────────────────────────────────────
+        // Started after telemetry so ReadingAvailable is already firing.
+        // The governance service subscribes internally via its own Start() call.
+        _governance = new RuntimeGovernanceService(
+            _telemetry, _pollingCoordinator!, _concurrencyBudget!, _executionQueue!, uiDispatcher);
+        _governance.Start();
+
         // ── Operational history ───────────────────────────────────────────────
         // Initialised before the execution engine so it is ready the moment
         // the first action completes. JSON file created lazily on first write.
@@ -364,7 +401,11 @@ public static class AppServices
             // ── Security intelligence (Phase 7) ───────────────────────────────
             new OpenVirusTotalExecutor(),         // action.security.open-virustotal
         ]);
-        _executionEngine  = new ActionExecutionEngine(_executorRegistry);
+        // Wrap in GovernanceAwareExecutionEngine so heavy actions check the
+        // concurrency budget before dispatching. Lightweight navigation-only
+        // actions are passed through without governance overhead.
+        var rawEngine = new ActionExecutionEngine(_executorRegistry);
+        _executionEngine = new GovernanceAwareExecutionEngine(rawEngine, _governance!);
 
         // ── Operational Timeline ──────────────────────────────────────────────
         // Aggregates events from intelligence, session, narrative, and history.
@@ -420,6 +461,15 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        // Stop governance first — it holds a ReadingAvailable subscription
+        // and must be detached before the telemetry service stops.
+        _governance?.Stop();
+        if (_governance is IDisposable gd) gd.Dispose();
+        _governance         = null;
+        _concurrencyBudget  = null;
+        _executionQueue     = null;
+        _pollingCoordinator = null;
+
         _executionEngine    = null;
         _executorRegistry   = null;
         _operationHistory   = null;

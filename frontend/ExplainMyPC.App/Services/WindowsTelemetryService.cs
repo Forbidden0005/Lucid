@@ -1,4 +1,5 @@
 using ExplainMyPC.Helpers;
+using ExplainMyPC.Services.Governance;
 using ExplainMyPC.Services.Startup;
 using ExplainMyPC.Services.Telemetry.Samplers;
 using Microsoft.UI.Dispatching;
@@ -26,13 +27,17 @@ namespace ExplainMyPC.Services;
 ///   Created and started by AppServices.Initialize().
 ///   Disposed by AppServices.Shutdown() when the main window closes.
 /// </summary>
-public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
+public sealed class WindowsTelemetryService : ITelemetryService, IDisposable, IAdaptiveTelemetryTarget
 {
     private const int WarmupDelayMs         = 1_000;   // let rate counters settle
-    private const int PollIntervalMs        = 1_500;   // 1.5 s per cycle
+    private const int DefaultPollIntervalMs = 1_500;   // 1.5 s per cycle (Normal mode)
     private const int ThermalIntervalTicks  = 5;       // sample thermal every 5 cycles (~7.5 s)
-    private const int ProcessIntervalTicks  = 3;       // sample processes every 3 cycles (~4.5 s)
     private const int StartupIntervalTicks  = 40;      // sample startup entries every 40 cycles (~60 s)
+
+    // Dynamic polling intervals — written by IAdaptiveTelemetryTarget, read by poll loop.
+    // Volatile guarantees the poll loop sees the latest value without a lock.
+    private volatile int _pollIntervalMs        = DefaultPollIntervalMs;
+    private volatile int _processIntervalTicks  = 3;   // sample processes every 3 cycles (~4.5 s)
 
     private readonly DispatcherQueue _dispatcher;
 
@@ -109,7 +114,7 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
                 ReadingAvailable?.Invoke(this, snapshot);
             });
 
-            try { await Task.Delay(PollIntervalMs, ct).ConfigureAwait(false); }
+            try { await Task.Delay(_pollIntervalMs, ct).ConfigureAwait(false); }
             catch (OperationCanceledException) { break; }
         }
     }
@@ -123,11 +128,12 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
             _lastThermal = _thermal.Read();
         _thermalTick = (_thermalTick + 1) % ThermalIntervalTicks;
 
-        // Process list refreshes every ProcessIntervalTicks cycles (~4.5 s).
-        // Enumeration is fast but CPU-delta accuracy doesn't benefit from sub-second sampling.
+        // Process list refreshes every _processIntervalTicks cycles.
+        // Interval is adjusted dynamically by IAdaptiveTelemetryTarget.
+        int procTicks = Math.Max(1, _processIntervalTicks);
         if (_processTick == 0)
             _lastProcesses = _process.Sample();
-        _processTick = (_processTick + 1) % ProcessIntervalTicks;
+        _processTick = (_processTick + 1) % procTicks;
 
         // Startup entries refresh every StartupIntervalTicks cycles (~60 s).
         // The registry rarely changes at runtime, so sampling every tick is wasteful.
@@ -178,6 +184,32 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable
 
             // Startup entries (Phase 5) — refreshed every ~60 s
             StartupEntries:          _lastStartupEntries);
+    }
+
+    // ── IAdaptiveTelemetryTarget ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Updates the telemetry poll interval. Applied on the next loop iteration.
+    /// Called by <see cref="PollingCoordinator"/> when the runtime mode changes.
+    /// </summary>
+    public void SetTelemetryInterval(TimeSpan interval)
+    {
+        // Clamp to a sane minimum to avoid spinning too fast.
+        int ms = (int)Math.Max(500, interval.TotalMilliseconds);
+        _pollIntervalMs = ms;
+    }
+
+    /// <summary>
+    /// Updates the process sampling cadence (expressed as a number of telemetry
+    /// poll cycles between process list refreshes).  Applied on the next tick.
+    /// </summary>
+    public void SetProcessSampleInterval(TimeSpan interval)
+    {
+        // Convert the absolute interval to a tick count relative to the current
+        // poll interval.  Clamp to [1, 60] so it stays sane.
+        int pollMs  = Math.Max(1, _pollIntervalMs);
+        int ticks   = (int)Math.Round(interval.TotalMilliseconds / pollMs);
+        _processIntervalTicks = Math.Clamp(ticks, 1, 60);
     }
 
     // ── IDisposable ───────────────────────────────────────────────────────────
