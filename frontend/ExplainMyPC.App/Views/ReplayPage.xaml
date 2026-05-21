@@ -776,6 +776,31 @@
                                    TextWrapping="Wrap"
                                    LineHeight="20" />
 
+                        <!-- Effectiveness context badge (visible when warm learning data exists) -->
+                        <Border Visibility="{Binding ComparisonEffectivenessVisible}"
+                                CornerRadius="8" Padding="12,8"
+                                Background="{StaticResource AppBackgroundBrush}"
+                                BorderBrush="{StaticResource StatusGoodBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE930;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="12"
+                                              Foreground="{StaticResource StatusGoodBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding ComparisonEffectivenessLabel}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{StaticResource StatusGoodBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding ComparisonEffectivenessText}"
+                                           FontSize="12"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
                 </Border>
 

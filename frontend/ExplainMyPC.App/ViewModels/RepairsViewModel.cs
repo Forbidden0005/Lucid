@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;   // ActionRisk
+using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Repair;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -138,6 +139,25 @@ public sealed partial class RepairCardViewModel : ObservableObject
         ? "Running as administrator"
         : "Requires administrator — re-launch ExplainMyPC as admin to run this.";
 
+    // ── Effectiveness badge (from learning service) ───────────────────────────
+
+    /// <summary>
+    /// Short label for the effectiveness badge chip, e.g. "Historically effective on this machine".
+    /// Empty string when no warm data is available (badge is hidden).
+    /// </summary>
+    public string EffectivenessLabel { get; }
+
+    /// <summary>
+    /// Longer descriptive sentence for the badge tooltip, e.g. "Helped reduce CPU pressure ~18%".
+    /// </summary>
+    public string EffectivenessText { get; }
+
+    /// <summary>Visibility of the effectiveness badge — visible only when IsWarmEnough.</summary>
+    public Visibility EffectivenessVisible { get; }
+
+    /// <summary>StaticResource brush key for the badge background.</summary>
+    public string EffectivenessBrushKey { get; }
+
     // ── Observable state ──────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -234,6 +254,27 @@ public sealed partial class RepairCardViewModel : ObservableObject
 
         _dispatcher = DispatcherQueue.GetForCurrentThread()
                    ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
+        // Populate effectiveness badge from the learning service (cold-start safe).
+        var profile = AppServices.LearningService.GetProfile(metadata.ActionId);
+        if (profile is { IsWarmEnough: true })
+        {
+            EffectivenessLabel   = profile.EffectivenessLabel;
+            EffectivenessText    = profile.SummaryText;
+            EffectivenessVisible = Visibility.Visible;
+            EffectivenessBrushKey = profile.EffectivenessRate >= 0.70
+                ? "StatusGoodBrush"
+                : profile.EffectivenessRate >= 0.30
+                    ? "StatusModerateBrush"
+                    : "StatusCriticalBrush";
+        }
+        else
+        {
+            EffectivenessLabel    = string.Empty;
+            EffectivenessText     = string.Empty;
+            EffectivenessVisible  = Visibility.Collapsed;
+            EffectivenessBrushKey = "TextSecondaryBrush";
+        }
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────

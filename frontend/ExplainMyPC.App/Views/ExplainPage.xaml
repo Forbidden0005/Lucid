@@ -609,6 +609,26 @@
                                                            FontSize="11"
                                                            Foreground="{StaticResource TextSecondaryBrush}" />
                                             </Border>
+
+                                            <!-- Effectiveness badge (shown when warm data exists) -->
+                                            <Border Visibility="{Binding EffectivenessVisible}"
+                                                    CornerRadius="4" Padding="7,3"
+                                                    Background="{StaticResource AppBackgroundBrush}"
+                                                    BorderBrush="{StaticResource StatusGoodBrush}"
+                                                    BorderThickness="1">
+                                                <ToolTipService.ToolTip>
+                                                    <ToolTip Content="{Binding EffectivenessText}" />
+                                                </ToolTipService.ToolTip>
+                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                    <FontIcon Glyph="&#xE930;"
+                                                              FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="10"
+                                                              Foreground="{StaticResource StatusGoodBrush}" />
+                                                    <TextBlock Text="{Binding EffectivenessLabel}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource StatusGoodBrush}" />
+                                                </StackPanel>
+                                            </Border>
                                         </StackPanel>
                                     </StackPanel>
 

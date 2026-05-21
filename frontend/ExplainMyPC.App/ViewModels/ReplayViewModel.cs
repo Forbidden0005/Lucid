@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExplainMyPC.Services.History;
+using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Replay;
 using ExplainMyPC.Services.Timeline;
 using Microsoft.UI;
@@ -148,6 +149,11 @@ public sealed partial class ReplayViewModel : ObservableObject
     [ObservableProperty] private string     _comparisonOutcomeText    = "";
     [ObservableProperty] private Visibility _improvementVisibility    = Visibility.Collapsed;
     [ObservableProperty] private Visibility _noImprovementVisibility  = Visibility.Collapsed;
+
+    // Effectiveness context shown in the comparison card
+    [ObservableProperty] private string     _comparisonEffectivenessLabel    = "";
+    [ObservableProperty] private string     _comparisonEffectivenessText     = "";
+    [ObservableProperty] private Visibility _comparisonEffectivenessVisible  = Visibility.Collapsed;
 
     // ── Narrative paragraphs ──────────────────────────────────────────────────
 
@@ -434,6 +440,21 @@ public sealed partial class ReplayViewModel : ObservableObject
             AddComparisonMetric("Temp",
                 comparison.SnapshotBefore.Telemetry.TemperatureCelsius,
                 comparison.SnapshotAfter.Telemetry.TemperatureCelsius, "°C");
+        }
+
+        // Effectiveness badge — pull from learning service (cold-start safe)
+        var profile = AppServices.LearningService.GetProfile(comparison.Action.ActionId);
+        if (profile is { IsWarmEnough: true })
+        {
+            ComparisonEffectivenessLabel   = profile.EffectivenessLabel;
+            ComparisonEffectivenessText    = profile.SummaryText;
+            ComparisonEffectivenessVisible = Visibility.Visible;
+        }
+        else
+        {
+            ComparisonEffectivenessLabel   = "";
+            ComparisonEffectivenessText    = "";
+            ComparisonEffectivenessVisible = Visibility.Collapsed;
         }
     }
 

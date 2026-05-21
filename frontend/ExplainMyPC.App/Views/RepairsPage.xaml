@@ -157,6 +157,26 @@
                                                        Foreground="{StaticResource StatusModerateBrush}" />
                                         </StackPanel>
                                     </Border>
+
+                                    <!-- Effectiveness badge (only visible when IsWarmEnough) -->
+                                    <Border Visibility="{x:Bind EffectivenessVisible}"
+                                            CornerRadius="6" Padding="8,3"
+                                            Background="{StaticResource AppBackgroundBrush}"
+                                            BorderBrush="{StaticResource StatusGoodBrush}"
+                                            BorderThickness="1">
+                                        <ToolTipService.ToolTip>
+                                            <ToolTip Content="{x:Bind EffectivenessText}" />
+                                        </ToolTipService.ToolTip>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <FontIcon Glyph="&#xE930;"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="10"
+                                                      Foreground="{StaticResource StatusGoodBrush}" />
+                                            <TextBlock Text="{x:Bind EffectivenessLabel}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource StatusGoodBrush}" />
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
 
                                 <!-- ── How-it-works (collapsible) ─────── -->

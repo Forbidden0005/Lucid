@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ExplainMyPC.Services.Explain;
 using ExplainMyPC.Services.Intelligence;
+using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Narrative;
 using ExplainMyPC.Services.Timeline;
 using Microsoft.UI;
@@ -60,16 +61,26 @@ public sealed class ForecastOutlookViewModel
 
 public sealed class RecommendationViewModel
 {
-    public int    Rank             { get; init; }
-    public string ActionTitle      { get; init; } = "";
-    public string WhyItMatters     { get; init; } = "";
-    public string ExpectedBenefit  { get; init; } = "";
-    public string EstimatedTime    { get; init; } = "";
-    public int    ConfidencePercent{ get; init; }
-    public bool   CanRollback      { get; init; }
-    public string RollbackLabel    { get; init; } = "";
-    public string RiskLabel        { get; init; } = "";
-    public Brush  RankBrush        { get; init; } = new SolidColorBrush(Colors.Gray);
+    public int        Rank              { get; init; }
+    public string     ActionTitle       { get; init; } = "";
+    public string     WhyItMatters      { get; init; } = "";
+    public string     ExpectedBenefit   { get; init; } = "";
+    public string     EstimatedTime     { get; init; } = "";
+    public int        ConfidencePercent { get; init; }
+    public bool       CanRollback       { get; init; }
+    public string     RollbackLabel     { get; init; } = "";
+    public string     RiskLabel         { get; init; } = "";
+    public Brush      RankBrush         { get; init; } = new SolidColorBrush(Colors.Gray);
+
+    // ── Effectiveness badge (from learning service) ───────────────────────────
+    /// <summary>Short label for the badge chip. Empty when no warm data.</summary>
+    public string     EffectivenessLabel    { get; init; } = "";
+    /// <summary>Longer sentence for the badge tooltip.</summary>
+    public string     EffectivenessText     { get; init; } = "";
+    /// <summary>Visibility of the effectiveness badge.</summary>
+    public Visibility EffectivenessVisible  { get; init; } = Visibility.Collapsed;
+    /// <summary>StaticResource key for the badge brush.</summary>
+    public string     EffectivenessBrushKey { get; init; } = "TextSecondaryBrush";
 }
 
 public sealed class EvidenceItemViewModel
@@ -290,21 +301,47 @@ public partial class ExplainViewModel : ObservableObject
         SeverityBrush     = ForecastBrush(outlook.Severity),
     };
 
-    private static RecommendationViewModel MapRecommendation(RecommendationReasoning rec, int rank) => new()
+    private static RecommendationViewModel MapRecommendation(RecommendationReasoning rec, int rank)
     {
-        Rank              = rank,
-        ActionTitle       = rec.Action.Title,
-        WhyItMatters      = rec.WhyItMatters,
-        ExpectedBenefit   = rec.ExpectedBenefit,
-        EstimatedTime     = rec.EstimatedTime,
-        ConfidencePercent = rec.ConfidencePercent,
-        CanRollback       = rec.CanRollback,
-        RollbackLabel     = rec.CanRollback ? "Reversible" : "Not reversible",
-        RiskLabel         = RiskLabel(rec.Action.Risk),
-        RankBrush         = rank == 1
-            ? new SolidColorBrush(Color.FromArgb(255, 108, 163, 248))   // accent blue
-            : new SolidColorBrush(Color.FromArgb(255, 60, 70, 90)),      // subtle
-    };
+        // Effectiveness badge (cold-start safe — returns null before first analysis)
+        var profile = AppServices.LearningService.GetProfile(rec.Action.Id);
+        string effLabel    = "";
+        string effText     = "";
+        var    effVisible  = Visibility.Collapsed;
+        string effBrushKey = "TextSecondaryBrush";
+
+        if (profile is { IsWarmEnough: true })
+        {
+            effLabel    = profile.EffectivenessLabel;
+            effText     = profile.SummaryText;
+            effVisible  = Visibility.Visible;
+            effBrushKey = profile.EffectivenessRate >= 0.70
+                ? "StatusGoodBrush"
+                : profile.EffectivenessRate >= 0.30
+                    ? "StatusModerateBrush"
+                    : "StatusCriticalBrush";
+        }
+
+        return new RecommendationViewModel
+        {
+            Rank                 = rank,
+            ActionTitle          = rec.Action.Title,
+            WhyItMatters         = rec.WhyItMatters,
+            ExpectedBenefit      = rec.ExpectedBenefit,
+            EstimatedTime        = rec.EstimatedTime,
+            ConfidencePercent    = rec.ConfidencePercent,
+            CanRollback          = rec.CanRollback,
+            RollbackLabel        = rec.CanRollback ? "Reversible" : "Not reversible",
+            RiskLabel            = RiskLabel(rec.Action.Risk),
+            RankBrush            = rank == 1
+                ? new SolidColorBrush(Color.FromArgb(255, 108, 163, 248))   // accent blue
+                : new SolidColorBrush(Color.FromArgb(255, 60, 70, 90)),      // subtle
+            EffectivenessLabel    = effLabel,
+            EffectivenessText     = effText,
+            EffectivenessVisible  = effVisible,
+            EffectivenessBrushKey = effBrushKey,
+        };
+    }
 
     private static EvidenceItemViewModel MapEvidence(EvidenceItem item) => new()
     {

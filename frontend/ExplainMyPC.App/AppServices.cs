@@ -1,5 +1,6 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Baseline;
+using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Execution;
 using ExplainMyPC.Services.Execution.Executors;
 using ExplainMyPC.Services.Explain;
@@ -47,7 +48,8 @@ public static class AppServices
     private static ITimelineAggregationService? _timeline;
     private static IStartupManagementService?   _startupManagement;
     private static IExplainMyPcEngine?          _explainEngine;
-    private static IOperationalReplayService?   _replayService;
+    private static IOperationalReplayService?    _replayService;
+    private static IRemediationLearningService?  _learningService;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -179,6 +181,17 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Adaptive remediation learning service.
+    /// Observes before/after system state around each action execution and
+    /// builds per-action effectiveness profiles over time.
+    /// All analysis is deterministic, local-only, and cold-start safe.
+    /// </summary>
+    public static IRemediationLearningService LearningService =>
+        _learningService ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -306,6 +319,15 @@ public static class AppServices
         // history so it can capture a fully-populated snapshot on first request.
         _replayService = new OperationalReplayService(
             _timeline, _history, _operationHistory, _baseline);
+
+        // ── Remediation learning service ──────────────────────────────────────
+        // Created after replay service (depends on it for before/after comparisons).
+        // Loads persisted outcome records immediately so profiles are available
+        // before the first AnalyzePendingActionsAsync pass completes.
+        var learningSvc = new RemediationLearningService(_operationHistory, _replayService);
+        _ = learningSvc.LoadPersistedProfilesAsync();
+        _ = learningSvc.AnalyzePendingActionsAsync();
+        _learningService = learningSvc;
     }
 
     /// <summary>
@@ -318,6 +340,9 @@ public static class AppServices
         _executorRegistry   = null;
         _operationHistory   = null;
         _startupManagement  = null;
+
+        // Learning service is stateless after init — just null the reference.
+        _learningService = null;
 
         // Replay service is stateless — just null the reference.
         _replayService = null;
