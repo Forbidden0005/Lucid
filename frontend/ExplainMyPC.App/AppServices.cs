@@ -3,6 +3,7 @@ using ExplainMyPC.Services.Analytics;
 using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Behavior;
 using ExplainMyPC.Services.Diagnostics;
+using ExplainMyPC.Services.Distributed;
 using ExplainMyPC.Services.Governance;
 using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Execution;
@@ -78,6 +79,13 @@ public static class AppServices
     // ── Behavioral context layer ──────────────────────────────────────────────
     private static WorkloadProfilingService?  _workloadProfiling;
     private static IBehavioralContextEngine?  _behavioralContext;
+
+    // ── Distributed intelligence layer ────────────────────────────────────────
+    private static DeviceIdentityService?          _deviceIdentity;
+    private static TrustedDeviceRegistry?          _trustedDevices;
+    private static LocalSyncCoordinator?           _localSync;
+    private static DistributedTimelineAggregator?  _distributedTimeline;
+    private static CrossMachineAnalyticsEngine?    _crossMachineAnalytics;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -271,6 +279,51 @@ public static class AppServices
     /// </summary>
     public static IBehavioralContextEngine BehavioralContext =>
         _behavioralContext ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Device identity service.
+    /// Generates and caches a stable device ID and hardware role classification.
+    /// </summary>
+    public static DeviceIdentityService DeviceIdentity =>
+        _deviceIdentity ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Trusted device registry.
+    /// Persists paired device records and shared AES encryption keys.
+    /// </summary>
+    public static TrustedDeviceRegistry TrustedDevices =>
+        _trustedDevices ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Local sync coordinator.
+    /// Manages LAN-only discovery (UDP) and encrypted snapshot exchange (TCP).
+    /// </summary>
+    public static LocalSyncCoordinator LocalSync =>
+        _localSync ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Distributed timeline aggregator.
+    /// Merges local timeline events with remote device snapshots into a unified stream.
+    /// </summary>
+    public static DistributedTimelineAggregator DistributedTimeline =>
+        _distributedTimeline ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Cross-machine analytics engine.
+    /// Compares snapshots across linked devices to surface ecosystem insights.
+    /// </summary>
+    public static CrossMachineAnalyticsEngine CrossMachineAnalytics =>
+        _crossMachineAnalytics ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -497,6 +550,20 @@ public static class AppServices
 
         _timeline.Start(); // must start after narrative (subscribes to NarrativeUpdated)
 
+        // ── Distributed intelligence layer ────────────────────────────────────
+        // Created after _timeline.Start() so DistributedTimelineAggregator holds
+        // a valid, started ITimelineAggregationService reference.
+        // Device identity probe runs lazily off-thread on first page navigation.
+        _deviceIdentity = new DeviceIdentityService();
+        _trustedDevices = new TrustedDeviceRegistry();
+        _localSync      = new LocalSyncCoordinator(
+            _deviceIdentity, _trustedDevices, _workloadProfiling, _session, _telemetry);
+        _distributedTimeline   = new DistributedTimelineAggregator(
+            _deviceIdentity, _localSync, _timeline);
+        _crossMachineAnalytics = new CrossMachineAnalyticsEngine(
+            _deviceIdentity, _localSync);
+        _localSync.Start();
+
         // ── ExplainMyPC flagship engine ───────────────────────────────────────
         // Must start after narrative and timeline — subscribes to both.
         // Seeds from current state immediately if insights already exist.
@@ -537,6 +604,16 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        // Stop distributed layer first — LocalSyncCoordinator holds a ReadingAvailable
+        // subscription to telemetry and must release it before telemetry stops.
+        _localSync?.Stop();
+        _localSync?.Dispose();
+        _localSync             = null;
+        _distributedTimeline   = null;
+        _crossMachineAnalytics = null;
+        _trustedDevices        = null;
+        _deviceIdentity        = null;
+
         // Stop diagnostics first — it holds subscriptions to telemetry and governance.
         _diagnostics?.Stop();
         if (_diagnostics is IDisposable dd) dd.Dispose();

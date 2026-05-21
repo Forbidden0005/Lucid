@@ -58,6 +58,7 @@ public sealed partial class MainWindow : Window
             "replay"      => typeof(ReplayPage),
             "historical"  => typeof(HistoricalPage),
             "behavior"    => typeof(MachineBehaviorPage),
+            "devices"     => typeof(DeviceIntelligencePage),
             "governance"  => typeof(RuntimeGovernancePage),
             "diagnostics" => typeof(DiagnosticsPage),
             "settings"    => typeof(SettingsPage),

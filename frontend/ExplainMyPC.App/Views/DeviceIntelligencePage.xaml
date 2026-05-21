@@ -1,0 +1,615 @@
+<Page
+    x:Class="ExplainMyPC.Views.DeviceIntelligencePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:ExplainMyPC.ViewModels"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer x:Name="RootScrollViewer"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="24,20,24,32" Spacing="20"
+                    MaxWidth="1100"
+                    HorizontalAlignment="Left">
+
+            <!-- ══ Page header ════════════════════════════════════════════════ -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Device Intelligence"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="Local-network operational awareness across your trusted devices"
+                           Style="{StaticResource CaptionTextStyle}" />
+            </StackPanel>
+
+            <!-- ══ Loading indicator ═════════════════════════════════════════ -->
+            <ProgressBar IsIndeterminate="True"
+                         Visibility="{Binding LoadingVisibility}"
+                         Margin="0,4,0,0" />
+
+            <!-- ══ This Device Identity Card ════════════════════════════════ -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12"
+                    Padding="20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Role icon badge -->
+                    <Border Grid.Column="0"
+                            Width="52" Height="52"
+                            CornerRadius="26"
+                            Margin="0,0,16,0"
+                            VerticalAlignment="Center">
+                        <Border.Background>
+                            <SolidColorBrush Color="{Binding ThisDeviceColor}" Opacity="0.18" />
+                        </Border.Background>
+                        <FontIcon Glyph="{Binding ThisDeviceGlyph}"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="22"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center">
+                            <FontIcon.Foreground>
+                                <SolidColorBrush Color="{Binding ThisDeviceColor}" />
+                            </FontIcon.Foreground>
+                        </FontIcon>
+                    </Border>
+
+                    <!-- Device info -->
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="{Binding ThisDeviceName}"
+                                       Style="{StaticResource SectionTitleStyle}" />
+                            <Border Background="{StaticResource AppChipBrush}"
+                                    CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="This Device"
+                                           Style="{StaticResource ChipTextStyle}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ThisDeviceRole}"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding ThisDeviceId}"
+                                   Style="{StaticResource MetaTextStyle}"
+                                   Opacity="0.45"
+                                   FontFamily="Cascadia Code, Consolas, monospace"
+                                   FontSize="10" />
+                    </StackPanel>
+
+                    <!-- Linked devices count badge -->
+                    <Border Grid.Column="2" VerticalAlignment="Center">
+                        <StackPanel Spacing="4" HorizontalAlignment="Right">
+                            <TextBlock Text="{Binding LinkedDeviceCount}"
+                                       Style="{StaticResource MetaTextStyle}"
+                                       HorizontalAlignment="Right" />
+                            <TextBlock Text="{Binding SyncStatusText}"
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Right"
+                                       Opacity="0.6" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ══ Pairing Mode Panel ═════════════════════════════════════════ -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12"
+                    Padding="24"
+                    Visibility="{Binding PairingPanelVisibility}">
+                <StackPanel Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Border Width="36" Height="36" CornerRadius="18"
+                                Background="#1A3B82F6">
+                            <FontIcon Glyph="&#xE8B7;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                      Foreground="#3B82F6"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Link a Device"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Pairing code display -->
+                    <Border Background="#0D3B82F6" CornerRadius="10"
+                            Padding="20,16">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <TextBlock Text="PAIRING CODE"
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       Opacity="0.6"
+                                       CharacterSpacing="150" />
+                            <TextBlock Text="{Binding PairingCode6}"
+                                       FontFamily="Cascadia Code, Consolas, monospace"
+                                       FontSize="42"
+                                       FontWeight="Bold"
+                                       Foreground="#3B82F6"
+                                       HorizontalAlignment="Center"
+                                       CharacterSpacing="100" />
+                            <TextBlock Text="Code expires in 5 minutes"
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       Opacity="0.5" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding PairingInstructions}"
+                               Style="{StaticResource BodyTextStyle}"
+                               TextWrapping="Wrap"
+                               Opacity="0.75" />
+
+                    <!-- Privacy note -->
+                    <Border Background="{StaticResource AppChipBrush}"
+                            CornerRadius="8" Padding="12,10">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <FontIcon Glyph="&#xE72E;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="14"
+                                      Foreground="#22C55E"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="All communication is local-network-only, encrypted, and requires explicit confirmation on both devices."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       TextWrapping="Wrap"
+                                       Foreground="#22C55E"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <Button Content="Cancel Pairing"
+                            Command="{Binding CancelPairingCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══ Empty State (no devices, not pairing) ══════════════════════ -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12"
+                    Padding="40"
+                    Visibility="{Binding EmptyStateVisibility}">
+                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                    <Border Width="64" Height="64" CornerRadius="32"
+                            Background="#1A6366F1"
+                            HorizontalAlignment="Center">
+                        <FontIcon Glyph="&#xE8B7;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="28"
+                                  Foreground="#6366F1"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="No Linked Devices"
+                               Style="{StaticResource SectionTitleStyle}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Link another device running ExplainMyPC to enable cross-machine operational awareness, distributed timeline correlation, and ecosystem insights."
+                               Style="{StaticResource BodyTextStyle}"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"
+                               MaxWidth="420"
+                               TextAlignment="Center"
+                               Opacity="0.7" />
+                    <Button Content="Link a Device"
+                            Command="{Binding StartPairingCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            HorizontalAlignment="Center"
+                            Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══ Linked Devices ════════════════════════════════════════════ -->
+            <StackPanel Spacing="12"
+                        Visibility="{Binding DeviceListVisibility}">
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="Linked Devices"
+                               Style="{StaticResource SectionTitleStyle}"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Content="Link Another"
+                            Command="{Binding StartPairingCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}" />
+                </Grid>
+
+                <ItemsControl ItemsSource="{Binding TrustedDevices}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TrustedDeviceCardViewModel">
+                            <Border Background="{StaticResource AppSurfaceBrush}"
+                                    CornerRadius="10"
+                                    Padding="16"
+                                    Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Role icon -->
+                                    <Border Grid.Column="0"
+                                            Width="44" Height="44"
+                                            CornerRadius="22"
+                                            Margin="0,0,14,0"
+                                            VerticalAlignment="Center">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{x:Bind RoleColor}" Opacity="0.18" />
+                                        </Border.Background>
+                                        <FontIcon Glyph="{x:Bind RoleGlyph}"
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="18"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center">
+                                            <FontIcon.Foreground>
+                                                <SolidColorBrush Color="{x:Bind RoleColor}" />
+                                            </FontIcon.Foreground>
+                                        </FontIcon>
+                                    </Border>
+
+                                    <!-- Device details -->
+                                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{x:Bind DeviceName}"
+                                                       Style="{StaticResource CardTitleStyle}" />
+                                            <!-- Online/offline badge -->
+                                            <Border CornerRadius="3" Padding="6,2">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="{x:Bind SyncStatusColor}" Opacity="0.15" />
+                                                </Border.Background>
+                                                <TextBlock Text="{x:Bind SyncStatusLabel}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold">
+                                                    <TextBlock.Foreground>
+                                                        <SolidColorBrush Color="{x:Bind SyncStatusColor}" />
+                                                    </TextBlock.Foreground>
+                                                </TextBlock>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{x:Bind RoleLabel}"
+                                                   Style="{StaticResource CaptionTextStyle}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <TextBlock Text="{x:Bind WorkloadLabel}"
+                                                       Style="{StaticResource MetaTextStyle}"
+                                                       Opacity="0.6" />
+                                            <TextBlock Text="{x:Bind CpuText}"
+                                                       Style="{StaticResource MetaTextStyle}"
+                                                       Opacity="0.6" />
+                                            <TextBlock Text="{x:Bind RamText}"
+                                                       Style="{StaticResource MetaTextStyle}"
+                                                       Opacity="0.6" />
+                                            <TextBlock Text="{x:Bind UptimeText}"
+                                                       Style="{StaticResource MetaTextStyle}"
+                                                       Opacity="0.6" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Remove button -->
+                                    <Button Grid.Column="2"
+                                            Content="&#xE74D;"
+                                            FontFamily="Segoe MDL2 Assets"
+                                            ToolTipService.ToolTip="Remove device"
+                                            Command="{Binding DataContext.RemoveDeviceCommand, ElementName=RootScrollViewer}"
+                                            CommandParameter="{x:Bind DeviceId}"
+                                            VerticalAlignment="Top"
+                                            Background="Transparent"
+                                            Foreground="#6B7280"
+                                            Width="32" Height="32"
+                                            Padding="0" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ══ Cross-Machine Insights ═════════════════════════════════════ -->
+            <StackPanel Spacing="12"
+                        Visibility="{Binding InsightsSectionVisibility}">
+
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <FontIcon Glyph="&#xE9CE;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="16"
+                              Foreground="{StaticResource AccentBlueBrush}"
+                              VerticalAlignment="Center" />
+                    <TextBlock Text="Cross-Machine Insights"
+                               Style="{StaticResource SectionTitleStyle}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding CrossInsights}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CrossInsightViewModel">
+                            <Border Background="{StaticResource AppSurfaceBrush}"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Accent stripe -->
+                                    <Border Grid.Column="0" CornerRadius="10,0,0,10">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{x:Bind TypeColor}" />
+                                        </Border.Background>
+                                    </Border>
+
+                                    <!-- Content -->
+                                    <StackPanel Grid.Column="1" Padding="16" Spacing="8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Spacing="3">
+                                                <TextBlock Text="{x:Bind Title}"
+                                                           Style="{StaticResource CardTitleStyle}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <!-- Type badge -->
+                                                    <Border CornerRadius="3" Padding="6,2">
+                                                        <Border.Background>
+                                                            <SolidColorBrush Color="{x:Bind TypeColor}" Opacity="0.15" />
+                                                        </Border.Background>
+                                                        <TextBlock Text="{x:Bind TypeLabel}"
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold">
+                                                            <TextBlock.Foreground>
+                                                                <SolidColorBrush Color="{x:Bind TypeColor}" />
+                                                            </TextBlock.Foreground>
+                                                        </TextBlock>
+                                                    </Border>
+                                                    <!-- Confidence badge -->
+                                                    <Border Background="{StaticResource AppChipBrush}"
+                                                            CornerRadius="3" Padding="6,2">
+                                                        <TextBlock Text="{x:Bind ConfidenceLabel}"
+                                                                   Style="{StaticResource ChipTextStyle}" />
+                                                    </Border>
+                                                    <TextBlock Text="{x:Bind AffectedDevices}"
+                                                               Style="{StaticResource MetaTextStyle}"
+                                                               VerticalAlignment="Center"
+                                                               Opacity="0.5" />
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{x:Bind TimeText}"
+                                                       Style="{StaticResource MetaTextStyle}"
+                                                       VerticalAlignment="Top"
+                                                       Opacity="0.45" />
+                                        </Grid>
+
+                                        <TextBlock Text="{x:Bind Explanation}"
+                                                   Style="{StaticResource BodyTextStyle}"
+                                                   TextWrapping="Wrap"
+                                                   Opacity="0.8"
+                                                   MaxLines="4" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ══ Distributed Timeline ═══════════════════════════════════════ -->
+            <StackPanel Spacing="12"
+                        Visibility="{Binding TimelineSectionVisibility}">
+
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <FontIcon Glyph="&#xE823;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="16"
+                              Foreground="{StaticResource AccentBlueBrush}"
+                              VerticalAlignment="Center" />
+                    <TextBlock Text="Distributed Timeline"
+                               Style="{StaticResource SectionTitleStyle}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding DistributedEvents}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DistributedTimelineEventViewModel">
+                            <Border Margin="0,0,0,6"
+                                    Background="{StaticResource AppSurfaceBrush}"
+                                    CornerRadius="8"
+                                    Padding="12,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Glyph circle -->
+                                    <Border Grid.Column="0"
+                                            Width="34" Height="34"
+                                            CornerRadius="17"
+                                            Margin="0,0,12,0"
+                                            VerticalAlignment="Center">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{x:Bind AccentColor}" Opacity="0.15" />
+                                        </Border.Background>
+                                        <FontIcon Glyph="{x:Bind Glyph}"
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="14"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center">
+                                            <FontIcon.Foreground>
+                                                <SolidColorBrush Color="{x:Bind AccentColor}" />
+                                            </FontIcon.Foreground>
+                                        </FontIcon>
+                                    </Border>
+
+                                    <!-- Event info -->
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Title}"
+                                                   Style="{StaticResource CardBodyStyle}"
+                                                   TextWrapping="NoWrap"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <!-- Device badge -->
+                                            <Border CornerRadius="3" Padding="5,1">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="{x:Bind DeviceBadgeColor}" Opacity="0.12" />
+                                                </Border.Background>
+                                                <TextBlock Text="{x:Bind DeviceBadge}"
+                                                           FontSize="11">
+                                                    <TextBlock.Foreground>
+                                                        <SolidColorBrush Color="{x:Bind DeviceBadgeColor}" />
+                                                    </TextBlock.Foreground>
+                                                </TextBlock>
+                                            </Border>
+                                            <TextBlock Text="{x:Bind Description}"
+                                                       Style="{StaticResource MetaTextStyle}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Opacity="0.5" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Time + correlation -->
+                                    <StackPanel Grid.Column="2" Spacing="3"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind TimeText}"
+                                                   Style="{StaticResource MetaTextStyle}"
+                                                   HorizontalAlignment="Right"
+                                                   Opacity="0.45" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ══ Ecosystem Narrative ════════════════════════════════════════ -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12"
+                    Padding="20">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE8F4;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="16"
+                                  Foreground="{StaticResource AccentBlueBrush}"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Ecosystem Summary"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding EcosystemNarrative}"
+                               Style="{StaticResource BodyTextStyle}"
+                               TextWrapping="Wrap"
+                               LineHeight="22"
+                               Opacity="0.85" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══ Device Trust & Privacy ═════════════════════════════════════ -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12"
+                    Padding="20">
+                <StackPanel Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE72E;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="16"
+                                  Foreground="#22C55E"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Privacy Guarantees"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Three guarantee rows -->
+                    <Border Background="#0A22C55E" CornerRadius="8" Padding="14,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0"
+                                      Glyph="&#xE8B7;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                      Foreground="#22C55E"
+                                      Margin="0,0,12,0"
+                                      VerticalAlignment="Top" />
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="Local network only"
+                                           FontWeight="SemiBold"
+                                           Foreground="#22C55E"
+                                           FontSize="13" />
+                                <TextBlock Text="All device-to-device communication stays on your local network. No data is relayed through external servers, cloud services, or Anthropic infrastructure."
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Opacity="0.8" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Background="#0A3B82F6" CornerRadius="8" Padding="14,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0"
+                                      Glyph="&#xE9A0;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                      Foreground="#3B82F6"
+                                      Margin="0,0,12,0"
+                                      VerticalAlignment="Top" />
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="AES-256 encryption"
+                                           FontWeight="SemiBold"
+                                           Foreground="#3B82F6"
+                                           FontSize="13" />
+                                <TextBlock Text="Every payload exchanged between devices is encrypted with a unique AES-256 key derived from your pairing code. Snapshots shared: workload classification, CPU/RAM/thermal percentages, storage utilization, and active insight count — nothing more."
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Opacity="0.8" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Background="#0AA855F7" CornerRadius="8" Padding="14,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0"
+                                      Glyph="&#xE779;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                      Foreground="#A855F7"
+                                      Margin="0,0,12,0"
+                                      VerticalAlignment="Top" />
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="Explicit opt-in pairing"
+                                           FontWeight="SemiBold"
+                                           Foreground="#A855F7"
+                                           FontSize="13" />
+                                <TextBlock Text="Devices are never linked automatically. Each pairing requires a 6-digit code confirmed on both devices. You can remove a linked device at any time from this page."
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Opacity="0.8" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
