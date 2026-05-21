@@ -19,6 +19,7 @@ using ExplainMyPC.Services.Session;
 using ExplainMyPC.Services.Startup;
 using ExplainMyPC.Services.Storage;
 using ExplainMyPC.Services.Timeline;
+using ExplainMyPC.Services.Watchtower;
 using Microsoft.UI.Dispatching;
 
 
@@ -86,6 +87,10 @@ public static class AppServices
     private static LocalSyncCoordinator?           _localSync;
     private static DistributedTimelineAggregator?  _distributedTimeline;
     private static CrossMachineAnalyticsEngine?    _crossMachineAnalytics;
+
+    // ── Operational Watchtower layer ──────────────────────────────────────────
+    private static ProactiveRecommendationCoordinator? _watchtowerCoordinator;
+    private static OperationalWatchtowerService?       _watchtower;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -324,6 +329,17 @@ public static class AppServices
     /// </summary>
     public static CrossMachineAnalyticsEngine CrossMachineAnalytics =>
         _crossMachineAnalytics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational Watchtower service.
+    /// Runs autonomous 30-minute analysis cycles detecting degradation, drift,
+    /// and stability risks from historical operational data.
+    /// All analysis is local-only, deterministic, and suggestion-only.
+    /// </summary>
+    public static OperationalWatchtowerService Watchtower =>
+        _watchtower ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -587,6 +603,16 @@ public static class AppServices
         _ = learningSvc.AnalyzePendingActionsAsync();
         _learningService = learningSvc;
 
+        // ── Operational Watchtower ────────────────────────────────────────────
+        // Created after learning service so intervention planner has effectiveness
+        // profiles available. The coordinator uses historical analytics, learning,
+        // and governance to orchestrate the sub-engines.
+        _watchtowerCoordinator = new ProactiveRecommendationCoordinator(
+            _historicalAnalytics, _learningService, _governance);
+        _watchtower = new OperationalWatchtowerService(
+            _watchtowerCoordinator, _governance, uiDispatcher);
+        _watchtower.Start();
+
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
@@ -604,6 +630,11 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        // Stop Watchtower first — it holds a SnapshotUpdated subscription.
+        _watchtower?.Dispose();
+        _watchtower            = null;
+        _watchtowerCoordinator = null;
+
         // Stop distributed layer first — LocalSyncCoordinator holds a ReadingAvailable
         // subscription to telemetry and must release it before telemetry stops.
         _localSync?.Stop();

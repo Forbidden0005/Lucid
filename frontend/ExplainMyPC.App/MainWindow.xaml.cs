@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window
             "behavior"    => typeof(MachineBehaviorPage),
             "devices"     => typeof(DeviceIntelligencePage),
             "governance"  => typeof(RuntimeGovernancePage),
+            "watchtower"  => typeof(WatchtowerPage),
             "diagnostics" => typeof(DiagnosticsPage),
             "settings"    => typeof(SettingsPage),
             _ => null

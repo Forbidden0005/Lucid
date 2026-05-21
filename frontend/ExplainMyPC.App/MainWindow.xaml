@@ -181,6 +181,13 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
+                <muxc:NavigationViewItem Tag="watchtower"
+                                         Content="Watchtower">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE7B7;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
                 <muxc:NavigationViewItem Tag="diagnostics"
                                          Content="Diagnostics">
                     <muxc:NavigationViewItem.Icon>
