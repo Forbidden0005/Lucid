@@ -152,6 +152,29 @@ Goal:
 
 ---
 
+### 2a. Execution Priority Queue (Formal Subsystem)
+
+As the operation set grows, heavy tasks will collide without governance:
+- DISM / SFC runs
+- SHA-256 duplicate hashing across large drives
+- Storage filesystem traversal
+- Process graph analysis
+- Telemetry forecasting
+
+Build:
+- `ExecutionPriorityQueue` — ordered work queue with foreground/background/idle-only buckets
+- `ConcurrencyBudget` — max simultaneous heavy operations (e.g. 1 disk-bound + 1 CPU-bound)
+- `ThrottlingPolicy` — per-executor resource ceiling
+- `WorkClassification` — each executor declares its resource class at registration
+
+Goal:
+"ExplainMyPC must never be the reason the PC is slow."
+
+Example problem this solves:
+"ExplainMyPC is using 38% CPU to explain why your CPU is high."
+
+---
+
 ### 3. Internal Diagnostics
 Add self-observability.
 
@@ -436,7 +459,32 @@ Prepare ExplainMyPC for long-term extensibility.
 
 ---
 
-## 1. Modular Feature Architecture
+## 1. Domain Event Bus
+
+As the platform grows, these services will start observing each other directly:
+- TimelineAggregationService
+- NarrativeEngine
+- IntelligenceEngine
+- SecurityIntelligenceService
+- ProcessIntelligenceService
+- StorageAnalysisService
+- future ExplainMyPC conversational layer
+
+Direct cross-service subscriptions are fine now while the architecture fits in one person's head.
+When that changes, introduce a Domain Event Bus for decoupling.
+
+Design:
+- `IDomainEvent` — base interface for all platform events
+- `IEventBus` — publish/subscribe interface
+- `InProcessEventBus` — lightweight in-process implementation (no external broker)
+- Services publish events (e.g. `InsightOnsetEvent`, `ActionExecutedEvent`, `ProcessAnomalyEvent`)
+- Consumers subscribe to the bus instead of holding direct service references
+
+This is NOT urgent. Add it when hidden coupling starts causing bugs or making services hard to test.
+
+---
+
+## 2. Modular Feature Architecture
 
 Introduce clearer module boundaries:
 - telemetry

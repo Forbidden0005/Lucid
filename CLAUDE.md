@@ -15,6 +15,50 @@ Key strategic directives (always active):
 - The flagship experience is natural language operational explanations (Phase 4 in roadmap)
 - Current highest-value priorities (in order): Platform stabilization → Resource governance → Explain My PC flagship → Security intelligence → Process relationship intelligence → Operational replay → SQLite persistence → Advanced forecasting
 
+---
+
+## CORE DOCTRINE: Security Language
+
+This is **non-negotiable** and applies to every session, every file, every UI string.
+
+**NEVER use:**
+- "malicious" / "infected" / "dangerous" / "threat detected"
+- absolute certainty language about security findings
+- antivirus-style warning copy
+
+**ALWAYS use:**
+- confidence-aware, probabilistic language
+- "unusual", "unexpected", "worth reviewing", "flagged for inspection"
+- contextual explanations: *why* something looks suspicious, not *what it is*
+- confidence scores or severity levels instead of binary good/bad
+
+**Why this matters:**
+ExplainMyPC is NOT antivirus. It explains, correlates, surfaces, and contextualizes.
+Wording drift ("suspicious" → "likely malicious" → "dangerous") happens gradually across sessions.
+This rule prevents that drift and is what separates the platform from discount antivirus marketing copy.
+
+---
+
+## CORE DOCTRINE: Execution Resource Governance
+
+ExplainMyPC must never become the reason the PC is slow.
+
+As the platform grows, these operations can collide without governance:
+- DISM / SFC repair runs
+- SHA-256 duplicate hashing
+- Storage filesystem traversal
+- Process graph analysis
+- Telemetry forecasting
+- Timeline aggregation
+
+**Every executor and background service must be classified as:**
+- `Foreground` — user-initiated, time-sensitive, gets resources now
+- `Background` — scheduled/passive, must yield to foreground work
+- `Idle-only` — only runs when system is not under load
+
+**Future formal subsystem:** Execution Priority Queue with concurrency buckets and throttling policies.
+Until that subsystem exists: avoid launching multiple heavy operations simultaneously.
+
 ### Current Phase Priority: Phase 1 — Platform Stabilization
 Before adding new features, prioritize:
 1. Settings infrastructure (ISettingsService, JsonSettingsStore, schema versioning)
