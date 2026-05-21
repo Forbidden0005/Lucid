@@ -1,23 +1,23 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ExplainMyPC.Services.History;
+using ExplainMyPC.Services.Persistence;
 using ExplainMyPC.Services.Replay;
 
 namespace ExplainMyPC.Services.Learning;
 
 /// <summary>
-/// JSON-file-backed implementation of <see cref="IRemediationLearningService"/>.
+/// SQLite-backed implementation of <see cref="IRemediationLearningService"/>.
 ///
-/// Storage:
-///   %LOCALAPPDATA%\ExplainMyPC\Learning\outcome-records.json
-///   A JSON array of <see cref="ActionOutcomeRecord"/> objects.
+/// Storage delegate:
+///   All outcome records are persisted via <see cref="RecommendationOutcomeRepository"/>
+///   (INSERT OR REPLACE, idempotent per operation_id).
+///   Replaces the previous JSON-file approach.
 ///
 /// Analysis flow (AnalyzePendingActionsAsync):
-///   1. Load existing outcome records (already analyzed, keyed by OperationId)
+///   1. Load already-analyzed operation IDs from the repository
 ///   2. Load operation history (up to MaxHistoryFetch records)
 ///   3. Filter to: eligible actions not yet analyzed
 ///   4. Analyze up to MaxAnalysisPerPass new records (bounds resource use)
-///   5. Persist any new records
+///   5. Write each new record directly to the repository
 ///   6. Rebuild in-memory profiles via RecommendationLearningEngine
 ///   7. Raise ProfilesUpdated
 ///
@@ -33,7 +33,7 @@ public sealed class RemediationLearningService : IRemediationLearningService
 {
     // ── Configuration ─────────────────────────────────────────────────────────
 
-    /// <summary>Maximum outcome records to retain (oldest evicted first).</summary>
+    /// <summary>Maximum outcome records returned when rebuilding profiles.</summary>
     private const int MaxRecords = 500;
 
     /// <summary>Maximum new records to analyze per AnalyzePendingActionsAsync call.</summary>
@@ -44,44 +44,27 @@ public sealed class RemediationLearningService : IRemediationLearningService
 
     // ── State ─────────────────────────────────────────────────────────────────
 
-    private readonly string                    _filePath;
-    private readonly string                    _tempPath;
-    private readonly SemaphoreSlim             _lock = new(1, 1);
-    private readonly IOperationHistoryService  _operationHistory;
-    private readonly IOperationalReplayService _replay;
-    private readonly EffectivenessAnalyzer     _analyzer;
+    private readonly SemaphoreSlim                   _lock = new(1, 1);
+    private readonly IOperationHistoryService        _operationHistory;
+    private readonly IOperationalReplayService       _replay;
+    private readonly RecommendationOutcomeRepository _outcomeRepo;
+    private readonly EffectivenessAnalyzer           _analyzer;
 
     /// <summary>Current in-memory profile snapshot (immutable reference swap on update).</summary>
     private volatile IReadOnlyDictionary<string, RecommendationEffectivenessProfile>
         _profiles = new Dictionary<string, RecommendationEffectivenessProfile>(StringComparer.Ordinal);
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented               = true,
-        PropertyNamingPolicy        = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition      = JsonIgnoreCondition.WhenWritingNull,
-    };
-
     // ── Construction ──────────────────────────────────────────────────────────
 
     public RemediationLearningService(
-        IOperationHistoryService  operationHistory,
-        IOperationalReplayService replay)
+        IOperationHistoryService        operationHistory,
+        IOperationalReplayService       replay,
+        RecommendationOutcomeRepository outcomeRepo)
     {
         _operationHistory = operationHistory;
         _replay           = replay;
+        _outcomeRepo      = outcomeRepo;
         _analyzer         = new EffectivenessAnalyzer(replay);
-
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ExplainMyPC", "Learning");
-
-        try { Directory.CreateDirectory(dir); }
-        catch { /* best-effort */ }
-
-        _filePath = Path.Combine(dir, "outcome-records.json");
-        _tempPath = _filePath + ".tmp";
     }
 
     // ── IRemediationLearningService ───────────────────────────────────────────
@@ -122,11 +105,10 @@ public sealed class RemediationLearningService : IRemediationLearningService
 
     private async Task AnalyzeCoreAsync()
     {
-        // 1. Load existing outcome records
-        var existingRecords = await ReadCoreAsync().ConfigureAwait(false);
-        var analyzedIds     = new HashSet<string>(
-            existingRecords.Select(r => r.OperationId),
-            StringComparer.Ordinal);
+        // 1. Load IDs of operations already analyzed so we skip them
+        var analyzedIds = await _outcomeRepo
+            .GetAnalyzedOperationIdsAsync()
+            .ConfigureAwait(false);
 
         // 2. Load operation history
         var operations = await _operationHistory
@@ -145,32 +127,34 @@ public sealed class RemediationLearningService : IRemediationLearningService
             return; // nothing new to analyze
 
         // 4. Analyze each pending operation
-        var newRecords = new List<ActionOutcomeRecord>(pending.Count);
+        int written = 0;
         foreach (var op in pending)
         {
             var record = await _analyzer.AnalyzeAsync(op).ConfigureAwait(false);
-            if (record is not null)
-                newRecords.Add(record);
+            if (record is null) continue;   // too recent or ineligible
+
+            await _outcomeRepo.WriteOutcomeAsync(record).ConfigureAwait(false);
+            written++;
         }
 
-        if (newRecords.Count == 0)
-            return; // all were too recent or ineligible
+        if (written == 0)
+            return; // all were too recent
 
-        // 5. Merge and persist
-        var merged = MergeAndCap(existingRecords, newRecords);
-        await WriteCoreAsync(merged).ConfigureAwait(false);
+        // 5. Rebuild profiles from the full stored history
+        var allOutcomes = await _outcomeRepo
+            .GetAllOutcomesAsync(MaxRecords)
+            .ConfigureAwait(false);
 
-        // 6. Rebuild profiles (pure in-memory, no I/O)
-        _profiles = RecommendationLearningEngine.BuildProfiles(merged);
+        _profiles = RecommendationLearningEngine.BuildProfiles(allOutcomes);
 
-        // 7. Notify subscribers
+        // 6. Notify subscribers
         ProfilesUpdated?.Invoke(this, EventArgs.Empty);
     }
 
     // ── Bootstrap: load profiles on first access ──────────────────────────────
 
     /// <summary>
-    /// Loads persisted outcome records and rebuilds profiles from them.
+    /// Loads persisted outcome records from SQLite and rebuilds profiles from them.
     /// Call once at startup to ensure profiles are available before the first
     /// AnalyzePendingActionsAsync pass completes.
     /// </summary>
@@ -179,7 +163,10 @@ public sealed class RemediationLearningService : IRemediationLearningService
         await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
-            var records = await ReadCoreAsync().ConfigureAwait(false);
+            var records = await _outcomeRepo
+                .GetAllOutcomesAsync(MaxRecords)
+                .ConfigureAwait(false);
+
             if (records.Count > 0)
                 _profiles = RecommendationLearningEngine.BuildProfiles(records);
         }
@@ -191,49 +178,5 @@ public sealed class RemediationLearningService : IRemediationLearningService
         {
             _lock.Release();
         }
-    }
-
-    // ── Persistence helpers ───────────────────────────────────────────────────
-
-    private async Task<List<ActionOutcomeRecord>> ReadCoreAsync()
-    {
-        if (!File.Exists(_filePath))
-            return [];
-
-        try
-        {
-            var json = await File.ReadAllTextAsync(_filePath).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(json))
-                return [];
-
-            return JsonSerializer.Deserialize<List<ActionOutcomeRecord>>(json, JsonOptions) ?? [];
-        }
-        catch
-        {
-            // Corrupted file — start fresh
-            return [];
-        }
-    }
-
-    private async Task WriteCoreAsync(List<ActionOutcomeRecord> records)
-    {
-        var json = JsonSerializer.Serialize(records, JsonOptions);
-        await File.WriteAllTextAsync(_tempPath, json).ConfigureAwait(false);
-        File.Move(_tempPath, _filePath, overwrite: true);
-    }
-
-    private static List<ActionOutcomeRecord> MergeAndCap(
-        List<ActionOutcomeRecord> existing,
-        List<ActionOutcomeRecord> newItems)
-    {
-        var merged = new List<ActionOutcomeRecord>(existing.Count + newItems.Count);
-        merged.AddRange(existing);
-        merged.AddRange(newItems);
-
-        // Evict oldest when over cap
-        if (merged.Count > MaxRecords)
-            merged.RemoveRange(0, merged.Count - MaxRecords);
-
-        return merged;
     }
 }

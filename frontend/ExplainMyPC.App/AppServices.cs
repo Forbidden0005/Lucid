@@ -1,4 +1,5 @@
 using ExplainMyPC.Services;
+using ExplainMyPC.Services.Analytics;
 using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Learning;
 using ExplainMyPC.Services.Execution;
@@ -7,6 +8,7 @@ using ExplainMyPC.Services.Explain;
 using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using ExplainMyPC.Services.Narrative;
+using ExplainMyPC.Services.Persistence;
 using ExplainMyPC.Services.Replay;
 using ExplainMyPC.Services.Security;
 using ExplainMyPC.Services.Session;
@@ -50,6 +52,16 @@ public static class AppServices
     private static IExplainMyPcEngine?          _explainEngine;
     private static IOperationalReplayService?    _replayService;
     private static IRemediationLearningService?  _learningService;
+
+    // ── SQLite persistence layer ──────────────────────────────────────────────
+    private static SQLitePersistenceService?        _persistence;
+    private static HistoricalTelemetryRepository?   _telHistoryRepo;
+    private static TimelineEventRepository?         _timelineEventRepo;
+    private static InsightHistoryRepository?        _insightHistoryRepo;
+    private static RecommendationOutcomeRepository? _outcomeRepo;
+    private static IHistoricalAnalyticsEngine?      _historicalAnalytics;
+    private static HashSet<string>                  _lastInsightIds = [];
+    private static System.Threading.Timer?          _downsampleTimer;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -192,6 +204,17 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Historical analytics engine.
+    /// Computes long-term health scores, metric trends, recurring patterns,
+    /// and narrative summaries from the SQLite operational database.
+    /// All computation is local-only and deterministic — no cloud, no ML.
+    /// </summary>
+    public static IHistoricalAnalyticsEngine HistoricalAnalytics =>
+        _historicalAnalytics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -201,6 +224,21 @@ public static class AppServices
     /// </summary>
     public static void Initialize(DispatcherQueue uiDispatcher)
     {
+        // ── SQLite persistence layer ──────────────────────────────────────────
+        // Initialised first so repositories are ready before any services start
+        // and before telemetry events begin firing.
+        // InitializeAsync() is synchronous at app start — SQLite schema creation
+        // is fast (< 50 ms) and the window has not been shown yet.
+        var dbService = new SQLitePersistenceService();
+        dbService.InitializeAsync().GetAwaiter().GetResult();
+        _telHistoryRepo    = new HistoricalTelemetryRepository(dbService);
+        _timelineEventRepo = new TimelineEventRepository(dbService);
+        _insightHistoryRepo = new InsightHistoryRepository(dbService);
+        _outcomeRepo       = new RecommendationOutcomeRepository(dbService);
+        _historicalAnalytics = new HistoricalAnalyticsEngine(
+            _telHistoryRepo, _insightHistoryRepo, _timelineEventRepo);
+        _persistence = dbService;
+
         _telemetry = new WindowsTelemetryService(uiDispatcher);
         _history   = new TelemetryHistoryBuffer();
 
@@ -212,11 +250,41 @@ public static class AppServices
 
         _intelligence = new SystemInsightEngine(_telemetry, _history, _baseline);
 
+        // Track insight onset and resolution in the SQLite insight_history table.
+        // Diffing previous vs. new set: new IDs = onset, missing IDs = resolved.
+        // Fire-and-forget async writes — failures are swallowed by repository.
+        _intelligence.InsightsUpdated += (_, insights) =>
+        {
+            var newIds = new HashSet<string>(
+                insights.Select(i => i.Id), StringComparer.Ordinal);
+
+            foreach (var insight in insights)
+            {
+                if (!_lastInsightIds.Contains(insight.Id))
+                    _ = _insightHistoryRepo!.RecordOnsetAsync(insight);
+            }
+            foreach (var oldId in _lastInsightIds)
+            {
+                if (!newIds.Contains(oldId))
+                    _ = _insightHistoryRepo!.RecordResolutionAsync(oldId);
+            }
+            _lastInsightIds = newIds;
+        };
+
         // Every snapshot flows into the history buffer automatically.
         // ReadingAvailable fires on the UI thread, so Record() is always
         // called from a single thread — the write lock is still held for
         // correctness when background analysis threads read concurrently.
         _telemetry.ReadingAvailable += (_, snapshot) => _history.Record(snapshot);
+
+        // Persist one sample every 30 seconds to the SQLite telemetry table.
+        // EnqueueSample() is throttled internally; extra calls are no-ops.
+        _telemetry.ReadingAvailable += (_, snapshot) => _telHistoryRepo!.EnqueueSample(
+            snapshot.CpuPercent,
+            snapshot.RamPercent,
+            snapshot.GpuAvailable ? snapshot.GpuPercent : null,
+            snapshot.DiskPercent,
+            snapshot.CpuTemperatureAvailable ? snapshot.CpuTemperatureCelsius : null);
 
         // Session context service — tracks boot time, sleep/wake cycles, idle periods,
         // and insight onset times. Created after _intelligence so the InsightsUpdated
@@ -305,6 +373,11 @@ public static class AppServices
         // back to the UI thread from the thread-pool read.
         _timeline = new TimelineAggregationService(
             _intelligence, _session, _narrative, _operationHistory, uiDispatcher);
+
+        // Persist each new timeline event to SQLite before the page sees it.
+        // EnqueueEvent() is non-blocking (ConcurrentQueue enqueue).
+        _timeline.NewEventAdded += (_, ev) => _timelineEventRepo!.EnqueueEvent(ev);
+
         _timeline.Start(); // must start after narrative (subscribes to NarrativeUpdated)
 
         // ── ExplainMyPC flagship engine ───────────────────────────────────────
@@ -324,10 +397,21 @@ public static class AppServices
         // Created after replay service (depends on it for before/after comparisons).
         // Loads persisted outcome records immediately so profiles are available
         // before the first AnalyzePendingActionsAsync pass completes.
-        var learningSvc = new RemediationLearningService(_operationHistory, _replayService);
+        var learningSvc = new RemediationLearningService(
+            _operationHistory, _replayService, _outcomeRepo!);
         _ = learningSvc.LoadPersistedProfilesAsync();
         _ = learningSvc.AnalyzePendingActionsAsync();
         _learningService = learningSvc;
+
+        // ── Hourly downsampling timer ─────────────────────────────────────────
+        // Aggregates raw telemetry into coarser buckets and evicts stale rows.
+        // Runs on a thread-pool thread — never touches the UI thread.
+        // Idle-only behavior: SQLite WAL means the main thread is never blocked.
+        _downsampleTimer = new System.Threading.Timer(
+            _ => _ = _telHistoryRepo!.DownsampleAndPurgeAsync(),
+            state:        null,
+            dueTime:      TimeSpan.FromHours(1),
+            period:       TimeSpan.FromHours(1));
     }
 
     /// <summary>
@@ -343,6 +427,10 @@ public static class AppServices
 
         // Learning service is stateless after init — just null the reference.
         _learningService = null;
+
+        // Stop the hourly downsampling timer before disposing SQLite.
+        _downsampleTimer?.Dispose();
+        _downsampleTimer = null;
 
         // Replay service is stateless — just null the reference.
         _replayService = null;
@@ -376,5 +464,19 @@ public static class AppServices
         if (_history  is IDisposable hd) hd.Dispose();
         _telemetry = null;
         _history   = null;
+
+        // Flush the SQLite write queue and close the connection.
+        // Dispose() calls FlushQueueAsync() synchronously to avoid data loss.
+        if (_persistence is not null)
+        {
+            _persistence.Dispose();
+            _persistence = null;
+        }
+        _telHistoryRepo     = null;
+        _timelineEventRepo  = null;
+        _insightHistoryRepo = null;
+        _outcomeRepo        = null;
+        _historicalAnalytics = null;
+        _lastInsightIds     = [];
     }
 }

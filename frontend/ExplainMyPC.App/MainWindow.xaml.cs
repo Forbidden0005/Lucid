@@ -54,9 +54,10 @@ public sealed partial class MainWindow : Window
             "apps"      => typeof(AppsPage),
             "privacy"   => typeof(PrivacyPage),
             "repairs"   => typeof(RepairsPage),
-            "timeline"  => typeof(TimelinePage),
-            "replay"    => typeof(ReplayPage),
-            "settings"  => typeof(SettingsPage),
+            "timeline"    => typeof(TimelinePage),
+            "replay"      => typeof(ReplayPage),
+            "historical"  => typeof(HistoricalPage),
+            "settings"    => typeof(SettingsPage),
             _ => null
         };
 

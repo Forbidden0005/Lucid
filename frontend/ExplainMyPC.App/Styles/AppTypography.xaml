@@ -101,4 +101,37 @@
         <Setter Property="LineHeight"   Value="24" />
     </Style>
 
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Convenience aliases
+        Short-form style keys used across page XAML.
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- Section heading alias (matches SectionTitleStyle) -->
+    <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI Variable" />
+        <Setter Property="FontSize"    Value="18" />
+        <Setter Property="FontWeight"  Value="SemiBold" />
+        <Setter Property="Foreground"  Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- Metric label alias — 14 px SemiBold -->
+    <Style x:Key="MetricLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI Variable" />
+        <Setter Property="FontSize"    Value="14" />
+        <Setter Property="FontWeight"  Value="SemiBold" />
+        <Setter Property="Foreground"  Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- Secondary body — 13 px, muted foreground -->
+    <Style x:Key="SecondaryBodyStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"   Value="Segoe UI Variable" />
+        <Setter Property="FontSize"     Value="13" />
+        <Setter Property="FontWeight"   Value="Normal" />
+        <Setter Property="Foreground"   Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight"   Value="20" />
+    </Style>
+
 </ResourceDictionary>

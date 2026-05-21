@@ -114,6 +114,40 @@
 
     <!--
         ════════════════════════════════════════════════════════════════
+        Convenience aliases
+        Short-form brush keys used throughout page XAML.  These are
+        identical to the canonical keys above — added so page files can
+        use the shorter names without breaking the source of truth.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <SolidColorBrush x:Key="PrimaryTextBrush"
+                     Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="SecondaryTextBrush"
+                     Color="{StaticResource TextSecondaryColor}" />
+
+    <!-- Accent purple (used by GPU metrics and Historical page) -->
+    <Color x:Key="AccentPurpleColor">#A78BFA</Color>
+    <SolidColorBrush x:Key="AccentPurpleBrush"
+                     Color="{StaticResource AccentPurpleColor}" />
+
+    <!-- Accent green alias (same as SuccessColor) -->
+    <SolidColorBrush x:Key="AccentGreenBrush"
+                     Color="{StaticResource SuccessColor}" />
+
+    <!-- Accent orange alias (same as WarningColor) -->
+    <SolidColorBrush x:Key="AccentOrangeBrush"
+                     Color="{StaticResource WarningColor}" />
+
+    <!-- Status warning alias (same as StatusModerateBrush) -->
+    <SolidColorBrush x:Key="StatusWarningBrush"
+                     Color="{StaticResource WarningColor}" />
+
+    <!-- Divider alias -->
+    <SolidColorBrush x:Key="SubtleDividerBrush"
+                     Color="{StaticResource BorderSubtleColor}" />
+
+    <!--
+        ════════════════════════════════════════════════════════════════
         NavigationView theme resource overrides
         These keys are consumed by the WinUI NavigationView control
         template. Placing them here (merged before XamlControlsResources
