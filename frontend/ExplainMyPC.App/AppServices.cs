@@ -6,6 +6,7 @@ using ExplainMyPC.Services.Explain;
 using ExplainMyPC.Services.History;
 using ExplainMyPC.Services.Intelligence;
 using ExplainMyPC.Services.Narrative;
+using ExplainMyPC.Services.Replay;
 using ExplainMyPC.Services.Security;
 using ExplainMyPC.Services.Session;
 using ExplainMyPC.Services.Startup;
@@ -46,6 +47,7 @@ public static class AppServices
     private static ITimelineAggregationService? _timeline;
     private static IStartupManagementService?   _startupManagement;
     private static IExplainMyPcEngine?          _explainEngine;
+    private static IOperationalReplayService?   _replayService;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -164,6 +166,16 @@ public static class AppServices
     /// </summary>
     public static IExplainMyPcEngine ExplainEngine =>
         _explainEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational replay and causal investigation engine.
+    /// Reconstructs historical system state at any point in time from the
+    /// rolling telemetry buffer, timeline event stream, and operation history.
+    /// </summary>
+    public static IOperationalReplayService ReplayService =>
+        _replayService ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -288,6 +300,12 @@ public static class AppServices
         _explainEngine = new ExplainMyPcEngine(
             _intelligence, _timeline, _narrative, _baseline, _history);
         _explainEngine.Start();
+
+        // ── Operational Replay service ────────────────────────────────────────
+        // Stateless — no Start()/Stop() required. Created after timeline and
+        // history so it can capture a fully-populated snapshot on first request.
+        _replayService = new OperationalReplayService(
+            _timeline, _history, _operationHistory, _baseline);
     }
 
     /// <summary>
@@ -300,6 +318,9 @@ public static class AppServices
         _executorRegistry   = null;
         _operationHistory   = null;
         _startupManagement  = null;
+
+        // Replay service is stateless — just null the reference.
+        _replayService = null;
 
         // ExplainEngine must stop before timeline and narrative —
         // it holds subscriptions to both.

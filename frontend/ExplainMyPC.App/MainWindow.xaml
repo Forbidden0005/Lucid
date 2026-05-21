@@ -146,6 +146,13 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
+                <muxc:NavigationViewItem Tag="replay"
+                                         Content="Replay">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE81C;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
             </muxc:NavigationView.MenuItems>
 
             <!-- ── Footer: Settings ────────────────────────────────────── -->
