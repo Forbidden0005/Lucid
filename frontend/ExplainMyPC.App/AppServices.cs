@@ -1,6 +1,7 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Analytics;
 using ExplainMyPC.Services.Baseline;
+using ExplainMyPC.Services.Behavior;
 using ExplainMyPC.Services.Diagnostics;
 using ExplainMyPC.Services.Governance;
 using ExplainMyPC.Services.Learning;
@@ -73,6 +74,10 @@ public static class AppServices
 
     // ── Internal diagnostics layer ────────────────────────────────────────────
     private static InternalDiagnosticsService? _diagnostics;
+
+    // ── Behavioral context layer ──────────────────────────────────────────────
+    private static WorkloadProfilingService?  _workloadProfiling;
+    private static IBehavioralContextEngine?  _behavioralContext;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -249,6 +254,26 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Workload profiling service.
+    /// Observes telemetry to classify the current workload type, track
+    /// session peaks, and accumulate a behavioral history for this machine.
+    /// </summary>
+    public static WorkloadProfilingService WorkloadProfiling =>
+        _workloadProfiling ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Behavioral context engine.
+    /// Provides unified workload context, machine identity, detected patterns,
+    /// and workload-aware recommendation deferral logic.
+    /// </summary>
+    public static IBehavioralContextEngine BehavioralContext =>
+        _behavioralContext ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -347,6 +372,13 @@ public static class AppServices
         _intelligence.Start();
         _session.Start();       // must start after _intelligence (subscribes to InsightsUpdated)
         _narrative.Start();     // must start after _intelligence
+
+        // ── Behavioral context layer ──────────────────────────────────────────
+        // Started after session so the classifier receives full session context.
+        // WorkloadProfilingService subscribes to ReadingAvailable internally.
+        _workloadProfiling = new WorkloadProfilingService(_telemetry, _session);
+        _workloadProfiling.Start();
+        _behavioralContext = new BehavioralContextEngine(_workloadProfiling);
 
         // ── Runtime governance service ────────────────────────────────────────
         // Started after telemetry so ReadingAvailable is already firing.
@@ -545,6 +577,11 @@ public static class AppServices
 
         _narrative?.Stop();
         _narrative = null;
+
+        // Behavioral layer must stop before session (it holds a ReadingAvailable subscription).
+        _workloadProfiling?.Dispose();
+        _workloadProfiling = null;
+        _behavioralContext = null;
 
         // Session must stop before intelligence — it holds a subscription to InsightsUpdated.
         _session?.Stop();
