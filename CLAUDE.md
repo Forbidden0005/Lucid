@@ -1,8 +1,32 @@
 # ExplainMyPC - Claude Project Instructions
 
+## IMPORTANT: Read This First
+
+The full product roadmap and strategic direction lives at:
+
+> **`ROADMAP.md`** — read this before making any architectural decisions.
+
+Key strategic directives (always active):
+
+- ExplainMyPC is a **local-first operational intelligence platform** — not a PC cleaner, not antivirus
+- Every feature must reinforce: **trust, transparency, explainability, reversibility**
+- Features should deepen operational intelligence and **ecosystem cohesion** — each layer feeds the others
+- Never add: fake AI buzzwords, mystery optimization, aggressive auto-remediation, cloud dependency
+- The flagship experience is natural language operational explanations (Phase 4 in roadmap)
+- Current highest-value priorities (in order): Platform stabilization → Resource governance → Explain My PC flagship → Security intelligence → Process relationship intelligence → Operational replay → SQLite persistence → Advanced forecasting
+
+### Current Phase Priority: Phase 1 — Platform Stabilization
+Before adding new features, prioritize:
+1. Settings infrastructure (ISettingsService, JsonSettingsStore, schema versioning)
+2. Resource governance (adaptive polling, idle-aware throttling, battery-aware mode)
+3. Internal diagnostics / self-observability (DiagnosticsPage)
+4. SQLite persistence layer (lightweight repository pattern, append-oriented)
+
+---
+
 ## Project Overview
 
-ExplainMyPC is a modern Windows intelligence platform.
+ExplainMyPC is a **local-first operational intelligence platform** for Windows.
 
 The goal is NOT to create:
 - a fake “PC booster”
@@ -388,3 +412,48 @@ C:\Users\tyler\build_vs.bat
 
 This calls `VsDevCmd.bat` + VS `msbuild.exe`, which runs `XamlPreCompile` properly, regenerates the
 intermediate DLL, and `dotnet build` works again from that point.
+
+---
+
+# Roadmap Phase Summary
+
+Full detail in `ROADMAP.md`. Quick reference:
+
+| Phase | Name | Status |
+|-------|------|--------|
+| Phase 1 | Platform Stabilization (Settings, Resource Governance, Diagnostics, SQLite) | **Next priority** |
+| Phase 2 | Operational Intelligence Expansion (Process graph, Advanced forecasting, Correlation v2, Replay) | Planned |
+| Phase 3 | Security Intelligence (Persistence, Trust graph, Behavioral heuristics, Security timeline) | Planned |
+| Phase 4 | Explain My PC Flagship (Natural language explanations, machine-specific understanding, recommendation ranking) | **Long-term flagship** |
+| Phase 5 | Advanced Visualization (Zoomable graphs, timeline intelligence, process heatmaps, storage treemaps) | Planned |
+| Phase 6 | Ecosystem & Platformization (Modular architecture, update system, crash recovery) | Planned |
+
+---
+
+# Git / Session Notes
+
+- Repo is on `main` at `Forbidden0005/ExplainMyPC`
+- History is compressed into squash commits — codebase is intact even though log appears thin
+- **Never merge PRs without explicit user confirmation**
+- **Never create or push branches without asking first**
+- Recommended milestone tags going forward: `v0.1-foundation`, `v0.2-intelligence`, `v0.3-operational-tools`, `v0.4-security-intelligence`, `v0.5-flagship-experience`
+- Sessions frequently hit context limits mid-task — always commit working code before a session ends, and leave clear notes in commit messages about what was in-progress
+
+---
+
+# What Is Already Built
+
+See full inventory in session notes. Summary of major systems:
+
+- **Telemetry engine** — 6 samplers, rolling 30-min buffer, baseline modeling (Welford)
+- **Intelligence engine** — 25 insight rules (anomaly + forecast + synthesis), process attribution
+- **Narrative engine** — plain-English system status from insight set
+- **Action execution engine** — IActionExecutor pattern, dry-run, rollback, privilege detection
+- **28 executors** — disk cleanup, Windows repair, startup management, process control, storage cleanup
+- **Process intelligence** — per-PID behavioral tracking, anomaly flags, trust classification
+- **Security intelligence** — persistence scanner, signature verification, Defender status reader
+- **Storage intelligence** — SHA-256 duplicate detection, category analyzer, large file finder
+- **Timeline system** — chronological event aggregation, grouped by time, filter chips
+- **Session & history** — operation history persistence, session context tracking
+- **13 pages** — Dashboard, Insights, Processes, Repairs, Security, Storage, Timeline, Apps, Explain, Settings, Privacy, InsightDetail
+- **Design system** — 9 XAML style files, 5 custom controls, Fluent-inspired dark theme

@@ -1,189 +1,575 @@
-# ExplainMyPC Roadmap
+# ExplainMyPC — Next Generation Roadmap
 
-# Phase 1 - Foundation
+## What ExplainMyPC Is Becoming
 
-## Goals
+ExplainMyPC is no longer just:
+- a PC cleaner
+- a repair utility
+- a telemetry dashboard
+- a troubleshooting app
 
-Establish architecture and working shell application.
+It is evolving into:
 
-## Tasks
+> A local-first operational intelligence platform for Windows.
 
-* Create WinUI 3 application shell
-* Implement sidebar navigation
-* Implement dashboard layout
-* Setup MVVM architecture
-* Setup dependency injection
-* Setup SQLite integration
-* Setup Rust backend bridge
-* Implement telemetry framework
+The platform now combines:
+- live telemetry
+- behavioral analysis
+- forecasting
+- operational narratives
+- explainable recommendations
+- reversible remediation
+- process intelligence
+- timeline cognition
+- trust-aware security analysis
+- historical operational memory
 
-## Deliverables
+The long-term direction should optimize for:
+- trust
+- transparency
+- explainability
+- reversibility
+- operational clarity
+- local-only intelligence
+- confidence-aware reasoning
+- deterministic behavior
 
-* Working dashboard
-* Live CPU/RAM telemetry
-* Navigation system
-* Database connectivity
-
----
-
-# Phase 2 - Core Monitoring
-
-## Goals
-
-Implement foundational system analysis.
-
-## Tasks
-
-* Process monitor
-* Startup application scanner
-* Junk file scanner
-* Large file detection
-* Disk usage analysis
-* Basic security checks
-* Health score calculation
-
-## Deliverables
-
-* Functional monitoring pages
-* Initial health scoring
-* Telemetry graphs
+NOT:
+- registry-cleaner behavior
+- mystery optimization
+- fake AI automation
+- aggressive auto-remediation
+- antivirus replacement behavior
 
 ---
 
-# Phase 3 - Explain My PC
+# Current State
 
-## Goals
+The platform already contains:
 
-Build the flagship intelligence feature.
+## Intelligence Layer
+- telemetry engine
+- baseline modeling
+- forecasting
+- synthesis rules
+- process attribution
+- trend analysis
+- operational narratives
+- session awareness
+- timeline aggregation
+- sparkline visualization
+- insight drilldowns
 
-## Tasks
+## Operational Layer
+- execution engine
+- rollback architecture
+- startup management
+- cleanup tooling
+- Windows repair tooling
+- storage analysis
+- live execution logs
+- operation history
 
-* Rules engine
-* Issue correlation system
-* Recommendation engine
-* Natural-language summaries
-* Severity scoring
-* Confidence scoring
+## Security & Process Layer
+- process intelligence
+- persistence detection
+- signature verification
+- Defender awareness
+- startup trust analysis
+- behavioral anomaly detection
 
-## Deliverables
-
-* Explain My PC page
-* Diagnostic summaries
-* Action recommendations
-
----
-
-# Phase 4 - Repair System
-
-## Goals
-
-Add safe repair and rollback capabilities.
-
-## Tasks
-
-* Restore point creation
-* Snapshot system
-* Rollback engine
-* SFC integration
-* DISM integration
-* Networking repair tools
-* Repair workflow UI
-
-## Deliverables
-
-* Repair Center
-* Snapshot management
-* Safe repair flows
+This is already significantly beyond a standard utility application.
 
 ---
 
-# Phase 5 - Security Expansion
+# Strategic Direction
 
-## Goals
+The roadmap should now shift from:
 
-Expand detection capabilities.
+"add isolated features"
 
-## Tasks
+to:
 
-* Persistence detection
-* Scheduled task analysis
-* Unsigned executable detection
-* Hosts file analysis
-* DNS tampering detection
-* PowerShell abuse heuristics
-* Reputation systems
+"deepen operational intelligence and ecosystem cohesion"
 
-## Deliverables
+Future systems should reinforce one another.
 
-* Advanced security dashboard
-* Threat analysis system
+Example:
+- process intelligence improves forecasting
+- forecasting improves narratives
+- narratives improve recommendations
+- timelines improve explainability
+- storage analysis improves forecasting
+- security analysis improves trust scoring
+- repairs feed operational history
+- operational history improves future recommendations
 
----
-
-# Phase 6 - Storage Intelligence
-
-## Goals
-
-Advanced storage analysis.
-
-## Tasks
-
-* Duplicate detection
-* SSD SMART monitoring
-* Wear analysis
-* Recovery tooling
-* Treemap visualization
-* Cleanup recommendation engine
-
-## Deliverables
-
-* Advanced storage dashboard
-* Disk health scoring
+The platform should increasingly feel:
+- aware
+- contextual
+- explainable
+- operationally coherent
 
 ---
 
-# Phase 7 - AI Intelligence Layer
+# Phase 1 — Platform Stabilization
 
-## Goals
+## Goal
+Ensure long-term maintainability before adding extreme complexity.
 
-Advanced diagnostics and summarization.
+## Priority Tasks
 
-## Tasks
+### 1. Settings Infrastructure
+Build:
+- typed settings service
+- schema versioning
+- export/import
+- defaults management
+- feature flags
+- environment profiles
 
-* Local intelligence engine
-* AI-assisted summaries
-* Predictive recommendations
-* Performance trend analysis
-* Driver instability detection
-
-## Deliverables
-
-* Enhanced Explain My PC
-* Intelligent recommendations
-
----
-
-# Future Ideas
-
-## Potential Expansion
-
-* Multi-device dashboards
-* NAS monitoring
-* Remote diagnostics
-* Linux support
-* Mobile companion app
-* Portable rescue environment
-* Plugin marketplace
+Files:
+- ISettingsService
+- JsonSettingsStore
+- SettingsSchemaVersion
+- SettingsMigrationRunner
 
 ---
 
-# Non-Negotiable Standards
+### 2. Resource Governance
+Prevent ExplainMyPC from becoming resource-heavy.
 
-The project must:
+Add:
+- adaptive polling
+- idle-aware throttling
+- thermal-aware polling reduction
+- battery-aware reduced mode
+- low-power telemetry mode
+- executor concurrency limits
 
-* remain modular
-* remain explainable
-* remain lightweight
-* avoid fake optimizations
-* support rollback
-* prioritize transparency
+Goal:
+"Operational intelligence that stays lightweight."
+
+---
+
+### 3. Internal Diagnostics
+Add self-observability.
+
+Track:
+- failed samplers
+- executor crashes
+- service stalls
+- polling overruns
+- UI thread stalls
+- timeline backlog pressure
+
+Add:
+- DiagnosticsPage
+- internal health timeline
+- service-state monitor
+
+Goal:
+"The platform should explain itself too."
+
+---
+
+### 4. Persistent Indexed Storage
+The current in-memory architecture is excellent for now, but growth will eventually require indexing.
+
+Introduce SQLite carefully.
+
+Use cases:
+- historical telemetry retention
+- operation history
+- timeline persistence
+- scan caching
+- storage indexing
+- trend replay
+
+DO NOT:
+- immediately persist everything
+- create heavy ORM complexity
+
+Recommended:
+- lightweight repository pattern
+- append-oriented event storage
+
+---
+
+# Phase 2 — Operational Intelligence Expansion
+
+## Goal
+Deepen causality and operational understanding.
+
+---
+
+## 1. Process Relationship Graph
+
+Move beyond process lists.
+
+Build:
+- parent/child process trees
+- lifetime correlation
+- dependency visualization
+- process clusters
+- runaway-spawn detection
+- restart-loop detection
+
+Visualize:
+- process ecosystems
+- dominant resource clusters
+- suspicious behavior chains
+
+---
+
+## 2. Advanced Forecasting
+
+Current forecasting is strong.
+Next step:
+
+Add:
+- confidence decay modeling
+- multi-signal forecasting
+- seasonal behavior awareness
+- workload classification
+- recovery probability modeling
+
+Examples:
+- "System likely to stabilize naturally in ~12 minutes"
+- "Current RAM growth pattern resembles previous Chrome memory escalation"
+
+---
+
+## 3. Correlation Engine v2
+
+Current synthesis rules are excellent.
+Expand into:
+
+- event graph correlation
+- causal chains
+- cross-domain reasoning
+- confidence propagation
+- narrative-linked causality
+
+Examples:
+- startup app → disk contention → elevated CPU → thermal rise
+- browser extension → GPU spikes → memory growth → forecast pressure
+
+---
+
+## 4. Operational Replay
+
+Build historical replay.
+
+Users should be able to:
+- scrub timelines
+- replay degradation events
+- view metric evolution
+- inspect remediation impact
+- compare before/after states
+
+Goal:
+"Forensic operational understanding."
+
+---
+
+# Phase 3 — Security Intelligence
+
+## Goal
+Become a transparent operational security layer.
+
+NOT antivirus.
+
+---
+
+## Security Philosophy
+
+ExplainMyPC should:
+- explain
+- contextualize
+- correlate
+- warn
+- visualize
+- classify confidence
+
+It should NOT:
+- auto-delete
+- auto-quarantine
+- claim malware certainty
+- replace Defender
+
+---
+
+## Planned Systems
+
+### Persistence Intelligence
+- startup analysis
+- scheduled task analysis
+- autorun correlation
+- unusual persistence scoring
+
+### Trust Graph
+- signed vs unsigned
+- trust lineage
+- vendor grouping
+- resource-heavy unsigned apps
+
+### Behavioral Heuristics
+- suspicious launch loops
+- temp-executable persistence
+- abnormal PowerShell activity
+- hidden background CPU/GPU activity
+
+### Security Timeline
+- Defender state changes
+- trust posture changes
+- suspicious persistence events
+- repeated relaunch loops
+
+---
+
+# Phase 4 — ExplainMyPC Flagship Experience
+
+## Goal
+Make the platform conversational and operationally understandable.
+
+This is the true flagship layer.
+
+---
+
+## Explain My PC Workspace
+
+The platform should eventually answer:
+
+- Why is my PC slow?
+- What changed recently?
+- What is causing heat?
+- Why is memory increasing?
+- Why did startup worsen?
+- Is this behavior normal for MY machine?
+- What happens if I ignore this?
+- What should I safely do next?
+
+And answer with:
+- telemetry
+- timelines
+- process attribution
+- narratives
+- forecasts
+- confidence-aware reasoning
+- operational history
+
+Combined into:
+
+> coherent operational explanations.
+
+---
+
+## Planned Features
+
+### Natural Operational Explanations
+Examples:
+
+"Chrome appears responsible for most current memory pressure. Memory usage has increased 22% over the last 18 minutes and is forecasted to reach elevated pressure within approximately 14 minutes if current behavior continues."
+
+---
+
+### Machine-Specific Understanding
+
+Examples:
+- "This CPU usage is abnormal for your machine"
+- "Your startup time has worsened compared to the past week"
+- "This thermal pattern resembles previous gaming sessions"
+
+---
+
+### Recommendation Ranking
+
+Recommendations should eventually consider:
+- risk
+- reversibility
+- confidence
+- historical effectiveness
+- current workload
+- user habits
+
+---
+
+# Phase 5 — Advanced Visualization
+
+## Goal
+Turn operational understanding into visual cognition.
+
+---
+
+## Planned Systems
+
+### Expanded Telemetry Graphs
+- zoomable history
+- event markers
+- forecast overlays
+- baseline bands
+- comparison windows
+
+### Timeline Intelligence
+- causality linking
+- event clustering
+- narrative checkpoints
+- operational replay
+
+### Process Heatmaps
+- live resource maps
+- process dominance visualization
+- temporal behavior layers
+
+### Storage Visualization
+- treemaps
+- growth timelines
+- cleanup impact previews
+
+---
+
+# Phase 6 — Ecosystem & Platformization
+
+## Goal
+Prepare ExplainMyPC for long-term extensibility.
+
+---
+
+## 1. Modular Feature Architecture
+
+Introduce clearer module boundaries:
+- telemetry
+- storage
+- repair
+- security
+- process intelligence
+- forecasting
+- narratives
+
+Eventually support:
+- optional modules
+- experimental features
+- plugin-like extensions
+
+---
+
+## 2. Update & Migration System
+
+Needed for:
+- schema changes
+- feature rollout
+- repair executor evolution
+- historical compatibility
+
+---
+
+## 3. Crash Recovery & Recovery Mode
+
+Add:
+- safe startup mode
+- executor recovery
+- corrupted state detection
+- timeline recovery
+
+---
+
+# Technical Principles Going Forward
+
+## Keep
+- local-first
+- deterministic
+- explainable
+- reversible
+- confidence-aware
+- observable
+- modular
+- operationally coherent
+
+## Avoid
+- fake AI buzzwords
+- aggressive optimization claims
+- registry-cleaner behavior
+- hidden automation
+- unexplained heuristics
+- cloud dependency
+- "one-click fix everything"
+
+---
+
+# Important Project Notes
+
+## Build
+Use:
+
+`dotnet build ExplainMyPC.slnx -c Debug -p:Platform=x64`
+
+Avoid AnyCPU.
+
+If XAML intermediates break:
+- run build_vs.bat first
+- regenerate intermediates
+- rebuild solution
+
+---
+
+## Git
+The repo currently uses large squash commits.
+The codebase is intact even though history appears compressed.
+
+Going forward:
+- avoid premature PR merges
+- keep milestone checkpoints
+- tag major architectural milestones
+
+Recommended future tags:
+- v0.1-foundation
+- v0.2-intelligence
+- v0.3-operational-tools
+- v0.4-security-intelligence
+- v0.5-flagship-experience
+
+---
+
+# Current Highest-Value Priorities
+
+In order:
+
+1. Platform stabilization
+2. Resource governance
+3. Explain My PC flagship experience
+4. Security intelligence
+5. Process relationship intelligence
+6. Operational replay
+7. Indexed persistence layer
+8. Advanced forecasting
+9. Modular architecture
+10. Historical analytics
+
+---
+
+# The Long-Term Vision
+
+ExplainMyPC is becoming:
+
+> A trustworthy, local-first operational intelligence layer for Windows.
+
+Not merely:
+- diagnostics
+- optimization
+- repair
+- security scanning
+
+But:
+- understanding
+- explanation
+- forecasting
+- operational guidance
+- reversible remediation
+- contextual awareness
+- historical operational memory
+
+The most important differentiator should remain:
+
+> Explainability + Trust.
+
