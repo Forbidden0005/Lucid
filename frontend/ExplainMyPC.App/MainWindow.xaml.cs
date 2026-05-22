@@ -96,6 +96,11 @@ public sealed partial class MainWindow : Window
             // Create on first use — window subscribes to StateChanged in its constructor.
             _companionWindow = new CompanionOverlayWindow();
 
+            // Clear the cached reference when the window is destroyed (e.g. Alt+F4).
+            // Without this, the null check above would never re-create the window after
+            // the user closes it via the OS, leaving the companion unreachable until restart.
+            _companionWindow.Closed += (_, _) => _companionWindow = null;
+
             // Drive initial state transition (Hidden → Expanded).
             // CompanionOverlayWindow.OnSessionStateChanged handles the resize + show.
             AppServices.CompanionSession.ToggleExpanded();

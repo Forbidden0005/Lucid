@@ -108,6 +108,13 @@ public sealed partial class CompanionOverlayWindow : Window
         Closed += (_, _) =>
         {
             AppServices.CompanionSession.StateChanged -= OnSessionStateChanged;
+
+            // If the window was destroyed by the OS (Alt+F4, task-kill, etc.) rather
+            // than via CloseButton_Click, the session manager still thinks the overlay
+            // is visible. Reset to Hidden so the state is consistent and MainWindow
+            // can create a fresh window on the next companion toggle.
+            if (AppServices.CompanionSession.CurrentState != CompanionOverlayState.Hidden)
+                AppServices.CompanionSession.Hide();
         };
     }
 

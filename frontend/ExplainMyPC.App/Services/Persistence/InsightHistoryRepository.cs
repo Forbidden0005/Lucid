@@ -28,6 +28,18 @@ public sealed class InsightHistoryRepository
     /// </summary>
     private readonly Dictionary<string, long> _openRows = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Serializes concurrent access to <see cref="_openRows"/> across async boundaries.
+    ///
+    /// InsightsUpdated can fire in rapid succession, causing overlapping
+    /// fire-and-forget calls to RecordOnsetAsync / RecordResolutionAsync.
+    /// Both methods read and write _openRows both before and after await points,
+    /// so without serialization a second concurrent call can pass the guard check
+    /// before the first call has written its row-id, producing duplicate inserts
+    /// and orphaned rows that never resolve.
+    /// </summary>
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
+
     public InsightHistoryRepository(SQLitePersistenceService db) => _db = db;
 
     // ── Write ─────────────────────────────────────────────────────────────────
@@ -42,30 +54,38 @@ public sealed class InsightHistoryRepository
         // Don't track the "everything is fine" insight
         if (insight.Id == "system.healthy") return;
 
-        // Don't duplicate if already tracked in-memory
-        if (_openRows.ContainsKey(insight.Id)) return;
-
-        long ts = insight.DetectedAt.ToUnixTimeMilliseconds();
-
-        // Insert and capture the new rowid
-        long? rowId = null;
-        await _db.ExecuteDirectAsync(conn =>
+        await _writeLock.WaitAsync().ConfigureAwait(false);
+        try
         {
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = """
-                INSERT INTO insight_history (insight_id, title, severity, onset_at)
-                VALUES (@id, @title, @sev, @ts);
-                SELECT last_insert_rowid();
-                """;
-            cmd.Parameters.AddWithValue("@id",    insight.Id);
-            cmd.Parameters.AddWithValue("@title", insight.Title);
-            cmd.Parameters.AddWithValue("@sev",   (int)insight.Severity);
-            cmd.Parameters.AddWithValue("@ts",    ts);
-            rowId = (long)(cmd.ExecuteScalar() ?? 0L);
-        }).ConfigureAwait(false);
+            // Don't duplicate if already tracked in-memory
+            if (_openRows.ContainsKey(insight.Id)) return;
 
-        if (rowId.HasValue && rowId.Value > 0)
-            _openRows[insight.Id] = rowId.Value;
+            long ts = insight.DetectedAt.ToUnixTimeMilliseconds();
+
+            // Insert and capture the new rowid
+            long? rowId = null;
+            await _db.ExecuteDirectAsync(conn =>
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = """
+                    INSERT INTO insight_history (insight_id, title, severity, onset_at)
+                    VALUES (@id, @title, @sev, @ts);
+                    SELECT last_insert_rowid();
+                    """;
+                cmd.Parameters.AddWithValue("@id",    insight.Id);
+                cmd.Parameters.AddWithValue("@title", insight.Title);
+                cmd.Parameters.AddWithValue("@sev",   (int)insight.Severity);
+                cmd.Parameters.AddWithValue("@ts",    ts);
+                rowId = (long)(cmd.ExecuteScalar() ?? 0L);
+            }).ConfigureAwait(false);
+
+            if (rowId.HasValue && rowId.Value > 0)
+                _openRows[insight.Id] = rowId.Value;
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
     }
 
     /// <summary>
@@ -74,10 +94,21 @@ public sealed class InsightHistoryRepository
     /// </summary>
     public async Task RecordResolutionAsync(string insightId)
     {
-        if (!_openRows.TryGetValue(insightId, out long rowId))
-            return;
+        await _writeLock.WaitAsync().ConfigureAwait(false);
+        long rowId;
+        try
+        {
+            if (!_openRows.TryGetValue(insightId, out rowId))
+                return;
 
-        _openRows.Remove(insightId);
+            // Remove before the await so a concurrent RecordOnsetAsync for the
+            // same insight_id (rapid re-fire) can start a fresh row immediately.
+            _openRows.Remove(insightId);
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
 
         long resolvedMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
