@@ -101,6 +101,11 @@ public sealed partial class MainWindow : Window
             // the user closes it via the OS, leaving the companion unreachable until restart.
             _companionWindow.Closed += (_, _) => _companionWindow = null;
 
+            // Phase 17C: wire companion suggested-action navigation to the main frame.
+            // The companion fires NavigationRequested with a page tag string;
+            // we forward it to NavigateToPage() — same path as sidebar clicks.
+            _companionWindow.NavigationRequested += (_, tag) => NavigateToPage(tag);
+
             // Drive initial state transition (Hidden → Expanded).
             // CompanionOverlayWindow.OnSessionStateChanged handles the resize + show.
             AppServices.CompanionSession.ToggleExpanded();

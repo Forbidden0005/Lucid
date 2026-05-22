@@ -1,5 +1,6 @@
-using ExplainMyPC.Services;
+﻿using ExplainMyPC.Services;
 using ExplainMyPC.Services.Analytics;
+using ExplainMyPC.Services.Conversation;
 using ExplainMyPC.Services.DesktopContext;
 using ExplainMyPC.Services.Companion;
 using ExplainMyPC.Services.Reasoning;
@@ -132,6 +133,7 @@ public static class AppServices
     // ── Operational Companion layer ────────────────────────────────────────────
     private static ICompanionSessionManager?       _companionSession;
     private static IOperationalConversationEngine? _conversationEngine;
+    private static IOperationalConversationService? _conversationService;
 
     // ── Desktop Context layer ─────────────────────────────────────────────────
     private static DesktopContextService? _desktopContext;
@@ -595,13 +597,22 @@ public static class AppServices
             "Call it from App.OnLaunched before creating the main window.");
 
     /// <summary>
-    /// Operational conversation engine.
-    /// Resolves natural-language queries into factual, evidence-grounded responses.
-    /// Deterministic keyword matching — not an LLM. All answers are sourced from
-    /// live services. Nothing leaves the device.
+    /// Operational conversation engine (legacy interface).
+    /// Use <see cref="ConversationService"/> for the richer Phase 17C interface.
     /// </summary>
     public static IOperationalConversationEngine ConversationEngine =>
         _conversationEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational conversation service (Phase 17C).
+    /// Processes queries into structured OperationalResponse objects with evidence,
+    /// confidence, suggested actions, and contextual suggestions.
+    /// Deterministic keyword matching — not an LLM. Local-only.
+    /// </summary>
+    public static IOperationalConversationService ConversationService =>
+        _conversationService ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -965,19 +976,21 @@ public static class AppServices
         // ── Operational Companion layer ────────────────────────────────────────
         // Stateless/lightweight — session manager is in-memory only.
         // Conversation engine wraps existing services; no new background work.
-        _companionSession   = new CompanionSessionManager();
-        _conversationEngine = new OperationalConversationEngine(
+        // Desktop context initialized here so it is non-null when passed to OperationalConversationService.
+        _desktopContext = new DesktopContextService(uiDispatcher);
+        _desktopContext.Start();
+
+        _companionSession = new CompanionSessionManager();
+        var conversationSvc = new OperationalConversationService(
             _intelligence!,
             _narrative!,
             _timeline!,
             _evidenceGraph!,
-            _rootCauseEngine!);
+            _rootCauseEngine!,
+            _desktopContext!);
+        _conversationService = conversationSvc;
+        _conversationEngine  = conversationSvc;
 
-        // ── Desktop Context layer ─────────────────────────────────────────────────
-        // Lightweight Win32 polling at 1750ms + dedicated STA thread for COM Explorer queries.
-        // Observation-only — no automation, no screenshots, no persistence.
-        _desktopContext = new DesktopContextService(uiDispatcher);
-        _desktopContext.Start();
 
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
@@ -1016,8 +1029,9 @@ public static class AppServices
         _workflowEngine     = null;
 
         // Companion layer — in-memory only, just null references.
-        _companionSession   = null;
-        _conversationEngine = null;
+        _companionSession    = null;
+        _conversationEngine  = null;
+        _conversationService = null;
 
         // Desktop context layer — stop polling and dispose STA thread.
         _desktopContext?.Stop();
@@ -1130,3 +1144,4 @@ public static class AppServices
         _lastInsightIds     = [];
     }
 }
+

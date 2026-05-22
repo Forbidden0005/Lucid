@@ -8,21 +8,20 @@
     <!--
         Companion Overlay Window — floats above all other windows.
 
-        Two layout modes driven by ICompanionSessionManager state:
-          Bubble   (72×72)   — circular icon; tap to expand, drag to reposition
-          Expanded (380×600) — full conversation panel with quick actions
+        Phase 17C upgrades:
+          • System messages now show confidence chips, evidence badges,
+            uncertainty notes, and suggested navigation action buttons.
+          • SendMessage is async — spinner shown while processing.
+          • QuickActions collection is dynamic (contextual suggestions injected).
+          • SuggestedAction buttons navigate the main window to the target page.
+
+        Layout modes:
+          Bubble   (72x72)    — circular icon; tap to expand, drag to reposition
+          Expanded (380x600)  — full conversation panel with quick actions
 
         Architecture:
           • No OS title bar (ExtendsContentIntoTitleBar = true, SetTitleBar(null))
-          • Drag is handled manually in code-behind via P/Invoke GetCursorPos
-          • Window opacity drops to 0.85 while dragging
-          • Snap-to-edge is scaffolded in code-behind (full impl: future phase)
-          • Visibility strings come from CompanionChatViewModel — no converters
-
-        Companion doctrine (Phase 17A):
-          • Placeholder messages only — OperationalConversationEngine not wired
-          • No automation, no LLM, no desktop control
-          • All local, all deterministic, all explainable
+          • All Visibility values are pre-computed strings on the model (no converters)
     -->
 
     <Grid x:Name="RootGrid"
@@ -66,7 +65,7 @@
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center" />
 
-                    <!-- Unread / active indicator dot -->
+                    <!-- Active indicator dot -->
                     <Ellipse Width="10" Height="10"
                              Fill="#4E9FFF"
                              HorizontalAlignment="Right"
@@ -89,7 +88,7 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="52" />    <!-- Row 0: Header / drag handle -->
-                    <RowDefinition Height="Auto" />  <!-- Row 1: Context strip (Phase 17B) -->
+                    <RowDefinition Height="Auto" />  <!-- Row 1: Context strip -->
                     <RowDefinition Height="*" />     <!-- Row 2: Message list -->
                     <RowDefinition Height="Auto" />  <!-- Row 3: Quick actions -->
                     <RowDefinition Height="Auto" />  <!-- Row 4: Input area -->
@@ -138,7 +137,7 @@
                                    Foreground="#6B6B8A" />
                     </StackPanel>
 
-                    <!-- Action buttons (outside drag region — pointer events preserved) -->
+                    <!-- Action buttons -->
                     <StackPanel Grid.Column="2"
                                 Orientation="Horizontal"
                                 Spacing="2"
@@ -192,7 +191,7 @@
                         VerticalAlignment="Bottom"
                         IsHitTestVisible="False" />
 
-                <!-- ── Context strip — passive workflow awareness banner ──────── -->
+                <!-- ── Context strip — passive workflow awareness ─────────────── -->
                 <Border Grid.Row="1"
                         Visibility="{x:Bind ViewModel.ContextBannerVisibility, Mode=OneWay}"
                         Background="#0F1020"
@@ -248,7 +247,7 @@
                                 <DataTemplate x:DataType="companion:CompanionMessage">
                                     <Grid Margin="4,4,4,0">
 
-                                        <!-- User message — right-aligned blue bubble -->
+                                        <!-- ── User message ── right-aligned blue bubble -->
                                         <Border Visibility="{x:Bind UserBubbleVisibility}"
                                                 Background="#1E2F52"
                                                 CornerRadius="12,12,4,12"
@@ -267,10 +266,10 @@
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- System message — left-aligned with icon -->
+                                        <!-- ── System message ── left-aligned with icon + enrichment -->
                                         <Grid Visibility="{x:Bind SystemBubbleVisibility}"
                                               HorizontalAlignment="Left"
-                                              MaxWidth="305">
+                                              MaxWidth="330">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
@@ -291,23 +290,111 @@
                                                           VerticalAlignment="Center" />
                                             </Border>
 
-                                            <!-- Message bubble -->
-                                            <Border Grid.Column="1"
-                                                    Background="#23233A"
-                                                    CornerRadius="4,12,12,12"
-                                                    Padding="12,8">
-                                                <StackPanel Spacing="5">
-                                                    <TextBlock Text="{x:Bind Text}"
-                                                               FontSize="12.5"
-                                                               Foreground="#D4D4E8"
-                                                               TextWrapping="Wrap"
-                                                               LineHeight="18" />
-                                                    <TextBlock Text="{x:Bind TimeLabel}"
-                                                               FontSize="10"
-                                                               Foreground="#4B5563" />
-                                                </StackPanel>
-                                            </Border>
+                                            <!-- Message content column -->
+                                            <StackPanel Grid.Column="1" Spacing="6">
+
+                                                <!-- Main message bubble -->
+                                                <Border Background="#23233A"
+                                                        CornerRadius="4,12,12,12"
+                                                        Padding="12,8">
+                                                    <StackPanel Spacing="5">
+                                                        <TextBlock Text="{x:Bind Text}"
+                                                                   FontSize="12.5"
+                                                                   Foreground="#D4D4E8"
+                                                                   TextWrapping="Wrap"
+                                                                   LineHeight="18" />
+
+                                                        <!-- Uncertainty note (italic, muted) -->
+                                                        <TextBlock Visibility="{x:Bind UncertaintyVisibility}"
+                                                                   Text="{x:Bind UncertaintyNote}"
+                                                                   FontSize="10.5"
+                                                                   FontStyle="Italic"
+                                                                   Foreground="#5B6070"
+                                                                   TextWrapping="Wrap" />
+
+                                                        <!-- Footer row: timestamp + confidence chip -->
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="{x:Bind TimeLabel}"
+                                                                       FontSize="10"
+                                                                       Foreground="#4B5563"
+                                                                       VerticalAlignment="Center" />
+
+                                                            <!-- Confidence chip -->
+                                                            <Border Grid.Column="1"
+                                                                    Visibility="{x:Bind ConfidenceVisibility}"
+                                                                    Background="#1A2035"
+                                                                    BorderBrush="#2A3A5C"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="8"
+                                                                    Padding="6,2">
+                                                                <TextBlock Text="{x:Bind ConfidenceDisplay}"
+                                                                           FontSize="9.5"
+                                                                           Foreground="#4E7FBF" />
+                                                            </Border>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- Evidence badge (muted pill row) -->
+                                                <ItemsRepeater Visibility="{x:Bind EvidenceVisibility}"
+                                                               ItemsSource="{x:Bind EvidenceItems}">
+                                                    <ItemsRepeater.Layout>
+                                                        <StackLayout Orientation="Horizontal" Spacing="4" />
+                                                    </ItemsRepeater.Layout>
+                                                    <ItemsRepeater.ItemTemplate>
+                                                        <DataTemplate x:DataType="companion:ConversationEvidenceItem">
+                                                            <Border Background="#161628"
+                                                                    BorderBrush="#2A2A3E"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="6"
+                                                                    Padding="5,2">
+                                                                <TextBlock Text="{x:Bind Source}"
+                                                                           FontSize="9"
+                                                                           Foreground="#3D4A60" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsRepeater.ItemTemplate>
+                                                </ItemsRepeater>
+
+                                                <!-- Suggested action chips -->
+                                                <ItemsRepeater Visibility="{x:Bind SuggestedActionsVisibility}"
+                                                               ItemsSource="{x:Bind SuggestedActions}"
+                                                               Margin="0,2,0,0">
+                                                    <ItemsRepeater.Layout>
+                                                        <StackLayout Orientation="Horizontal" Spacing="4" />
+                                                    </ItemsRepeater.Layout>
+                                                    <ItemsRepeater.ItemTemplate>
+                                                        <DataTemplate x:DataType="companion:SuggestedAction">
+                                                            <Button Background="#1A2233"
+                                                                    BorderBrush="#2A4070"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="10"
+                                                                    Padding="8,4"
+                                                                    FontSize="11"
+                                                                    Foreground="#7AABDF"
+                                                                    Tag="{x:Bind}"
+                                                                    Click="SuggestedAction_Click">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                    <FontIcon Glyph="{x:Bind Glyph}"
+                                                                              FontFamily="Segoe MDL2 Assets"
+                                                                              FontSize="10"
+                                                                              Foreground="#4E9FFF" />
+                                                                    <TextBlock Text="{x:Bind Label}" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsRepeater.ItemTemplate>
+                                                </ItemsRepeater>
+
+                                            </StackPanel>
                                         </Grid>
+
                                     </Grid>
                                 </DataTemplate>
                             </ItemsRepeater.ItemTemplate>
@@ -326,18 +413,12 @@
                                   VerticalScrollBarVisibility="Disabled"
                                   Padding="10,8">
                         <ItemsRepeater x:Name="QuickActionList"
-                                       ItemsSource="{x:Bind ViewModel.QuickActions}">
+                                       ItemsSource="{x:Bind ViewModel.QuickActions, Mode=OneWay}">
                             <ItemsRepeater.Layout>
                                 <StackLayout Orientation="Horizontal" Spacing="6" />
                             </ItemsRepeater.Layout>
                             <ItemsRepeater.ItemTemplate>
                                 <DataTemplate x:DataType="companion:QuickAction">
-                                    <!--
-                                        Tag="{x:Bind}" passes the QuickAction object
-                                        to the Click handler in code-behind.
-                                        WinUI 3 x:Bind cannot resolve ViewModel commands
-                                        from a DataTemplate whose DataContext is the item.
-                                    -->
                                     <Button Background="#1E2233"
                                             BorderBrush="#3F3F5A"
                                             BorderThickness="1"
@@ -389,7 +470,9 @@
                                  TextWrapping="NoWrap"
                                  KeyDown="InputBox_KeyDown" />
 
+                        <!-- Send button (shown when not processing) -->
                         <Button Grid.Column="1"
+                                Visibility="{x:Bind ViewModel.SendButtonVisibility, Mode=OneWay}"
                                 Width="36" Height="36"
                                 CornerRadius="4,10,10,4"
                                 Background="#4E9FFF"
@@ -402,6 +485,18 @@
                                       FontSize="14"
                                       Foreground="White" />
                         </Button>
+
+                        <!-- Spinner (shown while processing) -->
+                        <Border Grid.Column="1"
+                                Visibility="{x:Bind ViewModel.SpinnerVisibility, Mode=OneWay}"
+                                Width="36" Height="36"
+                                CornerRadius="4,10,10,4"
+                                Background="#1A2035"
+                                Margin="4,0,0,0">
+                            <ProgressRing Width="18" Height="18"
+                                          IsActive="True"
+                                          Foreground="#4E9FFF" />
+                        </Border>
                     </Grid>
                 </Border>
             </Grid>

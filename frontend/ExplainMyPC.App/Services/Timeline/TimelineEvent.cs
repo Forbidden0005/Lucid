@@ -88,6 +88,14 @@ public enum TimelineEventType
     // ── Desktop Context (17B) ─────────────────────────────────────────────────
     /// <summary>The user's active desktop context changed in a meaningful way (app, folder, clipboard).</summary>
     DesktopContextChanged = 80,
+
+    // ── Operational Companion (17C) ───────────────────────────────────────────
+    /// <summary>A conversation intent was resolved by the companion engine.</summary>
+    ConversationIntentResolved      = 90,
+    /// <summary>A workflow was surfaced as a suggested action in a companion response.</summary>
+    WorkflowSuggestedByConversation = 91,
+    /// <summary>The companion engine suggested an investigation based on current system state.</summary>
+    InvestigationSuggested          = 92,
 }
 
 /// <summary>

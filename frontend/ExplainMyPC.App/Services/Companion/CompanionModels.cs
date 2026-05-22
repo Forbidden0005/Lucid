@@ -1,18 +1,82 @@
 namespace ExplainMyPC.Services.Companion;
 
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Page the companion wants to navigate to when a suggested action is tapped.
+/// Maps 1-to-1 with the tag strings in MainWindow.NavigateToPage().
+/// </summary>
+public enum NavigationTarget
+{
+    None          = 0,
+    Dashboard     = 1,
+    Insights      = 2,
+    Timeline      = 3,
+    Repairs       = 4,
+    Storage       = 5,
+    Processes     = 6,
+    Security      = 7,
+    Investigation = 8,
+    Explain       = 9,
+    Replay        = 10,
+    Historical    = 11,
+}
+
+/// <summary>
+/// A tappable action chip rendered below a companion response.
+/// Navigates the main window to the target page — NEVER executes anything automatically.
+/// </summary>
+public sealed record SuggestedAction
+{
+    public required string           Id          { get; init; }
+    public required string           Label       { get; init; }
+    public required string           Glyph       { get; init; }
+    public required NavigationTarget Target      { get; init; }
+    public          string?          Description { get; init; }
+
+    /// <summary>NavigationView tag string for MainWindow.NavigateToPage().</summary>
+    public string NavigationTag => Target switch
+    {
+        NavigationTarget.Dashboard    => "dashboard",
+        NavigationTarget.Insights     => "insights",
+        NavigationTarget.Timeline     => "timeline",
+        NavigationTarget.Repairs      => "repairs",
+        NavigationTarget.Storage      => "storage",
+        NavigationTarget.Processes    => "processes",
+        NavigationTarget.Security     => "security",
+        NavigationTarget.Investigation => "investigation",
+        NavigationTarget.Explain      => "explain",
+        NavigationTarget.Replay       => "replay",
+        NavigationTarget.Historical   => "historical",
+        _                             => string.Empty,
+    };
+}
+
+/// <summary>
+/// A single evidence item shown in the evidence badge on a system message.
+/// Exposes which platform service provided the data for a response.
+/// </summary>
+public sealed record ConversationEvidenceItem
+{
+    public required string Source  { get; init; }
+    public required string Summary { get; init; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Display mode for the Companion Overlay Window.
 /// Controls both the window size and which UI layout is rendered.
 /// </summary>
 public enum CompanionMode
 {
-    /// <summary>64×64 circular button — minimized, lowest footprint.</summary>
+    /// <summary>64x64 circular button — minimized, lowest footprint.</summary>
     Bubble   = 0,
 
-    /// <summary>320×60 horizontal strip — status visible, no conversation.</summary>
+    /// <summary>320x60 horizontal strip — status visible, no conversation.</summary>
     Compact  = 1,
 
-    /// <summary>360×560 full panel — conversation history and input visible.</summary>
+    /// <summary>360x560 full panel — conversation history and input visible.</summary>
     Expanded = 2,
 }
 
@@ -43,15 +107,32 @@ public enum CompanionMessageCategory
 /// <summary>
 /// An immutable conversation message in the companion session.
 /// All display helpers are computed from the message data — no converters required.
+///
+/// Phase 17C enrichment fields:
+///   SuggestedActions — navigation chips rendered below system messages
+///   EvidenceItems    — evidence badge showing which sources were consulted
+///   ConfidenceDisplay — chip label e.g. "High 87%"
+///   UncertaintyNote  — explicit caveat when confidence is low
 /// </summary>
 public sealed record CompanionMessage
 {
-    public required string                  Id        { get; init; }
-    public required CompanionMessageRole    Role      { get; init; }
-    public required string                  Text      { get; init; }
-    public required DateTimeOffset          Timestamp { get; init; }
-    public          CompanionMessageCategory Category  { get; init; } = CompanionMessageCategory.Answer;
-    public          string?                 ActionId  { get; init; }
+    public required string                   Id               { get; init; }
+    public required CompanionMessageRole     Role             { get; init; }
+    public required string                   Text             { get; init; }
+    public required DateTimeOffset           Timestamp        { get; init; }
+    public          CompanionMessageCategory Category         { get; init; } = CompanionMessageCategory.Answer;
+    public          string?                  ActionId         { get; init; }
+
+    // ── Phase 17C enrichment ───────────────────────────────────────────────────
+
+    /// <summary>Navigation action chips shown below this message (system messages only).</summary>
+    public IReadOnlyList<SuggestedAction>          SuggestedActions  { get; init; } = [];
+    /// <summary>Evidence items shown in the evidence badge (system messages only).</summary>
+    public IReadOnlyList<ConversationEvidenceItem> EvidenceItems     { get; init; } = [];
+    /// <summary>Short confidence chip — null hides the chip entirely.</summary>
+    public string?                                 ConfidenceDisplay { get; init; }
+    /// <summary>Explicit uncertainty caveat — shown in italics when non-null.</summary>
+    public string?                                 UncertaintyNote   { get; init; }
 
     // ── Display helpers ────────────────────────────────────────────────────────
 
@@ -70,13 +151,13 @@ public sealed record CompanionMessage
     /// <summary>Segoe MDL2 glyph for the message category.</summary>
     public string CategoryGlyph => Category switch
     {
-        CompanionMessageCategory.Warning  => "",   // Warning shield
-        CompanionMessageCategory.Insight  => "",   // Lightbulb
-        CompanionMessageCategory.Action   => "",   // Wrench
-        CompanionMessageCategory.Workflow => "",   // Flow
-        CompanionMessageCategory.Error    => "",   // Error badge
-        CompanionMessageCategory.Welcome  => "",   // Info
-        _                                 => "",   // Info (Answer)
+        CompanionMessageCategory.Warning  => "",  // Warning shield
+        CompanionMessageCategory.Insight  => "",  // Lightbulb
+        CompanionMessageCategory.Action   => "",  // Wrench
+        CompanionMessageCategory.Workflow => "",  // Flow
+        CompanionMessageCategory.Error    => "",  // Error badge
+        CompanionMessageCategory.Welcome  => "",  // Info
+        _                                 => "",  // Info (Answer)
     };
 
     /// <summary>Hex accent color for the message category icon.</summary>
@@ -91,7 +172,26 @@ public sealed record CompanionMessage
     };
 
     /// <summary>Visibility for the action-link row — shown only when ActionId is set.</summary>
-    public string HasActionVisibility => !string.IsNullOrEmpty(ActionId) ? "Visible" : "Collapsed";
+    public string HasActionVisibility =>
+        !string.IsNullOrEmpty(ActionId) ? "Visible" : "Collapsed";
+
+    // ── Phase 17C visibility helpers ───────────────────────────────────────────
+
+    /// <summary>Show suggested action chips only on system messages that have them.</summary>
+    public string SuggestedActionsVisibility =>
+        SuggestedActions.Count > 0 && IsSystemMessage ? "Visible" : "Collapsed";
+
+    /// <summary>Show evidence badge only on system messages that have evidence.</summary>
+    public string EvidenceVisibility =>
+        EvidenceItems.Count > 0 && IsSystemMessage ? "Visible" : "Collapsed";
+
+    /// <summary>Show confidence chip only on system messages that have a display label.</summary>
+    public string ConfidenceVisibility =>
+        !string.IsNullOrEmpty(ConfidenceDisplay) && IsSystemMessage ? "Visible" : "Collapsed";
+
+    /// <summary>Show uncertainty note only on system messages that have one.</summary>
+    public string UncertaintyVisibility =>
+        !string.IsNullOrEmpty(UncertaintyNote) && IsSystemMessage ? "Visible" : "Collapsed";
 }
 
 /// <summary>
@@ -107,5 +207,12 @@ public sealed record QuickAction
     public required string Description { get; init; }
 
     /// <summary>Natural-language query submitted to the conversation engine.</summary>
-    public required string Query       { get; init; }
+    public required string Query { get; init; }
+
+    /// <summary>
+    /// True when this chip was injected by the contextual suggestion engine
+    /// based on desktop context (folder, clipboard, active app).
+    /// False for the six static base chips.
+    /// </summary>
+    public bool IsContextual { get; init; }
 }

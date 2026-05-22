@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using ExplainMyPC.Services.Companion;
 using ExplainMyPC.Services.DesktopContext;
 using ExplainMyPC.ViewModels;
@@ -292,6 +292,10 @@ public sealed partial class CompanionOverlayWindow : Window
         {
             // Position fails silently if display info is unavailable.
         }
+
+        // Refresh contextual suggestion chips whenever desktop focus changes (Phase 17C).
+        // Best-effort - never blocks the UI or surfaces an error.
+        ViewModel.RefreshContextualSuggestions();
     }
 
     // ── Initial window position ────────────────────────────────────────────────
@@ -328,6 +332,13 @@ public sealed partial class CompanionOverlayWindow : Window
     private void ClearButton_Click(object sender, RoutedEventArgs e)
         => ViewModel.ClearConversationCommand.Execute(null);
 
+    // ── Navigation event (Phase 17C) ─────────────────────────────────────────
+    //    Fired when a suggested-action chip is tapped in a companion response.
+    //    MainWindow subscribes to this and calls NavigateToPage(tag).
+    //    The window itself never navigates — single responsibility.
+
+    public event EventHandler<string>? NavigationRequested;
+
     // ── Quick action click (DataTemplate command bridge) ─────────────────────
     //    x:Bind cannot resolve ViewModel commands from inside a DataTemplate
     //    whose DataContext is the item. Tag carries the QuickAction reference.
@@ -336,6 +347,19 @@ public sealed partial class CompanionOverlayWindow : Window
     {
         if (sender is Button { Tag: QuickAction qa })
             ViewModel.ExecuteQuickActionCommand.Execute(qa);
+    }
+
+    // ── Suggested action click (Phase 17C response card navigation) ──────────
+    //    Raised by tapping a SuggestedAction chip inside a system message card.
+    //    Tag is set in XAML to the SuggestedAction record via x:Bind.
+
+    private void SuggestedAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: ExplainMyPC.Services.Companion.SuggestedAction action }
+            && !string.IsNullOrEmpty(action.NavigationTag))
+        {
+            NavigationRequested?.Invoke(this, action.NavigationTag);
+        }
     }
 
     // ── Input box ─────────────────────────────────────────────────────────────
