@@ -67,6 +67,23 @@ public enum TimelineEventType
     SecurityScanStarted   = 60,
     /// <summary>A security intelligence scan completed and produced results.</summary>
     SecurityScanCompleted = 61,
+
+    // ── Operational Evidence & Workflow (16E) ─────────────────────────────────
+    /// <summary>The evidence graph was built or rebuilt — a new causal analysis is available.</summary>
+    EvidenceGraphBuilt    = 70,
+    /// <summary>A root cause was identified from the current evidence graph.</summary>
+    RootCauseIdentified   = 71,
+    /// <summary>A guided operational workflow was suggested to the operator.</summary>
+    WorkflowSuggested     = 72,
+    /// <summary>The operator started executing a guided workflow.</summary>
+    WorkflowStarted       = 73,
+    /// <summary>A guided workflow completed — all steps were executed.</summary>
+    WorkflowCompleted     = 74,
+    /// <summary>
+    /// System conditions stabilised following a workflow or remediation action.
+    /// Detected when metrics return inside baseline thresholds after an active period.
+    /// </summary>
+    StabilizationDetected = 75,
 }
 
 /// <summary>
@@ -120,6 +137,21 @@ public sealed record TimelineEvent
 
     /// <summary>Action ID when the event originated from the execution engine.</summary>
     public          string?                ActionId            { get; init; }
+
+    /// <summary>
+    /// Workflow ID when the event relates to an <see cref="TimelineEventType.WorkflowSuggested"/>,
+    /// <see cref="TimelineEventType.WorkflowStarted"/>, or
+    /// <see cref="TimelineEventType.WorkflowCompleted"/> event.
+    /// Null for all other event types.
+    /// </summary>
+    public          string?                WorkflowId          { get; init; }
+
+    /// <summary>
+    /// Root cause candidate title when the event is
+    /// <see cref="TimelineEventType.RootCauseIdentified"/>.
+    /// Null for other event types.
+    /// </summary>
+    public          string?                RootCauseTitle      { get; init; }
 
     /// <summary>Factory helper — new random event ID, 32 lowercase hex chars.</summary>
     public static string NewId() => Guid.NewGuid().ToString("N");

@@ -188,10 +188,31 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
+                <muxc:NavigationViewItem Tag="remediation"
+                                         Content="Remediation">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE90F;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItem Tag="simulation"
+                                         Content="Simulate">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE950;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
                 <muxc:NavigationViewItem Tag="diagnostics"
                                          Content="Diagnostics">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE773;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItem Tag="investigation"
+                                         Content="Investigate">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8B3;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 

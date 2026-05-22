@@ -61,8 +61,11 @@ public sealed partial class MainWindow : Window
             "devices"     => typeof(DeviceIntelligencePage),
             "governance"  => typeof(RuntimeGovernancePage),
             "watchtower"  => typeof(WatchtowerPage),
-            "diagnostics" => typeof(DiagnosticsPage),
-            "settings"    => typeof(SettingsPage),
+            "remediation" => typeof(AutonomousRemediationPage),
+            "simulation"  => typeof(SimulationPage),
+            "diagnostics"   => typeof(DiagnosticsPage),
+            "investigation" => typeof(InvestigationPage),
+            "settings"      => typeof(SettingsPage),
             _ => null
         };
 

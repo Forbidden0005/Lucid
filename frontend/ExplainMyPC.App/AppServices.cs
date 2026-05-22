@@ -1,5 +1,7 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Analytics;
+using ExplainMyPC.Services.Reasoning;
+using ExplainMyPC.Services.Workflow;
 using ExplainMyPC.Services.Baseline;
 using ExplainMyPC.Services.Behavior;
 using ExplainMyPC.Services.Diagnostics;
@@ -118,6 +120,12 @@ public static class AppServices
     private static IUserBehaviorClassifier?             _userBehaviorClassifier;
     private static IAlertFatigueManager?                _alertFatigueManager;
     private static IRecommendationExplanationService?   _recommendationExplanation;
+
+    // ── Operational Evidence & Workflow layer ─────────────────────────────────
+    private static IOperationalEvidenceGraph?   _evidenceGraph;
+    private static IRootCauseAnalysisEngine?    _rootCauseEngine;
+    private static IEvidenceExplanationService? _evidenceExplanation;
+    private static IOperationalWorkflowEngine?  _workflowEngine;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -526,6 +534,46 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Operational evidence graph service.
+    /// Builds causal evidence chains from intelligence findings, anomalies, drifts,
+    /// session events, and operation history. Local-only, deterministic.
+    /// </summary>
+    public static IOperationalEvidenceGraph EvidenceGraph =>
+        _evidenceGraph ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Root cause analysis engine.
+    /// Identifies the most probable root causes from the evidence graph.
+    /// Pure function — stateless, no side effects.
+    /// </summary>
+    public static IRootCauseAnalysisEngine RootCauseEngine =>
+        _rootCauseEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Evidence explanation service.
+    /// Generates human-readable explanations for root cause candidates and evidence chains.
+    /// Pure function — stateless, no side effects.
+    /// </summary>
+    public static IEvidenceExplanationService EvidenceExplanation =>
+        _evidenceExplanation ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational workflow engine.
+    /// Builds guided, evidence-driven workflows from root cause candidates.
+    /// Never auto-executes anything — all workflows are suggestions only.
+    /// </summary>
+    public static IOperationalWorkflowEngine WorkflowEngine =>
+        _workflowEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -857,6 +905,21 @@ public static class AppServices
         _alertFatigueManager    = new AlertFatigueManager(_interventionMemory);
         _recommendationExplanation = new RecommendationExplanationService();
 
+        // ── Operational Evidence & Workflow layer ─────────────────────────────
+        // All services are stateless (no Start/Stop). Created after all upstream
+        // intelligence and history services are running so they have data to work with.
+        // The evidence graph is built lazily on first InvestigationPage navigation.
+        _evidenceGraph      = new OperationalEvidenceGraph(
+            _intelligence!,
+            _operationHistory!,
+            _session!,
+            _anomalyDetection!,
+            _driftDetection!,
+            _earlyWarning!);
+        _rootCauseEngine    = new RootCauseAnalysisEngine();
+        _evidenceExplanation = new EvidenceExplanationService();
+        _workflowEngine     = new OperationalWorkflowEngine();
+
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
@@ -886,6 +949,12 @@ public static class AppServices
         _userBehaviorClassifier    = null;
         _alertFatigueManager       = null;
         _recommendationExplanation = null;
+
+        // Evidence & Workflow layer — stateless, just null references.
+        _evidenceGraph      = null;
+        _rootCauseEngine    = null;
+        _evidenceExplanation = null;
+        _workflowEngine     = null;
 
         // Stop remediation service first — it holds an InsightsUpdated subscription.
         _remediationService?.Stop();
