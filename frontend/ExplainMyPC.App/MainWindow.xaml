@@ -218,8 +218,18 @@
 
             </muxc:NavigationView.MenuItems>
 
-            <!-- ── Footer: Settings ────────────────────────────────────── -->
+            <!-- ── Footer: Companion toggle + Settings ────────────────── -->
             <muxc:NavigationView.FooterMenuItems>
+
+                <muxc:NavigationViewItem x:Name="NavCompanion"
+                                         Content="Companion"
+                                         Tapped="NavCompanion_Tapped"
+                                         ToolTipService.ToolTip="Open Operational Companion">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
                 <muxc:NavigationViewItem Tag="settings"
                                          Content="Settings">
                     <muxc:NavigationViewItem.Icon>

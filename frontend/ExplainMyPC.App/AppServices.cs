@@ -1,5 +1,6 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Analytics;
+using ExplainMyPC.Services.Companion;
 using ExplainMyPC.Services.Reasoning;
 using ExplainMyPC.Services.Workflow;
 using ExplainMyPC.Services.Baseline;
@@ -126,6 +127,10 @@ public static class AppServices
     private static IRootCauseAnalysisEngine?    _rootCauseEngine;
     private static IEvidenceExplanationService? _evidenceExplanation;
     private static IOperationalWorkflowEngine?  _workflowEngine;
+
+    // ── Operational Companion layer ────────────────────────────────────────────
+    private static ICompanionSessionManager?       _companionSession;
+    private static IOperationalConversationEngine? _conversationEngine;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -574,6 +579,27 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Companion session manager.
+    /// Manages the in-session conversation message history for the Companion window.
+    /// Ephemeral — messages are not persisted to disk.
+    /// </summary>
+    public static ICompanionSessionManager CompanionSession =>
+        _companionSession ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational conversation engine.
+    /// Resolves natural-language queries into factual, evidence-grounded responses.
+    /// Deterministic keyword matching — not an LLM. All answers are sourced from
+    /// live services. Nothing leaves the device.
+    /// </summary>
+    public static IOperationalConversationEngine ConversationEngine =>
+        _conversationEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -920,6 +946,17 @@ public static class AppServices
         _evidenceExplanation = new EvidenceExplanationService();
         _workflowEngine     = new OperationalWorkflowEngine();
 
+        // ── Operational Companion layer ────────────────────────────────────────
+        // Stateless/lightweight — session manager is in-memory only.
+        // Conversation engine wraps existing services; no new background work.
+        _companionSession   = new CompanionSessionManager();
+        _conversationEngine = new OperationalConversationEngine(
+            _intelligence!,
+            _narrative!,
+            _timeline!,
+            _evidenceGraph!,
+            _rootCauseEngine!);
+
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
@@ -955,6 +992,10 @@ public static class AppServices
         _rootCauseEngine    = null;
         _evidenceExplanation = null;
         _workflowEngine     = null;
+
+        // Companion layer — in-memory only, just null references.
+        _companionSession   = null;
+        _conversationEngine = null;
 
         // Stop remediation service first — it holds an InsightsUpdated subscription.
         _remediationService?.Stop();
