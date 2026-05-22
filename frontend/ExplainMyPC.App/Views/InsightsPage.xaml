@@ -5,6 +5,7 @@
     xmlns:local="using:ExplainMyPC.Views"
     xmlns:vm="using:ExplainMyPC.ViewModels"
     xmlns:intel="using:ExplainMyPC.Services.Intelligence"
+    xmlns:learn="using:ExplainMyPC.Services.Learning"
     Background="{StaticResource AppBackgroundBrush}">
 
     <!--
@@ -810,6 +811,90 @@
             </Border>
         </DataTemplate>
 
+        <!--
+            ══════════════════════════════════════════════════════════════════
+            PRIORITIZED ACTION CARD TEMPLATE
+            Display card for a PrioritizedActionViewModel on the Actions tab.
+            Shows: impact glyph · title / effectiveness / source · priority badge.
+            Read-only — no execution buttons (navigate to insight card to run).
+            ══════════════════════════════════════════════════════════════════
+        -->
+        <DataTemplate x:Key="PrioritizedActionCardTemplate"
+                      x:DataType="vm:PrioritizedActionViewModel">
+            <Border Background="#0AFFFFFF"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16,14">
+                <Grid ColumnSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Impact icon circle -->
+                    <Border Width="38" Height="38"
+                            CornerRadius="10"
+                            Background="#0AFFFFFF"
+                            VerticalAlignment="Top">
+                        <FontIcon Glyph="{x:Bind ImpactGlyph}"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="15"
+                                  Foreground="{x:Bind ImpactColor}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Content column -->
+                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Top">
+
+                        <TextBlock Text="{x:Bind Title}"
+                                   FontFamily="Segoe UI Variable"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+
+                        <TextBlock Text="{x:Bind Description}"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Effectiveness + source attribution row -->
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="8"
+                                    Margin="0,2,0,0">
+                            <TextBlock Text="{x:Bind EffectivenessLabel}"
+                                       FontSize="11"
+                                       Foreground="{x:Bind EffectivenessColor}" />
+                            <TextBlock Text="&#xB7;"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock Text="{x:Bind SourceInsightTitle}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                    </StackPanel>
+
+                    <!-- Priority badge -->
+                    <Border Grid.Column="2"
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,5"
+                            VerticalAlignment="Top">
+                        <TextBlock Text="{x:Bind PriorityLabel}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{x:Bind PriorityColor}" />
+                    </Border>
+
+                </Grid>
+            </Border>
+        </DataTemplate>
+
     </Page.Resources>
 
     <!--
@@ -1129,6 +1214,169 @@
                             Visibility="{x:Bind ViewModel.HistoryTabIndicatorVisibility, Mode=OneWay}" />
                 </Grid>
 
+                <!-- ── Actions tab ──────────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Command="{x:Bind ViewModel.SelectTabActionsCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Actions"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{x:Bind ViewModel.ActionsTabBrush, Mode=OneWay}" />
+                            <Border Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.ActionsCountText, Mode=OneWay}"
+                                           FontSize="11"
+                                           Foreground="{x:Bind ViewModel.ActionsTabBrush, Mode=OneWay}" />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Border Grid.Row="1"
+                            Background="{StaticResource AccentBlueBrush}"
+                            CornerRadius="2,2,0,0"
+                            Visibility="{x:Bind ViewModel.ActionsTabIndicatorVisibility, Mode=OneWay}" />
+                </Grid>
+
+                <!-- ── Warnings tab ─────────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Command="{x:Bind ViewModel.SelectTabWarningsCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Warnings"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{x:Bind ViewModel.WarningsTabBrush, Mode=OneWay}" />
+                            <Border Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.WarningsCountText, Mode=OneWay}"
+                                           FontSize="11"
+                                           Foreground="{x:Bind ViewModel.WarningsTabBrush, Mode=OneWay}" />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Border Grid.Row="1"
+                            Background="#F87171"
+                            CornerRadius="2,2,0,0"
+                            Visibility="{x:Bind ViewModel.WarningsTabIndicatorVisibility, Mode=OneWay}" />
+                </Grid>
+
+                <!-- ── Anomalies tab ─────────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Command="{x:Bind ViewModel.SelectTabAnomaliesCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Anomalies"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{x:Bind ViewModel.AnomaliesTabBrush, Mode=OneWay}" />
+                            <Border Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.AnomaliesCountText, Mode=OneWay}"
+                                           FontSize="11"
+                                           Foreground="{x:Bind ViewModel.AnomaliesTabBrush, Mode=OneWay}" />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Border Grid.Row="1"
+                            Background="#FBBF24"
+                            CornerRadius="2,2,0,0"
+                            Visibility="{x:Bind ViewModel.AnomaliesTabIndicatorVisibility, Mode=OneWay}" />
+                </Grid>
+
+                <!-- ── Drift tab ─────────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Command="{x:Bind ViewModel.SelectTabDriftCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Drift"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{x:Bind ViewModel.DriftTabBrush, Mode=OneWay}" />
+                            <Border Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.DriftsCountText, Mode=OneWay}"
+                                           FontSize="11"
+                                           Foreground="{x:Bind ViewModel.DriftTabBrush, Mode=OneWay}" />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Border Grid.Row="1"
+                            Background="#60A5FA"
+                            CornerRadius="2,2,0,0"
+                            Visibility="{x:Bind ViewModel.DriftTabIndicatorVisibility, Mode=OneWay}" />
+                </Grid>
+
+                <!-- ── Personalization tab ── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Command="{x:Bind ViewModel.SelectTabPersonalizationCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <TextBlock Text="Your Style"
+                                   FontFamily="Segoe UI Variable"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{x:Bind ViewModel.PersonalizationTabBrush, Mode=OneWay}" />
+                    </Button>
+                    <Border Grid.Row="1"
+                            Background="#8B5CF6"
+                            CornerRadius="2,2,0,0"
+                            Visibility="{x:Bind ViewModel.PersonalizationTabIndicatorVisibility, Mode=OneWay}" />
+                </Grid>
+
             </StackPanel>
         </Border>
 
@@ -1407,6 +1655,601 @@
                                        TextAlignment="Center"
                                        TextWrapping="Wrap"
                                        MaxWidth="340" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── ACTIONS PANEL (Actions tab) ─────────────────────── -->
+            <ScrollViewer Visibility="{x:Bind ViewModel.ActionsPanelVisibility, Mode=OneWay}"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="32,20,32,48" Spacing="16">
+
+                    <!-- Actions list (visible when results exist) -->
+                    <StackPanel Visibility="{x:Bind ViewModel.ActionsListVisibility, Mode=OneWay}"
+                                Spacing="12">
+
+                        <!-- Count header -->
+                        <TextBlock Text="{x:Bind ViewModel.ActionsCountText, Mode=OneWay}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+
+                        <!-- Ranked action cards -->
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.DisplayedActions, Mode=OneWay}"
+                                       ItemTemplate="{StaticResource PrioritizedActionCardTemplate}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="8" Orientation="Vertical" />
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+
+                    </StackPanel>
+
+                    <!-- Empty state (no active insights = no recommended actions) -->
+                    <Border Visibility="{x:Bind ViewModel.ActionsEmptyVisibility, Mode=OneWay}"
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="40,40">
+                        <StackPanel HorizontalAlignment="Center"
+                                    Spacing="12">
+                            <FontIcon Glyph="&#xE8BD;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="36"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="No recommended actions"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Actions appear here when the intelligence engine detects active findings with recommended remediation steps."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="360" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── WARNINGS PANEL (Warnings tab) ───────────────────── -->
+            <ScrollViewer Visibility="{x:Bind ViewModel.WarningsPanelVisibility, Mode=OneWay}"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="32,20,32,48" Spacing="16">
+
+                    <!-- Warnings list -->
+                    <StackPanel Visibility="{x:Bind ViewModel.WarningsListVisibility, Mode=OneWay}"
+                                Spacing="12">
+                        <TextBlock Text="{x:Bind ViewModel.WarningsCountText, Mode=OneWay}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.DisplayedWarnings, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="8" Orientation="Vertical" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="intel:EarlyWarning">
+                                    <Border Background="#0AFFFFFF"
+                                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="16,14">
+                                        <Grid ColumnSpacing="14">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Icon -->
+                                            <Border Width="38" Height="38"
+                                                    CornerRadius="10"
+                                                    Background="{x:Bind SeverityBadgeColor}"
+                                                    VerticalAlignment="Center">
+                                                <FontIcon Glyph="{x:Bind Glyph}"
+                                                          FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="16"
+                                                          Foreground="{x:Bind SeverityColor}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
+                                            </Border>
+                                            <!-- Body -->
+                                            <StackPanel Grid.Column="1"
+                                                        Spacing="4"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind Title}"
+                                                           FontFamily="Segoe UI Variable"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock Text="{x:Bind Explanation}"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                    <TextBlock Text="{x:Bind ConfidenceLabel}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind DetectedLabel}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <!-- Severity badge -->
+                                            <Border Grid.Column="2"
+                                                    CornerRadius="8"
+                                                    Padding="10,5"
+                                                    Background="{x:Bind SeverityBadgeColor}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind SeverityLabel}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{x:Bind SeverityColor}" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                    </StackPanel>
+
+                    <!-- Empty state -->
+                    <Border Visibility="{x:Bind ViewModel.WarningsEmptyVisibility, Mode=OneWay}"
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="40,40">
+                        <StackPanel HorizontalAlignment="Center" Spacing="12">
+                            <FontIcon Glyph="&#xE946;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="36"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="No active warnings"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Early warnings appear when anomaly detection or the Watchtower identifies unusual patterns worth your attention."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="360" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── ANOMALIES PANEL (Anomalies tab) ─────────────────── -->
+            <ScrollViewer Visibility="{x:Bind ViewModel.AnomaliesPanelVisibility, Mode=OneWay}"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="32,20,32,48" Spacing="16">
+
+                    <!-- Anomalies list -->
+                    <StackPanel Visibility="{x:Bind ViewModel.AnomaliesListVisibility, Mode=OneWay}"
+                                Spacing="12">
+                        <TextBlock Text="{x:Bind ViewModel.AnomaliesCountText, Mode=OneWay}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.DisplayedAnomalies, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="8" Orientation="Vertical" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="intel:DetectedAnomaly">
+                                    <Border Background="#0AFFFFFF"
+                                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="16,14">
+                                        <Grid ColumnSpacing="14">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Metric icon -->
+                                            <Border Width="38" Height="38"
+                                                    CornerRadius="10"
+                                                    Background="{x:Bind SeverityBadgeColor}"
+                                                    VerticalAlignment="Center">
+                                                <FontIcon Glyph="{x:Bind MetricGlyph}"
+                                                          FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="16"
+                                                          Foreground="{x:Bind SeverityColor}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
+                                            </Border>
+                                            <!-- Body -->
+                                            <StackPanel Grid.Column="1"
+                                                        Spacing="4"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind Metric}"
+                                                           FontFamily="Segoe UI Variable"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                                <TextBlock Text="{x:Bind Description}"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                    <TextBlock Text="{x:Bind ExpectedMeanLabel}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind DivergenceLabel}"
+                                                               FontSize="11"
+                                                               FontWeight="Medium"
+                                                               Foreground="{x:Bind SeverityColor}" />
+                                                    <TextBlock Text="{x:Bind DetectedLabel}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <!-- Severity badge -->
+                                            <Border Grid.Column="2"
+                                                    CornerRadius="8"
+                                                    Padding="10,5"
+                                                    Background="{x:Bind SeverityBadgeColor}"
+                                                    VerticalAlignment="Center">
+                                                <StackPanel Spacing="3">
+                                                    <TextBlock Text="{x:Bind SeverityLabel}"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{x:Bind SeverityColor}"
+                                                               HorizontalAlignment="Center" />
+                                                    <TextBlock Text="{x:Bind ActualValueLabel}"
+                                                               FontSize="12"
+                                                               FontWeight="Bold"
+                                                               Foreground="{x:Bind SeverityColor}"
+                                                               HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                    </StackPanel>
+
+                    <!-- Empty state -->
+                    <Border Visibility="{x:Bind ViewModel.AnomaliesEmptyVisibility, Mode=OneWay}"
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="40,40">
+                        <StackPanel HorizontalAlignment="Center" Spacing="12">
+                            <FontIcon Glyph="&#xE9CE;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="36"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="No behavioral anomalies"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Anomalies appear when live telemetry deviates significantly from this machine's learned baseline. The baseline needs ~200 observations to activate."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="380" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── DRIFT PANEL (Drift tab) ──────────────────────────── -->
+            <ScrollViewer Visibility="{x:Bind ViewModel.DriftPanelVisibility, Mode=OneWay}"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="32,20,32,48" Spacing="16">
+
+                    <!-- Drift list -->
+                    <StackPanel Visibility="{x:Bind ViewModel.DriftsListVisibility, Mode=OneWay}"
+                                Spacing="12">
+                        <TextBlock Text="{x:Bind ViewModel.DriftsCountText, Mode=OneWay}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.DisplayedDrifts, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="8" Orientation="Vertical" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="intel:DetectedDrift">
+                                    <Border Background="#0AFFFFFF"
+                                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="16,14">
+                                        <Grid ColumnSpacing="14">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Metric icon -->
+                                            <Border Width="38" Height="38"
+                                                    CornerRadius="10"
+                                                    Background="#0AFFFFFF"
+                                                    VerticalAlignment="Center">
+                                                <FontIcon Glyph="{x:Bind MetricGlyph}"
+                                                          FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="16"
+                                                          Foreground="{x:Bind DirectionColor}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
+                                            </Border>
+                                            <!-- Body -->
+                                            <StackPanel Grid.Column="1"
+                                                        Spacing="4"
+                                                        VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{x:Bind MetricName}"
+                                                               FontFamily="Segoe UI Variable"
+                                                               FontSize="14"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                                    <TextBlock Text="{x:Bind DirectionGlyph}"
+                                                               FontSize="14"
+                                                               Foreground="{x:Bind DirectionColor}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Text="{x:Bind Summary}"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock Text="{x:Bind AvgComparisonLabel}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                            <!-- Change badge -->
+                                            <Border Grid.Column="2"
+                                                    CornerRadius="8"
+                                                    Padding="10,5"
+                                                    Background="#0AFFFFFF"
+                                                    VerticalAlignment="Center">
+                                                <StackPanel Spacing="3" HorizontalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind ChangeLabel}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{x:Bind DirectionColor}"
+                                                               HorizontalAlignment="Center" />
+                                                    <TextBlock Text="{x:Bind SeverityLabel}"
+                                                               FontSize="10"
+                                                               Foreground="{x:Bind SeverityColor}"
+                                                               HorizontalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                    </StackPanel>
+
+                    <!-- Empty state -->
+                    <Border Visibility="{x:Bind ViewModel.DriftsEmptyVisibility, Mode=OneWay}"
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="40,40">
+                        <StackPanel HorizontalAlignment="Center" Spacing="12">
+                            <FontIcon Glyph="&#xE74D;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="36"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="No drift detected"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Drift analysis appears after ~30 days of historical data. Drift observations represent gradual multi-week trends — not momentary spikes."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="380" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── PERSONALIZATION PANEL (Your Style tab) ──────────── -->
+            <ScrollViewer Visibility="{x:Bind ViewModel.PersonalizationPanelVisibility, Mode=OneWay}"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="32,20,32,48" Spacing="20">
+
+                    <!-- ── Warm state — profile data available ──────── -->
+                    <StackPanel Visibility="{x:Bind ViewModel.PersonalizationDataVisibility, Mode=OneWay}"
+                                Spacing="16">
+
+                        <!-- Style card -->
+                        <Border Background="#0AFFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="20,16">
+                            <StackPanel Spacing="12">
+
+                                <!-- Header -->
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <FontIcon Glyph="{x:Bind ViewModel.PersonalizationStyleGlyph, Mode=OneWay}"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="20"
+                                              Foreground="{x:Bind ViewModel.PersonalizationStyleColor, Mode=OneWay}" />
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{x:Bind ViewModel.PersonalizationStyleLabel, Mode=OneWay}"
+                                                   FontFamily="Segoe UI Variable"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{x:Bind ViewModel.PersonalizationStyleColor, Mode=OneWay}" />
+                                        <TextBlock Text="{x:Bind ViewModel.PersonalizationSampleCount, Mode=OneWay}"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <TextBlock Text="{x:Bind ViewModel.PersonalizationStyleDesc, Mode=OneWay}"
+                                           FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" />
+
+                                <!-- Personal insight -->
+                                <Border Background="#08FFFFFF"
+                                        CornerRadius="8"
+                                        Padding="12,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE82D;"
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="12"
+                                                  Foreground="{x:Bind ViewModel.PersonalizationStyleColor, Mode=OneWay}"
+                                                  VerticalAlignment="Top"
+                                                  Margin="0,1,0,0" />
+                                        <TextBlock Text="{x:Bind ViewModel.PersonalizationStyleInsight, Mode=OneWay}"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Acceptance rate summary -->
+                                <Border Background="#0AFFFFFF"
+                                        CornerRadius="8"
+                                        Padding="12,8">
+                                    <TextBlock Text="{x:Bind ViewModel.PersonalizationAcceptanceRate, Mode=OneWay}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Category breakdown -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Category Preferences"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                            <ItemsRepeater ItemsSource="{x:Bind ViewModel.CategoryRateLines, Mode=OneWay}">
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Border Background="#0AFFFFFF"
+                                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="12,8"
+                                                Margin="0,0,0,4">
+                                            <TextBlock Text="{x:Bind}"
+                                                       FontSize="13"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                        <!-- Recent interaction history -->
+                        <StackPanel Spacing="8"
+                                    Visibility="{x:Bind ViewModel.PersonalizationInterventionListVisibility, Mode=OneWay}">
+                            <TextBlock Text="Recent Interactions"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                            <ItemsRepeater ItemsSource="{x:Bind ViewModel.RecentInterventions, Mode=OneWay}">
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="learn:InterventionRecord">
+                                        <Border Background="#0AFFFFFF"
+                                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="12,10"
+                                                Margin="0,0,0,4">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Accept/dismiss indicator -->
+                                                <FontIcon Glyph="&#xE8FB;"
+                                                          FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="12"
+                                                          Foreground="#34D399"
+                                                          VerticalAlignment="Center" />
+
+                                                <!-- Action title + category -->
+                                                <StackPanel Grid.Column="1"
+                                                            Spacing="2"
+                                                            VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind ActionTitle}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                                    <TextBlock Text="{x:Bind Category}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                </StackPanel>
+
+                                                <!-- Accepted badge -->
+                                                <Border Grid.Column="2"
+                                                        CornerRadius="6"
+                                                        Padding="8,3"
+                                                        Background="#0A34D399"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="Accepted"
+                                                               FontSize="11"
+                                                               Foreground="#34D399" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                    </StackPanel>
+
+                    <!-- ── Cold state — not enough data yet ─────────── -->
+                    <Border Visibility="{x:Bind ViewModel.PersonalizationColdVisibility, Mode=OneWay}"
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="32,28">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE8EF;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="32"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="Learning Your Style"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="ExplainMyPC adapts its recommendations as you interact with them. Accept or dismiss a few suggestions to get started."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="380" />
                         </StackPanel>
                     </Border>
 

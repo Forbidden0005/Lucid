@@ -1183,6 +1183,579 @@
             </Grid>
 
             <!-- ══════════════════════════════════════════════════════════
+                 SMART ACTIONS
+                 Top 3 ranked recommended actions from GlobalRecommendationPrioritizer.
+                 Hidden when no active insights have recommended actions.
+            ══════════════════════════════════════════════════════════ -->
+            <Grid Visibility="{x:Bind ViewModel.SmartActionsVisibility, Mode=OneWay}"
+                  Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Smart Actions"
+                           Style="{StaticResource SectionTitleStyle}" />
+                <Border Grid.Column="1"
+                        Background="{StaticResource StatusGoodSubtleBrush}"
+                        CornerRadius="10" Padding="8,3"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="Ranked by impact"
+                               FontSize="11"
+                               Foreground="{StaticResource StatusGoodBrush}" />
+                </Border>
+            </Grid>
+
+            <!--
+                Ranked action cards — top 3 only on the dashboard for brevity.
+                Full list available on the Insights page Actions tab.
+            -->
+            <ItemsRepeater Visibility="{x:Bind ViewModel.SmartActionsVisibility, Mode=OneWay}"
+                           ItemsSource="{x:Bind ViewModel.SmartActions, Mode=OneWay}">
+                <ItemsRepeater.Layout>
+                    <StackLayout Spacing="8" Orientation="Vertical" />
+                </ItemsRepeater.Layout>
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PrioritizedActionViewModel">
+                        <Border Background="#0AFFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="16,12">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Impact icon -->
+                                <Border Width="34" Height="34"
+                                        CornerRadius="8"
+                                        Background="#0AFFFFFF"
+                                        VerticalAlignment="Center">
+                                    <FontIcon Glyph="{x:Bind ImpactGlyph}"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="13"
+                                              Foreground="{x:Bind ImpactColor}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Title + effectiveness + source attribution -->
+                                <StackPanel Grid.Column="1"
+                                            Spacing="2"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Title}"
+                                               FontFamily="Segoe UI Variable"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{x:Bind EffectivenessLabel}"
+                                                   FontSize="11"
+                                                   Foreground="{x:Bind EffectivenessColor}" />
+                                        <TextBlock Text="&#xB7;"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{x:Bind SourceInsightTitle}"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Priority label badge -->
+                                <Border Grid.Column="2"
+                                        CornerRadius="6"
+                                        Padding="8,4"
+                                        Background="#0AFFFFFF"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind PriorityLabel}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{x:Bind PriorityColor}" />
+                                </Border>
+
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 WHY RECOMMENDED — personalization context for top action.
+                 Shown when the personalization profile has learned
+                 the user's preferences (≥ 3 recorded interactions).
+            ══════════════════════════════════════════════════════════ -->
+            <Border Visibility="{x:Bind ViewModel.PersonalizedRecommendationsVisibility, Mode=OneWay}"
+                    Background="#081A4E9F"
+                    BorderBrush="#1A4E9F"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="14,10">
+                <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE946;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="11"
+                                  Foreground="#4E9FFF" />
+                        <TextBlock Text="Why recommended"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="#4E9FFF" />
+                    </StackPanel>
+                    <TextBlock Text="{x:Bind ViewModel.TopActionWhyRecommended, Mode=OneWay}"
+                               FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 EARLY WARNINGS
+                 Synthesized from anomaly detections and Watchtower alerts.
+                 Hidden when no warnings are active.
+            ══════════════════════════════════════════════════════════ -->
+            <Grid Visibility="{x:Bind ViewModel.WarningsVisibility, Mode=OneWay}"
+                  Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Early Warnings"
+                           Style="{StaticResource SectionTitleStyle}" />
+                <Border Grid.Column="1"
+                        Background="#1AF87171"
+                        CornerRadius="10" Padding="8,3"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind ViewModel.WarningCountText, Mode=OneWay}"
+                               FontSize="11"
+                               Foreground="#F87171" />
+                </Border>
+            </Grid>
+
+            <ItemsRepeater Visibility="{x:Bind ViewModel.WarningsVisibility, Mode=OneWay}"
+                           ItemsSource="{x:Bind ViewModel.ActiveWarnings, Mode=OneWay}">
+                <ItemsRepeater.Layout>
+                    <StackLayout Spacing="8" Orientation="Vertical" />
+                </ItemsRepeater.Layout>
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="intel:EarlyWarning">
+                        <Border Background="#0AFFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="16,12">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Warning icon -->
+                                <Border Width="34" Height="34"
+                                        CornerRadius="8"
+                                        Background="{x:Bind SeverityBadgeColor}"
+                                        VerticalAlignment="Center">
+                                    <FontIcon Glyph="{x:Bind Glyph}"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="14"
+                                              Foreground="{x:Bind SeverityColor}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Title + explanation -->
+                                <StackPanel Grid.Column="1"
+                                            Spacing="2"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Title}"
+                                               FontFamily="Segoe UI Variable"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{x:Bind Explanation}"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap"
+                                               MaxLines="2" />
+                                </StackPanel>
+
+                                <!-- Severity + confidence badge -->
+                                <StackPanel Grid.Column="2"
+                                            Spacing="4"
+                                            VerticalAlignment="Center">
+                                    <Border CornerRadius="6"
+                                            Padding="8,3"
+                                            Background="{x:Bind SeverityBadgeColor}">
+                                        <TextBlock Text="{x:Bind SeverityLabel}"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{x:Bind SeverityColor}" />
+                                    </Border>
+                                    <TextBlock Text="{x:Bind ConfidenceLabel}"
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 ANOMALY SUMMARY
+                 Short-term behavioral anomalies vs machine baseline.
+                 Hidden when telemetry is within learned norms.
+            ══════════════════════════════════════════════════════════ -->
+            <Grid Visibility="{x:Bind ViewModel.AnomaliesVisibility, Mode=OneWay}"
+                  Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Behavioral Anomalies"
+                           Style="{StaticResource SectionTitleStyle}" />
+                <Border Grid.Column="1"
+                        Background="#1AFBBF24"
+                        CornerRadius="10" Padding="8,3"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind ViewModel.AnomalyCountText, Mode=OneWay}"
+                               FontSize="11"
+                               Foreground="#FBBF24" />
+                </Border>
+            </Grid>
+
+            <ItemsRepeater Visibility="{x:Bind ViewModel.AnomaliesVisibility, Mode=OneWay}"
+                           ItemsSource="{x:Bind ViewModel.ActiveAnomalies, Mode=OneWay}">
+                <ItemsRepeater.Layout>
+                    <StackLayout Spacing="8" Orientation="Vertical" />
+                </ItemsRepeater.Layout>
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="intel:DetectedAnomaly">
+                        <Border Background="#0AFFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="16,12">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Metric icon -->
+                                <Border Width="34" Height="34"
+                                        CornerRadius="8"
+                                        Background="{x:Bind SeverityBadgeColor}"
+                                        VerticalAlignment="Center">
+                                    <FontIcon Glyph="{x:Bind MetricGlyph}"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="14"
+                                              Foreground="{x:Bind SeverityColor}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Description + expected range -->
+                                <StackPanel Grid.Column="1"
+                                            Spacing="2"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Metric}"
+                                               FontFamily="Segoe UI Variable"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="{x:Bind Description}"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap"
+                                               MaxLines="2" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{x:Bind ExpectedMeanLabel}"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="&#x2192;"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{x:Bind ActualValueLabel}"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{x:Bind SeverityColor}" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Divergence + time -->
+                                <StackPanel Grid.Column="2"
+                                            Spacing="4"
+                                            VerticalAlignment="Center">
+                                    <Border CornerRadius="6"
+                                            Padding="8,3"
+                                            Background="{x:Bind SeverityBadgeColor}">
+                                        <TextBlock Text="{x:Bind SeverityLabel}"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{x:Bind SeverityColor}" />
+                                    </Border>
+                                    <TextBlock Text="{x:Bind DivergenceLabel}"
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 DRIFT TRENDS
+                 Long-term operational drift from the Watchtower layer.
+                 Hidden when no significant drift is detected.
+            ══════════════════════════════════════════════════════════ -->
+            <Grid Visibility="{x:Bind ViewModel.DriftsVisibility, Mode=OneWay}"
+                  Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Drift Trends"
+                           Style="{StaticResource SectionTitleStyle}" />
+                <Border Grid.Column="1"
+                        Background="#1A60A5FA"
+                        CornerRadius="10" Padding="8,3"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind ViewModel.DriftCountText, Mode=OneWay}"
+                               FontSize="11"
+                               Foreground="#60A5FA" />
+                </Border>
+            </Grid>
+
+            <ItemsRepeater Visibility="{x:Bind ViewModel.DriftsVisibility, Mode=OneWay}"
+                           ItemsSource="{x:Bind ViewModel.ActiveDrifts, Mode=OneWay}">
+                <ItemsRepeater.Layout>
+                    <StackLayout Spacing="8" Orientation="Vertical" />
+                </ItemsRepeater.Layout>
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="intel:DetectedDrift">
+                        <Border Background="#0AFFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Metric glyph -->
+                                <Border Width="32" Height="32"
+                                        CornerRadius="8"
+                                        Background="#0AFFFFFF"
+                                        VerticalAlignment="Center">
+                                    <FontIcon Glyph="{x:Bind MetricGlyph}"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="13"
+                                              Foreground="{x:Bind DirectionColor}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Metric name + summary -->
+                                <StackPanel Grid.Column="1"
+                                            Spacing="2"
+                                            VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{x:Bind MetricName}"
+                                                   FontFamily="Segoe UI Variable"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="{x:Bind DirectionGlyph}"
+                                                   FontSize="13"
+                                                   Foreground="{x:Bind DirectionColor}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{x:Bind AvgComparisonLabel}"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+
+                                <!-- Change label -->
+                                <Border Grid.Column="2"
+                                        CornerRadius="6"
+                                        Padding="8,4"
+                                        Background="#0AFFFFFF"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind ChangeLabel}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{x:Bind DirectionColor}" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 MACHINE PERSONALITY
+                 Deterministic operational character classification.
+                 Hidden until sufficient historical data is available.
+            ══════════════════════════════════════════════════════════ -->
+            <TextBlock Text="Machine Personality"
+                       Style="{StaticResource SectionTitleStyle}"
+                       Margin="0,4,0,0"
+                       Visibility="{x:Bind ViewModel.PersonalityVisibility, Mode=OneWay}" />
+
+            <Border Visibility="{x:Bind ViewModel.PersonalityVisibility, Mode=OneWay}"
+                    Background="#0AFFFFFF"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="20,16">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Personality icon -->
+                    <Border Width="44" Height="44"
+                            CornerRadius="10"
+                            Background="{x:Bind ViewModel.PersonalityBadgeBgColor, Mode=OneWay}"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="{x:Bind ViewModel.PersonalityGlyph, Mode=OneWay}"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="18"
+                                  Foreground="{x:Bind ViewModel.PersonalityAccentColor, Mode=OneWay}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Personality details -->
+                    <StackPanel Grid.Column="1"
+                                Spacing="4"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind ViewModel.PersonalityTitle, Mode=OneWay}"
+                                   FontFamily="Segoe UI Variable"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="{x:Bind ViewModel.PersonalityAccentColor, Mode=OneWay}" />
+                        <TextBlock Text="{x:Bind ViewModel.PersonalityDescription, Mode=OneWay}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <!-- Confidence badge -->
+                    <Border Grid.Column="2"
+                            CornerRadius="8"
+                            Padding="10,6"
+                            Background="{x:Bind ViewModel.PersonalityBadgeBgColor, Mode=OneWay}"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind ViewModel.PersonalityConfidence, Mode=OneWay}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{x:Bind ViewModel.PersonalityAccentColor, Mode=OneWay}" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 OPERATIONAL STYLE
+                 Derived from recorded interaction history.
+                 Hidden until ≥ 3 interventions recorded.
+            ══════════════════════════════════════════════════════════ -->
+            <TextBlock Text="Your Operational Style"
+                       Style="{StaticResource SectionTitleStyle}"
+                       Margin="0,4,0,0"
+                       Visibility="{x:Bind ViewModel.OperationalStyleVisibility, Mode=OneWay}" />
+
+            <Border Visibility="{x:Bind ViewModel.OperationalStyleVisibility, Mode=OneWay}"
+                    Background="#0AFFFFFF"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="20,16">
+                <StackPanel Spacing="10">
+
+                    <!-- Style header: icon + label + sample count -->
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Style icon -->
+                        <Border Width="40" Height="40"
+                                CornerRadius="10"
+                                Background="#0AFFFFFF"
+                                VerticalAlignment="Center">
+                            <FontIcon Glyph="{x:Bind ViewModel.OperationalStyleGlyph, Mode=OneWay}"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="17"
+                                      Foreground="{x:Bind ViewModel.OperationalStyleColor, Mode=OneWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+
+                        <!-- Style label + description -->
+                        <StackPanel Grid.Column="1"
+                                    Spacing="3"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind ViewModel.OperationalStyleLabel, Mode=OneWay}"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{x:Bind ViewModel.OperationalStyleColor, Mode=OneWay}" />
+                            <TextBlock Text="{x:Bind ViewModel.OperationalStyleDescription, Mode=OneWay}"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Sample count badge -->
+                        <Border Grid.Column="2"
+                                CornerRadius="8"
+                                Padding="8,4"
+                                Background="#0AFFFFFF"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind ViewModel.OperationalStyleSampleCount, Mode=OneWay}"
+                                       FontSize="10"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                        </Border>
+                    </Grid>
+
+                    <!-- Personal insight sentence -->
+                    <Border Background="#08FFFFFF"
+                            CornerRadius="8"
+                            Padding="12,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE82D;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="12"
+                                      Foreground="{x:Bind ViewModel.OperationalStyleColor, Mode=OneWay}"
+                                      VerticalAlignment="Top"
+                                      Margin="0,1,0,0" />
+                            <TextBlock Text="{x:Bind ViewModel.OperationalStyleInsight, Mode=OneWay}"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════════
                  ACTIVE INSIGHTS
             ══════════════════════════════════════════════════════════ -->
             <Grid Margin="0,4,0,0">

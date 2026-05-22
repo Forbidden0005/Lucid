@@ -219,3 +219,239 @@ public sealed record RecommendationEffectivenessProfile
     /// <summary>When the most recent outcome record for this action was analyzed.</summary>
     public DateTimeOffset LastAnalyzedAt { get; init; }
 }
+
+// ── Part 15: Adaptive Personalization models ───────────────────────────────────
+
+/// <summary>
+/// Classifies how a user tends to interact with ExplainMyPC recommendations.
+/// Derived deterministically from intervention history — never infers identity.
+/// </summary>
+public enum UserOperationalStyle
+{
+    /// <summary>Not enough history to classify (fewer than 3 interventions).</summary>
+    Unknown = 0,
+
+    /// <summary>Runs actions mainly when a warning is already active.</summary>
+    Reactive = 1,
+
+    /// <summary>Tends to act on recommendations before warnings escalate.</summary>
+    Proactive = 2,
+
+    /// <summary>Rarely accepts recommendations; prefers to monitor.</summary>
+    HandsOff = 3,
+
+    /// <summary>Frequently expands detail cards and reads explanations before acting.</summary>
+    Investigative = 4,
+
+    /// <summary>Mixed pattern — accepts roughly half of recommendations across all categories.</summary>
+    Balanced = 5,
+}
+
+/// <summary>
+/// How tolerant the user has been of repeated alert-style recommendations.
+/// Used by AlertFatigueManager to calibrate suppression thresholds.
+/// </summary>
+public enum AlertTolerance
+{
+    /// <summary>User frequently dismisses or ignores repeated alerts.</summary>
+    Low = 0,
+
+    /// <summary>User engages with alerts at a normal rate.</summary>
+    Medium = 1,
+
+    /// <summary>User responds to most alerts even when repeated.</summary>
+    High = 2,
+}
+
+/// <summary>
+/// How comfortable the user is with automated or multi-step workflows.
+/// </summary>
+public enum AutomationComfort
+{
+    /// <summary>Prefers single, explicit actions. Declines multi-step workflows.</summary>
+    Manual = 0,
+
+    /// <summary>Accepts guided workflows with explanations at each step.</summary>
+    Guided = 1,
+
+    /// <summary>Comfortable with autonomous remediation workflows.</summary>
+    Autonomous = 2,
+}
+
+/// <summary>
+/// A single recorded user interaction with a recommendation.
+/// Stored in intervention_memory.json and used to build the personalization profile.
+/// </summary>
+public sealed record InterventionRecord
+{
+    /// <summary>Unique ID for this record.</summary>
+    public string Id { get; init; } = string.Empty;
+
+    /// <summary>Dot-separated action identifier, e.g. "action.disk.clean-temp-files".</summary>
+    public string ActionKey { get; init; } = string.Empty;
+
+    /// <summary>Human-readable action title.</summary>
+    public string ActionTitle { get; init; } = string.Empty;
+
+    /// <summary>Broad category for the action (e.g. "disk", "startup", "process").</summary>
+    public string Category { get; init; } = string.Empty;
+
+    /// <summary>When the action was shown/offered to the user.</summary>
+    public DateTimeOffset ShownAt { get; init; }
+
+    /// <summary>True when the user executed the action; false when dismissed/ignored.</summary>
+    public bool Accepted { get; init; }
+
+    /// <summary>
+    /// Severity of the associated insight when the action was shown.
+    /// Stored as a string to avoid a cross-namespace dependency.
+    /// Values: "Warning", "Recommendation", "Info".
+    /// </summary>
+    public string InsightSeverity { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Aggregated personalization profile computed from InterventionRecord history.
+/// Rebuilt in-memory on startup from the persisted record set.
+/// Deterministic — no randomness, no hidden weights.
+/// </summary>
+public sealed record PersonalizationProfile
+{
+    /// <summary>Total intervention records analyzed.</summary>
+    public int TotalRecords { get; init; }
+
+    /// <summary>How many records were accepted vs shown.</summary>
+    public int AcceptedCount { get; init; }
+
+    /// <summary>Overall acceptance rate (0–1). Zero when no records.</summary>
+    public double AcceptanceRate => TotalRecords > 0 ? (double)AcceptedCount / TotalRecords : 0.0;
+
+    /// <summary>Acceptance rate per broad category key (e.g. "disk" → 0.8).</summary>
+    public IReadOnlyDictionary<string, double> CategoryAcceptanceRates { get; init; } =
+        new Dictionary<string, double>();
+
+    /// <summary>
+    /// Personalization weight multiplier per category (0.5–1.5).
+    /// 1.0 = neutral (cold start); above 1.0 = boost; below 1.0 = suppress.
+    /// </summary>
+    public IReadOnlyDictionary<string, double> CategoryWeights { get; init; } =
+        new Dictionary<string, double>();
+
+    /// <summary>Classified user operational style.</summary>
+    public UserOperationalStyle Style { get; init; }
+
+    /// <summary>Alert tolerance derived from dismissal patterns.</summary>
+    public AlertTolerance AlertTolerance { get; init; }
+
+    /// <summary>Automation comfort derived from workflow acceptance patterns.</summary>
+    public AutomationComfort AutomationComfort { get; init; }
+
+    /// <summary>Whether there is enough data to trust the profile (≥ 3 records).</summary>
+    public bool IsWarmEnough => TotalRecords >= 3;
+
+    /// <summary>When this profile was last computed.</summary>
+    public DateTimeOffset ComputedAt { get; init; }
+}
+
+/// <summary>
+/// Human-readable report describing this machine's operational style.
+/// Shown on the Dashboard personalization card.
+/// </summary>
+public sealed record OperationalStyleReport
+{
+    /// <summary>Classified style.</summary>
+    public UserOperationalStyle Style { get; init; }
+
+    /// <summary>Short label shown in the style badge (e.g. "Proactive User").</summary>
+    public string StyleLabel { get; init; } = string.Empty;
+
+    /// <summary>One or two sentence explanation of what the style means.</summary>
+    public string StyleDescription { get; init; } = string.Empty;
+
+    /// <summary>Glyph for the style badge (Segoe MDL2 / Fluent icons).</summary>
+    public string StyleGlyph { get; init; } = string.Empty;
+
+    /// <summary>Accent color hex for the style badge.</summary>
+    public string StyleColor { get; init; } = "#6B7280";
+
+    /// <summary>
+    /// A concise personalization insight sentence about this user's pattern,
+    /// e.g. "You tend to act on disk recommendations but rarely touch startup items."
+    /// </summary>
+    public string PersonalInsight { get; init; } = string.Empty;
+
+    /// <summary>Number of interventions used to derive the style.</summary>
+    public int SampleCount { get; init; }
+}
+
+/// <summary>
+/// Breakdown of how a recommendation's priority score was computed.
+/// All fields are in [0, 1] unless noted.
+/// Exposed on PrioritizedAction so the UI can render transparent reasoning.
+/// </summary>
+public sealed record ScoreBreakdown
+{
+    /// <summary>Raw impact component: (int)Impact / 3.0.</summary>
+    public double ImpactComponent { get; init; }
+
+    /// <summary>Effort factor: 1 − (int)Effort / 4.0.</summary>
+    public double EffortComponent { get; init; }
+
+    /// <summary>Severity boost multiplier (0.80–1.20).</summary>
+    public double SeverityBoost { get; init; }
+
+    /// <summary>Machine-learning effectiveness weight (0–1).</summary>
+    public double EffectivenessWeight { get; init; }
+
+    /// <summary>
+    /// Personalization multiplier derived from category acceptance rates (0.5–1.5).
+    /// 1.0 when cold-start or personalization is disabled.
+    /// </summary>
+    public double PersonalizationMultiplier { get; init; }
+
+    /// <summary>
+    /// Alert fatigue suppression factor (0–1).
+    /// 1.0 = no suppression; less than 1.0 = this action has been shown many times recently.
+    /// </summary>
+    public double FatigueFactor { get; init; }
+
+    /// <summary>Final clamped composite score.</summary>
+    public double FinalScore { get; init; }
+}
+
+/// <summary>
+/// Human-readable explanation of why a recommendation was ranked at its current priority.
+/// Shown in "Why Recommended" sections on Dashboard and Insights pages.
+/// </summary>
+public sealed record RecommendationExplanation
+{
+    /// <summary>The action key this explanation describes.</summary>
+    public string ActionKey { get; init; } = string.Empty;
+
+    /// <summary>Primary reason sentence (always present).</summary>
+    public string PrimaryReason { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Personalization reason sentence.
+    /// Empty string when the profile is cold (< 3 interventions).
+    /// </summary>
+    public string PersonalizationReason { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Effectiveness reason sentence.
+    /// Empty string when the learning profile has insufficient data.
+    /// </summary>
+    public string EffectivenessReason { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Fatigue note.
+    /// Non-empty when the action's FatigueFactor is below 0.8 (shown many times recently).
+    /// </summary>
+    public string FatigueNote { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Full multi-sentence explanation combining all non-empty reasons above.
+    /// Ready to render directly in the UI.
+    /// </summary>
+    public string FullText { get; init; } = string.Empty;
+}

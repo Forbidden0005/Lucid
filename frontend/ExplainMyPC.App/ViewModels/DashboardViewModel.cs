@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using ExplainMyPC.Helpers;
 using ExplainMyPC.Services.Intelligence;
+using ExplainMyPC.Services.Learning;
+using Microsoft.UI.Xaml;
 
 namespace ExplainMyPC.ViewModels;
 
@@ -223,6 +225,100 @@ public partial class DashboardViewModel : ObservableObject
     // Card cache: preserves IsExpanded state across engine re-evaluations.
     private readonly Dictionary<string, InsightCardViewModel> _cardCache = new();
 
+    // ── Smart Actions — top 3 ranked from GlobalRecommendationPrioritizer ────
+
+    /// <summary>
+    /// Pure-function prioritizer — stateless, no Start()/Stop() needed.
+    /// Shared across all DashboardViewModel instances (one per navigation).
+    /// </summary>
+    private static readonly GlobalRecommendationPrioritizer s_prioritizer = new();
+
+    /// <summary>
+    /// Top 3 recommended actions, ranked by predicted benefit for this machine.
+    /// Rebuilt on every InsightsUpdated event.
+    /// </summary>
+    public IReadOnlyList<PrioritizedActionViewModel> SmartActions { get; private set; } = [];
+
+    public bool       HasSmartActions        => SmartActions.Count > 0;
+    public Visibility SmartActionsVisibility => HasSmartActions ? Visibility.Visible : Visibility.Collapsed;
+
+    // ── Early Warnings — live from EarlyWarningService ────────────────────────
+
+    /// <summary>Active proactive warnings synthesized from anomalies and Watchtower alerts.</summary>
+    public IReadOnlyList<EarlyWarning> ActiveWarnings { get; private set; } = [];
+
+    public bool       HasWarnings        => ActiveWarnings.Count > 0;
+    public Visibility WarningsVisibility => HasWarnings ? Visibility.Visible : Visibility.Collapsed;
+    public string     WarningCountText   => $"{ActiveWarnings.Count} warning{(ActiveWarnings.Count == 1 ? "" : "s")}";
+
+    // ── Anomalies — live from AnomalyDetectionService ─────────────────────────
+
+    /// <summary>Active short-term behavioral anomalies detected against the machine baseline.</summary>
+    public IReadOnlyList<DetectedAnomaly> ActiveAnomalies { get; private set; } = [];
+
+    public bool       HasAnomalies        => ActiveAnomalies.Count > 0;
+    public Visibility AnomaliesVisibility => HasAnomalies ? Visibility.Visible : Visibility.Collapsed;
+    public string     AnomalyCountText    => $"{ActiveAnomalies.Count} anomal{(ActiveAnomalies.Count == 1 ? "y" : "ies")}";
+
+    // ── Drift — live from DriftDetectionService ───────────────────────────────
+
+    /// <summary>Active long-term drift observations adapted from the Watchtower layer.</summary>
+    public IReadOnlyList<DetectedDrift> ActiveDrifts { get; private set; } = [];
+
+    public bool       HasDrifts        => ActiveDrifts.Count > 0;
+    public Visibility DriftsVisibility => HasDrifts ? Visibility.Visible : Visibility.Collapsed;
+    public string     DriftCountText   => $"{ActiveDrifts.Count} metric{(ActiveDrifts.Count == 1 ? "" : "s")} drifting";
+
+    // ── Machine Personality ───────────────────────────────────────────────────
+
+    /// <summary>Deterministic personality classification for this machine. Null until computed.</summary>
+    public MachinePersonalityReport? PersonalityReport { get; private set; }
+
+    public bool       HasPersonalityReport   => PersonalityReport is not null;
+    public Visibility PersonalityVisibility  => HasPersonalityReport ? Visibility.Visible : Visibility.Collapsed;
+
+    // Flat accessors — avoid null-chain in XAML x:Bind (PersonalityReport is nullable).
+    public string PersonalityGlyph          => PersonalityReport?.PersonalityGlyph        ?? "";
+    public string PersonalityTitle          => PersonalityReport?.Title                   ?? "—";
+    public string PersonalityDescription    => PersonalityReport?.Description             ?? "";
+    public string PersonalityAccentColor    => PersonalityReport?.PersonalityColor        ?? "#6B7280";
+    public string PersonalityBadgeBgColor   => PersonalityReport?.PersonalityBadgeColor   ?? "#1F2937";
+    public string PersonalityConfidence     => PersonalityReport?.ConfidenceLabel         ?? "";
+
+    // ── Adaptive Personalization ──────────────────────────────────────────────
+
+    /// <summary>Cached personalization profile for this session. Null until LoadAnalyticsAsync.</summary>
+    private PersonalizationProfile? _personalizationProfile;
+
+    /// <summary>Operational style report derived from user interaction history. Null until loaded.</summary>
+    public OperationalStyleReport? OperationalStyle { get; private set; }
+
+    public bool       HasOperationalStyle        => OperationalStyle is not null && _personalizationProfile?.IsWarmEnough == true;
+    public Visibility OperationalStyleVisibility => HasOperationalStyle ? Visibility.Visible : Visibility.Collapsed;
+
+    // Flat accessors for OperationalStyleReport (nullable-safe for x:Bind)
+    public string OperationalStyleLabel       => OperationalStyle?.StyleLabel       ?? "Learning your style";
+    public string OperationalStyleDescription => OperationalStyle?.StyleDescription ?? "";
+    public string OperationalStyleGlyph       => OperationalStyle?.StyleGlyph       ?? "";
+    public string OperationalStyleColor       => OperationalStyle?.StyleColor       ?? "#6B7280";
+    public string OperationalStyleInsight     => OperationalStyle?.PersonalInsight  ?? "";
+    public string OperationalStyleSampleCount =>
+        OperationalStyle is null ? "" :
+        $"Based on {OperationalStyle.SampleCount} recorded interaction{(OperationalStyle.SampleCount == 1 ? "" : "s")}";
+
+    /// <summary>
+    /// Whether the smart actions section has "Why Recommended" text to show.
+    /// True when at least one ranked action has a WhyRecommended explanation.
+    /// </summary>
+    public bool HasPersonalizedRecommendations =>
+        SmartActions.Count > 0 && SmartActions[0].WhyRecommended.Length > 0;
+    public Visibility PersonalizedRecommendationsVisibility =>
+        HasPersonalizedRecommendations ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Top smart action's "Why Recommended" explanation, for the primary card.</summary>
+    public string TopActionWhyRecommended =>
+        SmartActions.Count > 0 ? SmartActions[0].WhyRecommended : string.Empty;
+
     // ── Constructor ───────────────────────────────────────────────────────────
 
     public DashboardViewModel()
@@ -240,6 +336,20 @@ public partial class DashboardViewModel : ObservableObject
 
         // Seed from whatever the engine has already evaluated (back-navigation).
         ApplyInsights(AppServices.Intelligence.CurrentInsights);
+
+        // Subscribe to anomaly intelligence services (all UI-thread events).
+        AppServices.EarlyWarning.WarningsUpdated    += OnWarningsUpdated;
+        AppServices.AnomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
+        AppServices.DriftDetection.DriftsUpdated    += OnDriftsUpdated;
+
+        // Seed anomaly intelligence from current state (back-navigation safe).
+        ApplyWarnings(AppServices.EarlyWarning.CurrentWarnings);
+        ApplyAnomalies(AppServices.AnomalyDetection.CurrentAnomalies);
+        ApplyDrifts(AppServices.DriftDetection.CurrentDrifts);
+
+        // Load real analytics data asynchronously — updates health score, trend,
+        // CPU averages, and machine personality once queries complete.
+        _ = LoadAnalyticsAsync();
     }
 
     // ── Telemetry intake ──────────────────────────────────────────────────────
@@ -305,6 +415,23 @@ public partial class DashboardViewModel : ObservableObject
         // ── Rebuild ordered groups ────────────────────────────────────────────
         InsightGroups = BuildGroups();
         OnPropertyChanged(nameof(InsightGroups));
+
+        // ── Rebuild Smart Actions (personalization-aware, top 3 ranked) ─────
+        var ranked = s_prioritizer.Rank(
+            insights,
+            AppServices.LearningService,
+            _personalizationProfile,
+            AppServices.AlertFatigueManager,
+            AppServices.RecommendationExplanation);
+        SmartActions = ranked.Take(3)
+                             .Select(PrioritizedActionViewModel.From)
+                             .ToList();
+        OnPropertyChanged(nameof(SmartActions));
+        OnPropertyChanged(nameof(HasSmartActions));
+        OnPropertyChanged(nameof(SmartActionsVisibility));
+        OnPropertyChanged(nameof(HasPersonalizedRecommendations));
+        OnPropertyChanged(nameof(PersonalizedRecommendationsVisibility));
+        OnPropertyChanged(nameof(TopActionWhyRecommended));
     }
 
     private IReadOnlyList<InsightGroupViewModel> BuildGroups()
@@ -327,6 +454,157 @@ public partial class DashboardViewModel : ObservableObject
         return new InsightGroupViewModel(severity, title, icon, cards);
     }
 
+    // ── Anomaly intelligence intake ───────────────────────────────────────────
+
+    private void OnWarningsUpdated(object? sender, IReadOnlyList<EarlyWarning> warnings) =>
+        ApplyWarnings(warnings);
+
+    private void ApplyWarnings(IReadOnlyList<EarlyWarning> warnings)
+    {
+        ActiveWarnings = warnings;
+        OnPropertyChanged(nameof(ActiveWarnings));
+        OnPropertyChanged(nameof(HasWarnings));
+        OnPropertyChanged(nameof(WarningsVisibility));
+        OnPropertyChanged(nameof(WarningCountText));
+    }
+
+    private void OnAnomaliesUpdated(object? sender, IReadOnlyList<DetectedAnomaly> anomalies) =>
+        ApplyAnomalies(anomalies);
+
+    private void ApplyAnomalies(IReadOnlyList<DetectedAnomaly> anomalies)
+    {
+        ActiveAnomalies = anomalies;
+        OnPropertyChanged(nameof(ActiveAnomalies));
+        OnPropertyChanged(nameof(HasAnomalies));
+        OnPropertyChanged(nameof(AnomaliesVisibility));
+        OnPropertyChanged(nameof(AnomalyCountText));
+    }
+
+    private void OnDriftsUpdated(object? sender, IReadOnlyList<DetectedDrift> drifts) =>
+        ApplyDrifts(drifts);
+
+    private void ApplyDrifts(IReadOnlyList<DetectedDrift> drifts)
+    {
+        ActiveDrifts = drifts;
+        OnPropertyChanged(nameof(ActiveDrifts));
+        OnPropertyChanged(nameof(HasDrifts));
+        OnPropertyChanged(nameof(DriftsVisibility));
+        OnPropertyChanged(nameof(DriftCountText));
+    }
+
+    // ── Analytics intake ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Loads real health score, trend, and CPU average data from the historical
+    /// analytics engine.  Runs on the thread pool; properties are set on return
+    /// to the UI thread via ConfigureAwait(true).
+    ///
+    /// Mock values remain until this completes — the method is cold-start safe
+    /// and swallows all exceptions.
+    /// </summary>
+    private async Task LoadAnalyticsAsync()
+    {
+        try
+        {
+            // Use the cached HealthTrajectory service which wraps HistoricalAnalytics.
+            var report = await AppServices.HealthTrajectory.ComputeReportAsync()
+                .ConfigureAwait(true); // must return to UI thread to set properties
+
+            if (!report.HasSufficientData) return; // keep mock defaults for new installs
+
+            // Health score and label
+            HealthScore  = (int)report.HealthScore;
+            HealthLabel  = report.HealthLabel;
+            TrendDelta   = report.MomentumPoints;
+            HealthDescription = report.HealthDescription;
+            SystemStatusText  = report.SystemStatusText;
+
+            // CPU average (only when data exists)
+            if (report.CpuAvgLabel is { } cpuAvg)
+            {
+                CpuAvgValue = cpuAvg;
+                CpuAvgDelta = report.CpuTrendLabel;
+            }
+
+            // Machine personality — compute from historical summary + current live signals.
+            await ComputePersonalityAsync().ConfigureAwait(true);
+
+            // Adaptive personalization — compute from intervention memory.
+            ComputePersonalizationProfile();
+        }
+        catch
+        {
+            // Best-effort — mock values remain in place if analytics fails
+        }
+    }
+
+    /// <summary>
+    /// Builds the personalization profile and operational style report from
+    /// intervention memory.  Called synchronously after personality — memory
+    /// load is async but has already completed (or is empty on first launch).
+    /// </summary>
+    private void ComputePersonalizationProfile()
+    {
+        try
+        {
+            var records = AppServices.InterventionMemory.Records;
+            _personalizationProfile = AppServices.PersonalizationEngine.ComputeProfile(records);
+            OperationalStyle = AppServices.UserBehaviorClassifier.Classify(_personalizationProfile);
+
+            OnPropertyChanged(nameof(OperationalStyle));
+            OnPropertyChanged(nameof(HasOperationalStyle));
+            OnPropertyChanged(nameof(OperationalStyleVisibility));
+            OnPropertyChanged(nameof(OperationalStyleLabel));
+            OnPropertyChanged(nameof(OperationalStyleDescription));
+            OnPropertyChanged(nameof(OperationalStyleGlyph));
+            OnPropertyChanged(nameof(OperationalStyleColor));
+            OnPropertyChanged(nameof(OperationalStyleInsight));
+            OnPropertyChanged(nameof(OperationalStyleSampleCount));
+
+            // Rebuild smart actions with the updated personalization profile
+            ApplyInsights(CurrentInsights);
+        }
+        catch
+        {
+            // Best-effort
+        }
+    }
+
+    /// <summary>
+    /// Computes the machine personality classification from historical and live signals.
+    /// Called from LoadAnalyticsAsync after the historical summary is available.
+    /// </summary>
+    private async Task ComputePersonalityAsync()
+    {
+        try
+        {
+            var summary  = await AppServices.HistoricalAnalytics.ComputeAsync()
+                               .ConfigureAwait(true);
+            var snapshot = AppServices.Watchtower.LastSnapshot;
+
+            var report = AppServices.PersonalityClassifier.Classify(
+                summary,
+                snapshot,
+                AppServices.DriftDetection.CurrentDrifts,
+                AppServices.AnomalyDetection.CurrentAnomalies);
+
+            PersonalityReport = report;
+            OnPropertyChanged(nameof(PersonalityReport));
+            OnPropertyChanged(nameof(HasPersonalityReport));
+            OnPropertyChanged(nameof(PersonalityVisibility));
+            OnPropertyChanged(nameof(PersonalityGlyph));
+            OnPropertyChanged(nameof(PersonalityTitle));
+            OnPropertyChanged(nameof(PersonalityDescription));
+            OnPropertyChanged(nameof(PersonalityAccentColor));
+            OnPropertyChanged(nameof(PersonalityBadgeBgColor));
+            OnPropertyChanged(nameof(PersonalityConfidence));
+        }
+        catch
+        {
+            // Best-effort — personality card stays hidden if classification fails.
+        }
+    }
+
     // ── Cleanup ───────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -336,7 +614,10 @@ public partial class DashboardViewModel : ObservableObject
     /// </summary>
     public void Cleanup()
     {
-        AppServices.Telemetry.ReadingAvailable   -= OnReadingAvailable;
-        AppServices.Intelligence.InsightsUpdated -= OnInsightsUpdated;
+        AppServices.Telemetry.ReadingAvailable      -= OnReadingAvailable;
+        AppServices.Intelligence.InsightsUpdated    -= OnInsightsUpdated;
+        AppServices.EarlyWarning.WarningsUpdated    -= OnWarningsUpdated;
+        AppServices.AnomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
+        AppServices.DriftDetection.DriftsUpdated    -= OnDriftsUpdated;
     }
 }

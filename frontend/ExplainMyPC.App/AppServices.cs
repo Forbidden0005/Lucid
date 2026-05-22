@@ -19,6 +19,8 @@ using ExplainMyPC.Services.Session;
 using ExplainMyPC.Services.Startup;
 using ExplainMyPC.Services.Storage;
 using ExplainMyPC.Services.Timeline;
+using ExplainMyPC.Services.Remediation;
+using ExplainMyPC.Services.Simulation;
 using ExplainMyPC.Services.Watchtower;
 using Microsoft.UI.Dispatching;
 
@@ -91,6 +93,31 @@ public static class AppServices
     // ── Operational Watchtower layer ──────────────────────────────────────────
     private static ProactiveRecommendationCoordinator? _watchtowerCoordinator;
     private static OperationalWatchtowerService?       _watchtower;
+
+    // ── Anomaly Intelligence layer ────────────────────────────────────────────
+    private static IBehavioralBaselineService?  _behavioralBaseline;
+    private static IDriftDetectionService?      _driftDetection;
+    private static IAnomalyDetectionService?    _anomalyDetection;
+    private static IEarlyWarningService?        _earlyWarning;
+    private static ISystemPersonalityClassifier? _personalityClassifier;
+
+    // ── Autonomous Remediation layer ──────────────────────────────────────────
+    private static AutonomousRemediationService? _remediationService;
+
+    // ── Operational Simulation layer ──────────────────────────────────────────
+    private static OperationalSimulationEngine?  _simulationEngine;
+    private static ISimulationHistoryService?    _simulationHistory;
+    private static IOutcomeVerificationService?  _outcomeVerification;
+
+    // ── Machine health trajectory layer ───────────────────────────────────────
+    private static IMachineHealthTrajectoryService? _healthTrajectory;
+
+    // ── Adaptive Personalization layer ────────────────────────────────────────
+    private static IInterventionMemoryService?          _interventionMemory;
+    private static IPersonalizationEngine?              _personalizationEngine;
+    private static IUserBehaviorClassifier?             _userBehaviorClassifier;
+    private static IAlertFatigueManager?                _alertFatigueManager;
+    private static IRecommendationExplanationService?   _recommendationExplanation;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -340,6 +367,162 @@ public static class AppServices
     /// </summary>
     public static OperationalWatchtowerService Watchtower =>
         _watchtower ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Autonomous remediation orchestration service.
+    /// Plans, executes, and validates multi-step remediation workflows with
+    /// full rollback support and user-controlled trust levels.
+    /// Workflows NEVER execute without explicit user approval.
+    /// All execution is local-only, logged, and reversible where possible.
+    /// </summary>
+    public static AutonomousRemediationService RemediationService =>
+        _remediationService ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational simulation engine — "What If?" scenario modeling.
+    /// Projects the likely outcome of interventions before the user commits to them.
+    /// Deterministic, local-only, and stateless. No cloud, no ML, no side effects.
+    /// Confidence is bounded at 88% to acknowledge inherent real-world uncertainty.
+    /// </summary>
+    public static OperationalSimulationEngine SimulationEngine =>
+        _simulationEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Simulation history service.
+    /// Persists the last 20 simulation snapshots to
+    /// %LOCALAPPDATA%\ExplainMyPC\simulation_history.json.
+    /// All writes are best-effort — a write failure is never surfaced.
+    /// </summary>
+    public static ISimulationHistoryService SimulationHistory =>
+        _simulationHistory ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Outcome verification service.
+    /// Tracks predicted vs actual outcomes for completed simulations and
+    /// computes prediction accuracy scores.  Pending verifications are
+    /// in-memory only; evaluated outcomes persist to
+    /// %LOCALAPPDATA%\ExplainMyPC\simulation_outcomes.json (max 50).
+    /// </summary>
+    public static IOutcomeVerificationService OutcomeVerification =>
+        _outcomeVerification ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Machine health trajectory service.
+    /// Wraps <see cref="HistoricalAnalytics"/> to produce a concise
+    /// <see cref="MachineHealthReport"/> driving the Dashboard health card.
+    /// Caches the last report so navigating back to the Dashboard is instant.
+    /// </summary>
+    public static IMachineHealthTrajectoryService HealthTrajectory =>
+        _healthTrajectory ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Behavioral baseline adapter.
+    /// Exposes a clean <see cref="BehavioralBaseline"/> snapshot from the live Welford model.
+    /// Stateless — no Start()/Stop() needed.
+    /// </summary>
+    public static IBehavioralBaselineService BehavioralBaseline =>
+        _behavioralBaseline ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Drift detection service.
+    /// Adapts Watchtower drift observations into <see cref="DetectedDrift"/> records.
+    /// Updates at Watchtower cadence (~30-minute cycles).
+    /// </summary>
+    public static IDriftDetectionService DriftDetection =>
+        _driftDetection ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Anomaly detection service.
+    /// Detects short-term behavioral anomalies via z-score comparison to the machine baseline.
+    /// Updates at telemetry cadence (~1.5 s) when the anomaly set changes.
+    /// </summary>
+    public static IAnomalyDetectionService AnomalyDetection =>
+        _anomalyDetection ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Early warning service.
+    /// Synthesizes Watchtower alerts and anomaly detections into proactive warnings.
+    /// </summary>
+    public static IEarlyWarningService EarlyWarning =>
+        _earlyWarning ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// System personality classifier.
+    /// Classifies this machine's operational personality from historical and live signals.
+    /// Stateless — call Classify() directly.
+    /// </summary>
+    public static ISystemPersonalityClassifier PersonalityClassifier =>
+        _personalityClassifier ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Intervention memory service.
+    /// Records every accept/dismiss interaction with a recommended action.
+    /// Persists to %LOCALAPPDATA%\ExplainMyPC\intervention_memory.json.
+    /// Local-only — no cloud, no telemetry upload.
+    /// </summary>
+    public static IInterventionMemoryService InterventionMemory =>
+        _interventionMemory ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Personalization engine.
+    /// Builds a PersonalizationProfile from InterventionMemory records.
+    /// Pure function — stateless, no side effects.
+    /// </summary>
+    public static IPersonalizationEngine PersonalizationEngine =>
+        _personalizationEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// User behavior classifier.
+    /// Converts a PersonalizationProfile into a human-readable OperationalStyleReport.
+    /// Pure function — stateless, no side effects.
+    /// </summary>
+    public static IUserBehaviorClassifier UserBehaviorClassifier =>
+        _userBehaviorClassifier ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Alert fatigue manager.
+    /// Computes a suppression factor for actions shown repeatedly without acceptance.
+    /// Transparent — the UI always shows when and why suppression is active.
+    /// </summary>
+    public static IAlertFatigueManager AlertFatigueManager =>
+        _alertFatigueManager ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Recommendation explanation service.
+    /// Generates human-readable "why recommended" text from ScoreBreakdown and profile.
+    /// </summary>
+    public static IRecommendationExplanationService RecommendationExplanation =>
+        _recommendationExplanation ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -613,6 +796,67 @@ public static class AppServices
             _watchtowerCoordinator, _governance, uiDispatcher);
         _watchtower.Start();
 
+        // ── Anomaly Intelligence layer ─────────────────────────────────────────
+        // Created after _baseline, _telemetry, and _watchtower are all running so
+        // each service can seed from the current live state immediately.
+        _behavioralBaseline    = new BehavioralBaselineService(_baseline!);
+        _anomalyDetection      = new AnomalyDetectionService(_baseline!, _telemetry!);
+        _driftDetection        = new DriftDetectionService(_watchtower);
+        _earlyWarning          = new EarlyWarningService(_anomalyDetection, _watchtower);
+        _personalityClassifier = new SystemPersonalityClassifier();
+
+        // ── Autonomous Remediation service ────────────────────────────────────
+        // Created after watchtower (depends on the same learning + governance stack).
+        // Subscribes to InsightsUpdated to refresh suggestions live.
+        // No background timer — suggestions update on insight changes only.
+        _remediationService = new AutonomousRemediationService(
+            _executionEngine,
+            _governance,
+            _intelligence,
+            _learningService,
+            _telemetry,
+            uiDispatcher);
+        _remediationService.Start();
+
+        // ── Operational Simulation engine ─────────────────────────────────────
+        // Stateless — no Start()/Stop() required. Created after all upstream
+        // services are running so it can snapshot current state immediately.
+        _simulationEngine = new OperationalSimulationEngine(
+            _historicalAnalytics,
+            _learningService,
+            _telemetry,
+            _intelligence,
+            _baseline,
+            _workloadProfiling,
+            _governance);
+
+        // ── Simulation history service ────────────────────────────────────────
+        // Loads persisted history synchronously in its constructor
+        // (file read is fast; history is only used for display, not critical path).
+        _simulationHistory = new SimulationHistoryService();
+
+        // ── Outcome verification service ──────────────────────────────────────
+        // Loads persisted outcomes synchronously in its constructor.
+        // Pending verifications are in-memory only — they do not survive restarts.
+        _outcomeVerification = new OutcomeVerificationService();
+
+        // ── Machine health trajectory service ─────────────────────────────────
+        // Wraps HistoricalAnalytics + Intelligence to produce a concise report.
+        // Stateless — no Start()/Stop() required.
+        _healthTrajectory = new MachineHealthTrajectoryService(
+            _historicalAnalytics!,
+            _intelligence!);
+
+        // ── Adaptive Personalization layer ────────────────────────────────────
+        // Created after learning service so effectiveness profiles are available.
+        // InterventionMemoryService loads persisted records asynchronously in its constructor.
+        // PersonalizationEngine and UserBehaviorClassifier are stateless — no Start/Stop.
+        _interventionMemory     = new InterventionMemoryService();
+        _personalizationEngine  = new PersonalizationEngine();
+        _userBehaviorClassifier = new UserBehaviorClassifier();
+        _alertFatigueManager    = new AlertFatigueManager(_interventionMemory);
+        _recommendationExplanation = new RecommendationExplanationService();
+
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
@@ -630,7 +874,34 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
-        // Stop Watchtower first — it holds a SnapshotUpdated subscription.
+        // Simulation, history, verification, and trajectory services are stateless — null them.
+        _simulationEngine    = null;
+        _simulationHistory   = null;
+        _outcomeVerification = null;
+        _healthTrajectory    = null;
+
+        // Personalization layer — stateless services, just null references.
+        _interventionMemory        = null;
+        _personalizationEngine     = null;
+        _userBehaviorClassifier    = null;
+        _alertFatigueManager       = null;
+        _recommendationExplanation = null;
+
+        // Stop remediation service first — it holds an InsightsUpdated subscription.
+        _remediationService?.Stop();
+        _remediationService?.Dispose();
+        _remediationService = null;
+
+        // Anomaly Intelligence layer — null before Watchtower and Telemetry stop,
+        // since they hold subscriptions to those event sources. The upstream sources
+        // are stopped immediately below so no further events will fire.
+        _earlyWarning          = null;
+        _driftDetection        = null;
+        _anomalyDetection      = null;
+        _behavioralBaseline    = null;
+        _personalityClassifier = null;
+
+        // Stop Watchtower — it holds a SnapshotUpdated subscription.
         _watchtower?.Dispose();
         _watchtower            = null;
         _watchtowerCoordinator = null;

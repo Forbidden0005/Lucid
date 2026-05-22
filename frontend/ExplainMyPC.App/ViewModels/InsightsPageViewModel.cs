@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExplainMyPC.Services.Intelligence;
+using ExplainMyPC.Services.Learning;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -10,7 +11,7 @@ namespace ExplainMyPC.ViewModels;
 // ── Tab / filter enums ────────────────────────────────────────────────────────
 
 /// <summary>
-/// The four content tabs of the Intelligence Workspace.
+/// The five content tabs of the Intelligence Workspace.
 /// </summary>
 public enum InsightTab
 {
@@ -25,6 +26,21 @@ public enum InsightTab
 
     /// <summary>Persisted operation history from IOperationHistoryService.</summary>
     History    = 3,
+
+    /// <summary>Full ranked list of recommended actions across all active findings.</summary>
+    Actions    = 4,
+
+    /// <summary>Synthesized early warnings from anomalies and Watchtower alerts.</summary>
+    Warnings   = 5,
+
+    /// <summary>Short-term behavioral anomalies detected against the machine baseline.</summary>
+    Anomalies  = 6,
+
+    /// <summary>Long-term operational drift observations for CPU, RAM, and Disk.</summary>
+    Drift      = 7,
+
+    /// <summary>Adaptive personalization — user style, intervention history, effectiveness summaries.</summary>
+    Personalization = 8,
 }
 
 /// <summary>
@@ -90,17 +106,37 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsTrendsTab))]
     [NotifyPropertyChangedFor(nameof(IsCorrelatedTab))]
     [NotifyPropertyChangedFor(nameof(IsHistoryTab))]
+    [NotifyPropertyChangedFor(nameof(IsActionsTab))]
+    [NotifyPropertyChangedFor(nameof(IsWarningsTab))]
+    [NotifyPropertyChangedFor(nameof(IsAnomaliesTab))]
+    [NotifyPropertyChangedFor(nameof(IsDriftTab))]
     [NotifyPropertyChangedFor(nameof(AllTabIndicatorVisibility))]
     [NotifyPropertyChangedFor(nameof(TrendsTabIndicatorVisibility))]
     [NotifyPropertyChangedFor(nameof(CorrelatedTabIndicatorVisibility))]
     [NotifyPropertyChangedFor(nameof(HistoryTabIndicatorVisibility))]
+    [NotifyPropertyChangedFor(nameof(ActionsTabIndicatorVisibility))]
+    [NotifyPropertyChangedFor(nameof(WarningsTabIndicatorVisibility))]
+    [NotifyPropertyChangedFor(nameof(AnomaliesTabIndicatorVisibility))]
+    [NotifyPropertyChangedFor(nameof(DriftTabIndicatorVisibility))]
+    [NotifyPropertyChangedFor(nameof(PersonalizationTabIndicatorVisibility))]
     [NotifyPropertyChangedFor(nameof(AllTabBrush))]
     [NotifyPropertyChangedFor(nameof(TrendsTabBrush))]
     [NotifyPropertyChangedFor(nameof(CorrelatedTabBrush))]
     [NotifyPropertyChangedFor(nameof(HistoryTabBrush))]
+    [NotifyPropertyChangedFor(nameof(ActionsTabBrush))]
+    [NotifyPropertyChangedFor(nameof(WarningsTabBrush))]
+    [NotifyPropertyChangedFor(nameof(AnomaliesTabBrush))]
+    [NotifyPropertyChangedFor(nameof(DriftTabBrush))]
+    [NotifyPropertyChangedFor(nameof(PersonalizationTabBrush))]
     [NotifyPropertyChangedFor(nameof(FindingsPanelVisibility))]
     [NotifyPropertyChangedFor(nameof(HistoryPanelVisibility))]
+    [NotifyPropertyChangedFor(nameof(ActionsPanelVisibility))]
+    [NotifyPropertyChangedFor(nameof(WarningsPanelVisibility))]
+    [NotifyPropertyChangedFor(nameof(AnomaliesPanelVisibility))]
+    [NotifyPropertyChangedFor(nameof(DriftPanelVisibility))]
+    [NotifyPropertyChangedFor(nameof(PersonalizationPanelVisibility))]
     [NotifyPropertyChangedFor(nameof(FilterBarVisibility))]
+    [NotifyPropertyChangedFor(nameof(NoResultsVisibility))]
     private InsightTab _activeTab = InsightTab.All;
 
     // ── Observable filter state ───────────────────────────────────────────────
@@ -133,24 +169,53 @@ public sealed partial class InsightsPageViewModel : ObservableObject
 
     // ── Tab derived properties ─────────────────────────────────────────────────
 
-    public bool IsAllTab        => ActiveTab == InsightTab.All;
-    public bool IsTrendsTab     => ActiveTab == InsightTab.Trends;
-    public bool IsCorrelatedTab => ActiveTab == InsightTab.Correlated;
-    public bool IsHistoryTab    => ActiveTab == InsightTab.History;
+    public bool IsAllTab             => ActiveTab == InsightTab.All;
+    public bool IsTrendsTab          => ActiveTab == InsightTab.Trends;
+    public bool IsCorrelatedTab      => ActiveTab == InsightTab.Correlated;
+    public bool IsHistoryTab         => ActiveTab == InsightTab.History;
+    public bool IsActionsTab         => ActiveTab == InsightTab.Actions;
+    public bool IsWarningsTab        => ActiveTab == InsightTab.Warnings;
+    public bool IsAnomaliesTab       => ActiveTab == InsightTab.Anomalies;
+    public bool IsDriftTab           => ActiveTab == InsightTab.Drift;
+    public bool IsPersonalizationTab => ActiveTab == InsightTab.Personalization;
 
-    public Visibility AllTabIndicatorVisibility        => Vis(IsAllTab);
-    public Visibility TrendsTabIndicatorVisibility     => Vis(IsTrendsTab);
-    public Visibility CorrelatedTabIndicatorVisibility => Vis(IsCorrelatedTab);
-    public Visibility HistoryTabIndicatorVisibility    => Vis(IsHistoryTab);
+    public Visibility AllTabIndicatorVisibility             => Vis(IsAllTab);
+    public Visibility TrendsTabIndicatorVisibility          => Vis(IsTrendsTab);
+    public Visibility CorrelatedTabIndicatorVisibility      => Vis(IsCorrelatedTab);
+    public Visibility HistoryTabIndicatorVisibility         => Vis(IsHistoryTab);
+    public Visibility ActionsTabIndicatorVisibility         => Vis(IsActionsTab);
+    public Visibility WarningsTabIndicatorVisibility        => Vis(IsWarningsTab);
+    public Visibility AnomaliesTabIndicatorVisibility       => Vis(IsAnomaliesTab);
+    public Visibility DriftTabIndicatorVisibility           => Vis(IsDriftTab);
+    public Visibility PersonalizationTabIndicatorVisibility => Vis(IsPersonalizationTab);
 
-    public SolidColorBrush AllTabBrush        => IsAllTab        ? s_tabActiveBrush : s_tabInactiveBrush;
-    public SolidColorBrush TrendsTabBrush     => IsTrendsTab     ? s_tabActiveBrush : s_tabInactiveBrush;
-    public SolidColorBrush CorrelatedTabBrush => IsCorrelatedTab ? s_tabActiveBrush : s_tabInactiveBrush;
-    public SolidColorBrush HistoryTabBrush    => IsHistoryTab    ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush AllTabBrush             => IsAllTab             ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush TrendsTabBrush          => IsTrendsTab          ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush CorrelatedTabBrush      => IsCorrelatedTab      ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush HistoryTabBrush         => IsHistoryTab         ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush ActionsTabBrush         => IsActionsTab         ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush WarningsTabBrush        => IsWarningsTab        ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush AnomaliesTabBrush       => IsAnomaliesTab       ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush DriftTabBrush           => IsDriftTab           ? s_tabActiveBrush : s_tabInactiveBrush;
+    public SolidColorBrush PersonalizationTabBrush => IsPersonalizationTab ? s_tabActiveBrush : s_tabInactiveBrush;
 
-    public Visibility FindingsPanelVisibility => Vis(!IsHistoryTab);
-    public Visibility HistoryPanelVisibility  => Vis(IsHistoryTab);
-    public Visibility FilterBarVisibility     => Vis(!IsHistoryTab);
+    // Findings panel: visible for All / Trends / Correlated tabs only
+    private bool IsAnomalyIntelligenceTab =>
+        IsWarningsTab || IsAnomaliesTab || IsDriftTab;
+
+    private bool IsSpecialTab =>
+        IsHistoryTab || IsActionsTab || IsAnomalyIntelligenceTab || IsPersonalizationTab;
+
+    public Visibility FindingsPanelVisibility        => Vis(!IsSpecialTab);
+    public Visibility HistoryPanelVisibility         => Vis(IsHistoryTab);
+    public Visibility ActionsPanelVisibility         => Vis(IsActionsTab);
+    public Visibility WarningsPanelVisibility        => Vis(IsWarningsTab);
+    public Visibility AnomaliesPanelVisibility       => Vis(IsAnomaliesTab);
+    public Visibility DriftPanelVisibility           => Vis(IsDriftTab);
+    public Visibility PersonalizationPanelVisibility => Vis(IsPersonalizationTab);
+
+    // Filter + sort bar: hidden for special tabs
+    public Visibility FilterBarVisibility => Vis(!IsSpecialTab);
 
     // ── Filter derived properties ──────────────────────────────────────────────
 
@@ -210,7 +275,7 @@ public sealed partial class InsightsPageViewModel : ObservableObject
         $"{DisplayedInsights.Count} finding{(DisplayedInsights.Count == 1 ? "" : "s")}";
 
     public Visibility FindingsListVisibility => Vis(HasDisplayedInsights);
-    public Visibility NoResultsVisibility    => Vis(!HasDisplayedInsights && !IsHistoryTab);
+    public Visibility NoResultsVisibility    => Vis(!HasDisplayedInsights && !IsSpecialTab);
 
     public string EmptyStateMessage => ActiveTab switch
     {
@@ -224,6 +289,106 @@ public sealed partial class InsightsPageViewModel : ObservableObject
             ? "No active findings. Your system is running well."
             : "No findings match the current severity filter.",
     };
+
+    // ── Actions tab — ranked recommended actions ──────────────────────────────
+
+    /// <summary>
+    /// Shared stateless prioritizer — reused across re-evaluations.
+    /// </summary>
+    private static readonly GlobalRecommendationPrioritizer s_prioritizer = new();
+
+    /// <summary>
+    /// Full ranked list of recommended actions from all active insights,
+    /// ordered by priority score descending (highest predicted benefit first).
+    /// Rebuilt on every InsightsUpdated event — always up to date when
+    /// the user switches to the Actions tab.
+    /// </summary>
+    public IReadOnlyList<PrioritizedActionViewModel> DisplayedActions { get; private set; } = [];
+
+    public bool HasDisplayedActions  => DisplayedActions.Count > 0;
+
+    public Visibility ActionsListVisibility  => Vis(HasDisplayedActions);
+    public Visibility ActionsEmptyVisibility => Vis(!HasDisplayedActions);
+
+    public string ActionsCountText =>
+        $"{DisplayedActions.Count} action{(DisplayedActions.Count == 1 ? "" : "s")}";
+
+    // ── Warnings tab ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Synthesized early warnings from anomalies and Watchtower alerts.
+    /// Updated live via EarlyWarningService.WarningsUpdated.
+    /// </summary>
+    public IReadOnlyList<EarlyWarning> DisplayedWarnings { get; private set; } = [];
+
+    public bool HasDisplayedWarnings   => DisplayedWarnings.Count > 0;
+    public Visibility WarningsListVisibility  => Vis(HasDisplayedWarnings);
+    public Visibility WarningsEmptyVisibility => Vis(!HasDisplayedWarnings);
+    public string WarningsCountText =>
+        $"{DisplayedWarnings.Count} warning{(DisplayedWarnings.Count == 1 ? "" : "s")}";
+
+    // ── Anomalies tab ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Short-term behavioral anomalies detected against the machine baseline.
+    /// Updated live via AnomalyDetectionService.AnomaliesUpdated.
+    /// </summary>
+    public IReadOnlyList<DetectedAnomaly> DisplayedAnomalies { get; private set; } = [];
+
+    public bool HasDisplayedAnomalies    => DisplayedAnomalies.Count > 0;
+    public Visibility AnomaliesListVisibility  => Vis(HasDisplayedAnomalies);
+    public Visibility AnomaliesEmptyVisibility => Vis(!HasDisplayedAnomalies);
+    public string AnomaliesCountText =>
+        $"{DisplayedAnomalies.Count} anomal{(DisplayedAnomalies.Count == 1 ? "y" : "ies")}";
+
+    // ── Drift tab ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Long-term operational drift observations adapted from the Watchtower layer.
+    /// Updated live via DriftDetectionService.DriftsUpdated.
+    /// </summary>
+    public IReadOnlyList<DetectedDrift> DisplayedDrifts { get; private set; } = [];
+
+    public bool HasDisplayedDrifts    => DisplayedDrifts.Count > 0;
+    public Visibility DriftsListVisibility  => Vis(HasDisplayedDrifts);
+    public Visibility DriftsEmptyVisibility => Vis(!HasDisplayedDrifts);
+    public string DriftsCountText =>
+        $"{DisplayedDrifts.Count} metric{(DisplayedDrifts.Count == 1 ? "" : "s")} tracked";
+
+    // ── Personalization tab ───────────────────────────────────────────────────
+
+    /// <summary>Personalization profile for this session.</summary>
+    private PersonalizationProfile? _personalizationProfile;
+
+    /// <summary>Operational style report. Null until tab first opened.</summary>
+    public OperationalStyleReport? PersonalizationStyleReport { get; private set; }
+
+    /// <summary>Recent intervention records for display in the tab.</summary>
+    public IReadOnlyList<InterventionRecord> RecentInterventions { get; private set; } = [];
+
+    public bool HasPersonalizationData     => _personalizationProfile?.IsWarmEnough == true;
+    public bool HasNoPersonalizationData   => !HasPersonalizationData;
+
+    public Visibility PersonalizationDataVisibility  => Vis(HasPersonalizationData);
+    public Visibility PersonalizationColdVisibility  => Vis(HasNoPersonalizationData);
+    public Visibility PersonalizationInterventionListVisibility => Vis(RecentInterventions.Count > 0);
+
+    // Flat accessors for OperationalStyleReport (nullable-safe for x:Bind)
+    public string PersonalizationStyleLabel   => PersonalizationStyleReport?.StyleLabel   ?? "Learning your style";
+    public string PersonalizationStyleDesc    => PersonalizationStyleReport?.StyleDescription ?? "";
+    public string PersonalizationStyleGlyph   => PersonalizationStyleReport?.StyleGlyph   ?? "";
+    public string PersonalizationStyleColor   => PersonalizationStyleReport?.StyleColor   ?? "#6B7280";
+    public string PersonalizationStyleInsight => PersonalizationStyleReport?.PersonalInsight ?? "";
+    public string PersonalizationSampleCount  =>
+        $"Based on {_personalizationProfile?.TotalRecords ?? 0} recorded interaction" +
+        $"{(_personalizationProfile?.TotalRecords == 1 ? "" : "s")}";
+
+    public string PersonalizationAcceptanceRate =>
+        _personalizationProfile is null ? "—" :
+        $"{_personalizationProfile.AcceptanceRate:0%} overall acceptance rate";
+
+    /// <summary>Formatted category acceptance rates for display in the tab.</summary>
+    public IReadOnlyList<string> CategoryRateLines { get; private set; } = [];
 
     // ── Card cache ────────────────────────────────────────────────────────────
 
@@ -278,6 +443,16 @@ public sealed partial class InsightsPageViewModel : ObservableObject
 
         // Seed immediately from whatever the engine already has (back-nav / late init).
         ApplyInsights(AppServices.Intelligence.CurrentInsights);
+
+        // Subscribe to anomaly intelligence services (all UI-thread events).
+        AppServices.EarlyWarning.WarningsUpdated      += OnWarningsUpdated;
+        AppServices.AnomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
+        AppServices.DriftDetection.DriftsUpdated      += OnDriftsUpdated;
+
+        // Seed from current state.
+        ApplyWarnings(AppServices.EarlyWarning.CurrentWarnings);
+        ApplyAnomalies(AppServices.AnomalyDetection.CurrentAnomalies);
+        ApplyDrifts(AppServices.DriftDetection.CurrentDrifts);
     }
 
     // ── CommunityToolkit partial hooks ────────────────────────────────────────
@@ -286,28 +461,99 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     {
         if (value == InsightTab.History)
             _ = LoadHistoryAsync(force: false);
+        else if (value == InsightTab.Personalization)
+            LoadPersonalizationData();
+        else if (value is InsightTab.Actions or InsightTab.Warnings or InsightTab.Anomalies or InsightTab.Drift)
+        {
+            // These tabs maintain their data independently — no findings rebuild needed.
+        }
         else
             RebuildDisplay();
     }
 
     partial void OnActiveFilterChanged(InsightFilter value)
     {
-        if (ActiveTab != InsightTab.History)
+        if (!IsSpecialTab)
             RebuildDisplay();
     }
 
     partial void OnActiveSortIndexChanged(int value)
     {
-        if (ActiveTab != InsightTab.History)
+        if (!IsSpecialTab)
             RebuildDisplay();
     }
 
+    /// <summary>
+    /// Loads personalization data for the Personalization tab.
+    /// Synchronous — reads from in-memory service collections.
+    /// </summary>
+    private void LoadPersonalizationData()
+    {
+        try
+        {
+            var records = AppServices.InterventionMemory.Records;
+            _personalizationProfile = AppServices.PersonalizationEngine.ComputeProfile(records);
+            PersonalizationStyleReport = AppServices.UserBehaviorClassifier.Classify(_personalizationProfile);
+            RecentInterventions = records.Take(15).ToList().AsReadOnly();
+
+            // Format category rates for display
+            CategoryRateLines = _personalizationProfile.CategoryAcceptanceRates
+                .OrderByDescending(kv => kv.Value)
+                .Select(kv => $"{FormatCategory(kv.Key)}: {kv.Value:0%} acceptance")
+                .ToList()
+                .AsReadOnly();
+        }
+        catch
+        {
+            _personalizationProfile    = null;
+            PersonalizationStyleReport = null;
+            RecentInterventions        = [];
+            CategoryRateLines          = [];
+        }
+
+        // Notify all personalization properties
+        OnPropertyChanged(nameof(PersonalizationStyleReport));
+        OnPropertyChanged(nameof(RecentInterventions));
+        OnPropertyChanged(nameof(HasPersonalizationData));
+        OnPropertyChanged(nameof(HasNoPersonalizationData));
+        OnPropertyChanged(nameof(PersonalizationDataVisibility));
+        OnPropertyChanged(nameof(PersonalizationColdVisibility));
+        OnPropertyChanged(nameof(PersonalizationInterventionListVisibility));
+        OnPropertyChanged(nameof(PersonalizationStyleLabel));
+        OnPropertyChanged(nameof(PersonalizationStyleDesc));
+        OnPropertyChanged(nameof(PersonalizationStyleGlyph));
+        OnPropertyChanged(nameof(PersonalizationStyleColor));
+        OnPropertyChanged(nameof(PersonalizationStyleInsight));
+        OnPropertyChanged(nameof(PersonalizationSampleCount));
+        OnPropertyChanged(nameof(PersonalizationAcceptanceRate));
+        OnPropertyChanged(nameof(CategoryRateLines));
+    }
+
+    private static string FormatCategory(string category) => category.ToLowerInvariant() switch
+    {
+        "disk"    => "Disk cleanup",
+        "startup" => "Startup",
+        "process" => "Process",
+        "repair"  => "Repair",
+        "storage" => "Storage",
+        "network" => "Network",
+        "cpu"     => "CPU",
+        "ram"     => "Memory",
+        "security" => "Security",
+        _ => char.ToUpperInvariant(category[0]) + category[1..],
+    };
+
     // ── Tab commands ──────────────────────────────────────────────────────────
 
-    [RelayCommand] private void SelectTabAll()        => ActiveTab = InsightTab.All;
-    [RelayCommand] private void SelectTabTrends()     => ActiveTab = InsightTab.Trends;
-    [RelayCommand] private void SelectTabCorrelated() => ActiveTab = InsightTab.Correlated;
-    [RelayCommand] private void SelectTabHistory()    => ActiveTab = InsightTab.History;
+    [RelayCommand] private void SelectTabAll()             => ActiveTab = InsightTab.All;
+    [RelayCommand] private void SelectTabTrends()          => ActiveTab = InsightTab.Trends;
+    [RelayCommand] private void SelectTabCorrelated()      => ActiveTab = InsightTab.Correlated;
+    [RelayCommand] private void SelectTabHistory()         => ActiveTab = InsightTab.History;
+    [RelayCommand] private void SelectTabActions()         => ActiveTab = InsightTab.Actions;
+    [RelayCommand] private void SelectTabWarnings()        => ActiveTab = InsightTab.Warnings;
+    [RelayCommand] private void SelectTabAnomalies()       => ActiveTab = InsightTab.Anomalies;
+    [RelayCommand] private void SelectTabDrift()           => ActiveTab = InsightTab.Drift;
+    [RelayCommand] private void SelectTabPersonalization() => ActiveTab = InsightTab.Personalization;
 
     // ── Filter commands ───────────────────────────────────────────────────────
 
@@ -365,8 +611,35 @@ public sealed partial class InsightsPageViewModel : ObservableObject
         OnPropertyChanged(nameof(TrendBadgeVisibility));
         OnPropertyChanged(nameof(CorrelatedBadgeVisibility));
 
-        if (ActiveTab != InsightTab.History)
+        // Rebuild actions list regardless of active tab — data is always fresh.
+        RebuildActions(insights);
+
+        if (!IsSpecialTab)
             RebuildDisplay();
+    }
+
+    // ── Actions rebuild ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Ranks all recommended actions from the active insight set and publishes
+    /// the result as <see cref="DisplayedActions"/>. Always called on every
+    /// InsightsUpdated event so the Actions tab is instantly current on switch.
+    /// </summary>
+    private void RebuildActions(IReadOnlyList<SystemInsight> insights)
+    {
+        var ranked = s_prioritizer.Rank(
+            insights,
+            AppServices.LearningService,
+            _personalizationProfile,
+            AppServices.AlertFatigueManager,
+            AppServices.RecommendationExplanation);
+        DisplayedActions = ranked.Select(PrioritizedActionViewModel.From).ToList();
+
+        OnPropertyChanged(nameof(DisplayedActions));
+        OnPropertyChanged(nameof(HasDisplayedActions));
+        OnPropertyChanged(nameof(ActionsListVisibility));
+        OnPropertyChanged(nameof(ActionsEmptyVisibility));
+        OnPropertyChanged(nameof(ActionsCountText));
     }
 
     // ── Display rebuild ───────────────────────────────────────────────────────
@@ -457,14 +730,60 @@ public sealed partial class InsightsPageViewModel : ObservableObject
         }
     }
 
+    // ── Anomaly intelligence feed ─────────────────────────────────────────────
+
+    private void OnWarningsUpdated(object? sender, IReadOnlyList<EarlyWarning> warnings) =>
+        ApplyWarnings(warnings);
+
+    private void ApplyWarnings(IReadOnlyList<EarlyWarning> warnings)
+    {
+        DisplayedWarnings = warnings;
+        OnPropertyChanged(nameof(DisplayedWarnings));
+        OnPropertyChanged(nameof(HasDisplayedWarnings));
+        OnPropertyChanged(nameof(WarningsListVisibility));
+        OnPropertyChanged(nameof(WarningsEmptyVisibility));
+        OnPropertyChanged(nameof(WarningsCountText));
+    }
+
+    private void OnAnomaliesUpdated(object? sender, IReadOnlyList<DetectedAnomaly> anomalies) =>
+        ApplyAnomalies(anomalies);
+
+    private void ApplyAnomalies(IReadOnlyList<DetectedAnomaly> anomalies)
+    {
+        DisplayedAnomalies = anomalies;
+        OnPropertyChanged(nameof(DisplayedAnomalies));
+        OnPropertyChanged(nameof(HasDisplayedAnomalies));
+        OnPropertyChanged(nameof(AnomaliesListVisibility));
+        OnPropertyChanged(nameof(AnomaliesEmptyVisibility));
+        OnPropertyChanged(nameof(AnomaliesCountText));
+    }
+
+    private void OnDriftsUpdated(object? sender, IReadOnlyList<DetectedDrift> drifts) =>
+        ApplyDrifts(drifts);
+
+    private void ApplyDrifts(IReadOnlyList<DetectedDrift> drifts)
+    {
+        DisplayedDrifts = drifts;
+        OnPropertyChanged(nameof(DisplayedDrifts));
+        OnPropertyChanged(nameof(HasDisplayedDrifts));
+        OnPropertyChanged(nameof(DriftsListVisibility));
+        OnPropertyChanged(nameof(DriftsEmptyVisibility));
+        OnPropertyChanged(nameof(DriftsCountText));
+    }
+
     // ── Cleanup ───────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Unsubscribes from the app-level intelligence service.
     /// Call from InsightsPage.Unloaded.
     /// </summary>
-    public void Cleanup() =>
-        AppServices.Intelligence.InsightsUpdated -= OnInsightsUpdated;
+    public void Cleanup()
+    {
+        AppServices.Intelligence.InsightsUpdated      -= OnInsightsUpdated;
+        AppServices.EarlyWarning.WarningsUpdated      -= OnWarningsUpdated;
+        AppServices.AnomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
+        AppServices.DriftDetection.DriftsUpdated      -= OnDriftsUpdated;
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
