@@ -9,14 +9,13 @@ namespace ExplainMyPC;
 /// <summary>
 /// The application shell window.
 /// Handles sidebar navigation by switching pages in a Frame.
-/// Also manages the lifecycle of the floating CompanionWindow.
+/// Also manages the lifecycle of the floating CompanionOverlayWindow.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
     // ── Companion overlay ──────────────────────────────────────────────────────
 
-    private CompanionWindow? _companionWindow;
-    private bool             _companionVisible;
+    private CompanionOverlayWindow? _companionWindow;
 
     // ── Constructor ────────────────────────────────────────────────────────────
 
@@ -87,36 +86,28 @@ public sealed partial class MainWindow : Window
 
     /// <summary>
     /// Toggles the Companion overlay window.
-    /// Creates it on first use; subsequently shows/hides it.
-    /// The companion is a separate window — it persists across page navigations.
+    /// Creates it on first use; subsequently the window manages its own
+    /// visibility in response to ICompanionSessionManager.StateChanged.
     /// </summary>
     private void NavCompanion_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        ToggleCompanion();
-    }
-
-    private void ToggleCompanion()
-    {
         if (_companionWindow is null)
         {
-            // Create on first use
-            _companionWindow = new CompanionWindow();
-            _companionWindow.Activate();
-            _companionVisible = true;
-            return;
-        }
+            // Create on first use — window subscribes to StateChanged in its constructor.
+            _companionWindow = new CompanionOverlayWindow();
 
-        // Toggle visibility via the AppWindow presenter
-        // (WinUI 3 has no direct Window.Visibility — use Minimize/Restore pattern)
-        if (_companionVisible)
-        {
-            _companionWindow.AppWindow.Hide();
-            _companionVisible = false;
+            // Drive initial state transition (Hidden → Expanded).
+            // CompanionOverlayWindow.OnSessionStateChanged handles the resize + show.
+            AppServices.CompanionSession.ToggleExpanded();
+
+            // Activate so the window receives focus and appears on screen.
+            _companionWindow.Activate();
         }
         else
         {
-            _companionWindow.AppWindow.Show();
-            _companionVisible = true;
+            // Window exists — delegate toggle to the session manager.
+            // The window's StateChanged handler resizes and shows/hides itself.
+            AppServices.CompanionSession.ToggleExpanded();
         }
     }
 }

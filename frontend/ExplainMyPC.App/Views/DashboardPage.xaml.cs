@@ -88,6 +88,11 @@ public sealed partial class DashboardPage : Page
         }
     }
 
+    // ── Companion shortcut ────────────────────────────────────────────────────
+
+    private void OpenCompanionButton_Click(object sender, RoutedEventArgs e)
+        => AppServices.CompanionSession.Show();
+
     // ── Hover effects ─────────────────────────────────────────────────────
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)

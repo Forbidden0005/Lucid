@@ -1,70 +1,117 @@
 namespace ExplainMyPC.Services.Companion;
 
 /// <summary>
-/// In-memory companion session manager.
+/// In-memory companion session state manager.
 ///
-/// Retains messages for the lifetime of the current app session only.
-/// Conversations are ephemeral — nothing is written to disk.
-/// This preserves user privacy and keeps the companion lightweight.
+/// Owns the overlay visibility state (Hidden / Bubble / Expanded),
+/// pin state, and last docking preference (scaffold for future snap-to-edge).
+///
+/// Does NOT own conversation messages — those live in CompanionChatViewModel.
+///
+/// Threading:
+///   All state mutations must occur on the UI thread.
+///   StateChanged fires synchronously on the calling thread.
+///
+/// Lifetime:
+///   Registered in AppServices. Single instance for the application lifetime.
 /// </summary>
 public sealed class CompanionSessionManager : ICompanionSessionManager
 {
-    private readonly List<CompanionMessage> _messages = [];
+    private CompanionOverlayState _currentState = CompanionOverlayState.Hidden;
+    private bool                  _isPinned     = false;
 
-    public IReadOnlyList<CompanionMessage> Messages => _messages;
+    // ── Public state ───────────────────────────────────────────────────────────
 
-    public event EventHandler<CompanionMessage>? MessageAdded;
+    public CompanionOverlayState CurrentState => _currentState;
 
-    // ── Message creation ───────────────────────────────────────────────────────
+    public bool IsExpanded => _currentState == CompanionOverlayState.Expanded;
 
-    public void AddUserMessage(string text)
+    public bool IsPinned => _isPinned;
+
+    // ── Events ─────────────────────────────────────────────────────────────────
+
+    public event EventHandler<CompanionStateChangedEventArgs>? StateChanged;
+
+    // ── State transitions ──────────────────────────────────────────────────────
+
+    /// <summary>Makes the companion visible. Restores to Bubble state.</summary>
+    public void Show()
     {
-        if (string.IsNullOrWhiteSpace(text)) return;
-
-        var msg = new CompanionMessage
-        {
-            Id        = Guid.NewGuid().ToString("N")[..8],
-            Role      = CompanionMessageRole.User,
-            Text      = text.Trim(),
-            Timestamp = DateTimeOffset.Now,
-            Category  = CompanionMessageCategory.Answer,
-        };
-
-        _messages.Add(msg);
-        MessageAdded?.Invoke(this, msg);
+        if (_currentState != CompanionOverlayState.Hidden) return;
+        SetState(CompanionOverlayState.Bubble);
     }
 
-    public void AddSystemMessage(
-        string                   text,
-        CompanionMessageCategory category = CompanionMessageCategory.Answer,
-        string?                  actionId = null)
+    /// <summary>Hides the companion window.</summary>
+    public void Hide()
     {
-        if (string.IsNullOrWhiteSpace(text)) return;
-
-        var msg = new CompanionMessage
-        {
-            Id        = Guid.NewGuid().ToString("N")[..8],
-            Role      = CompanionMessageRole.System,
-            Text      = text.Trim(),
-            Timestamp = DateTimeOffset.Now,
-            Category  = category,
-            ActionId  = actionId,
-        };
-
-        _messages.Add(msg);
-        MessageAdded?.Invoke(this, msg);
+        if (_currentState == CompanionOverlayState.Hidden) return;
+        SetState(CompanionOverlayState.Hidden);
     }
 
-    public void ClearSession() => _messages.Clear();
-
-    public CompanionMessage BuildWelcomeMessage() => new()
+    /// <summary>
+    /// Toggles between Bubble and Expanded.
+    /// If Hidden, switches to Expanded first.
+    /// </summary>
+    public void ToggleExpanded()
     {
-        Id        = "welcome",
-        Role      = CompanionMessageRole.System,
-        Text      = "I'm your operational companion. Ask me about performance, " +
-                    "memory, disk usage, or what changed on your system. " +
-                    "All analysis uses real telemetry from this machine — nothing leaves this device.",
-        Timestamp = DateTimeOffset.Now,
-        Category  = CompanionMessageCategory.Welcome,
-    };
+        var next = _currentState switch
+        {
+            CompanionOverlayState.Hidden   => CompanionOverlayState.Expanded,
+            CompanionOverlayState.Bubble   => CompanionOverlayState.Expanded,
+            CompanionOverlayState.Expanded => CompanionOverlayState.Bubble,
+            _                              => CompanionOverlayState.Expanded,
+        };
+        SetState(next);
+    }
+
+    /// <summary>Collapses to bubble mode.</summary>
+    public void CollapseToBubble()
+    {
+        if (_currentState == CompanionOverlayState.Bubble) return;
+        SetState(CompanionOverlayState.Bubble);
+    }
+
+    /// <summary>Expands to full panel.</summary>
+    public void Expand()
+    {
+        if (_currentState == CompanionOverlayState.Expanded) return;
+        SetState(CompanionOverlayState.Expanded);
+    }
+
+    /// <summary>Sets IsPinned = true.</summary>
+    public void Pin()
+    {
+        if (_isPinned) return;
+        _isPinned = true;
+        RaiseStateChanged(_currentState, _currentState);
+    }
+
+    /// <summary>Sets IsPinned = false.</summary>
+    public void Unpin()
+    {
+        if (!_isPinned) return;
+        _isPinned = false;
+        RaiseStateChanged(_currentState, _currentState);
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────────────
+
+    private void SetState(CompanionOverlayState newState)
+    {
+        var previous  = _currentState;
+        _currentState = newState;
+        RaiseStateChanged(previous, newState);
+    }
+
+    private void RaiseStateChanged(
+        CompanionOverlayState previous,
+        CompanionOverlayState current)
+    {
+        StateChanged?.Invoke(this, new CompanionStateChangedEventArgs
+        {
+            PreviousState = previous,
+            NewState      = current,
+            IsPinned      = _isPinned,
+        });
+    }
 }

@@ -709,6 +709,67 @@
             </Grid>
 
             <!-- ══════════════════════════════════════════════════════════
+                 COMPANION SHORTCUT — opens the floating operational companion
+            ══════════════════════════════════════════════════════════ -->
+            <Border Background="#16182A"
+                    BorderBrush="#2A2A3E"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Width="28" Height="28"
+                            CornerRadius="8"
+                            Background="#1E2F52"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE946;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="14"
+                                  Foreground="#4E9FFF"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="Operational Companion"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="#C8C8D8" />
+                        <TextBlock Text="Ask questions about your system in a floating overlay"
+                                   FontSize="11"
+                                   Foreground="#6B6B8A" />
+                    </StackPanel>
+
+                    <Button Grid.Column="2"
+                            CornerRadius="8"
+                            Background="#1E2F52"
+                            BorderBrush="#3F5A8A"
+                            BorderThickness="1"
+                            Padding="14,6"
+                            FontSize="12"
+                            Foreground="#7EB5FF"
+                            Click="OpenCompanionButton_Click"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE946;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="11"
+                                      Foreground="#4E9FFF" />
+                            <TextBlock Text="Open" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════════
                  HEALTH SCORE CARD
             ══════════════════════════════════════════════════════════ -->
             <Border Style="{StaticResource CardSurface}"

@@ -1,40 +1,87 @@
 namespace ExplainMyPC.Services.Companion;
 
 /// <summary>
-/// Manages the companion's in-session conversation history.
+/// Overlay state for the Companion window.
+/// </summary>
+public enum CompanionOverlayState
+{
+    /// <summary>Window is not visible.</summary>
+    Hidden   = 0,
+
+    /// <summary>Minimized to a floating bubble icon.</summary>
+    Bubble   = 1,
+
+    /// <summary>Full conversation panel is visible.</summary>
+    Expanded = 2,
+}
+
+/// <summary>
+/// Manages the runtime state of the Companion Overlay Window.
 ///
-/// Messages are in-memory only for the current app session.
-/// The companion does not persist conversations to disk — conversations
-/// are ephemeral by design so the user retains privacy.
+/// This service owns:
+///   • Overlay visibility state (Hidden / Bubble / Expanded)
+///   • Pin state (whether the companion stays visible across focus changes)
+///   • Last known docking preference (scaffold for future snap-to-edge)
+///
+/// It does NOT own conversation messages — those live in CompanionChatViewModel.
 ///
 /// Threading:
-///   Writes (AddUserMessage, AddSystemMessage, ClearSession) must be called
-///   on the UI thread. MessageAdded fires on the calling thread.
-///   Messages is safe to read on the UI thread without locking.
+///   All state mutations must occur on the UI thread.
+///   StateChanged fires on the calling thread.
+///
+/// Lifetime:
+///   Registered in AppServices. Single instance for the application lifetime.
 /// </summary>
 public interface ICompanionSessionManager
 {
-    /// <summary>All messages in chronological order (oldest first).</summary>
-    IReadOnlyList<CompanionMessage> Messages { get; }
+    /// <summary>Current overlay display state.</summary>
+    CompanionOverlayState CurrentState { get; }
 
-    /// <summary>Raised when a new message is appended to Messages.</summary>
-    event EventHandler<CompanionMessage>? MessageAdded;
-
-    /// <summary>Appends a user-authored message to the session.</summary>
-    void AddUserMessage(string text);
+    /// <summary>True when the overlay panel is in Expanded mode.</summary>
+    bool IsExpanded { get; }
 
     /// <summary>
-    /// Appends a system-authored message to the session.
-    /// The category determines glyph and accent colour in the companion UI.
+    /// True when the companion is pinned.
+    /// A pinned companion stays visible and always-on-top.
+    /// An unpinned companion may auto-hide in future phases.
     /// </summary>
-    void AddSystemMessage(
-        string                   text,
-        CompanionMessageCategory category = CompanionMessageCategory.Answer,
-        string?                  actionId = null);
+    bool IsPinned { get; }
 
-    /// <summary>Clears all messages from the current session.</summary>
-    void ClearSession();
+    /// <summary>Raised when CurrentState, IsExpanded, or IsPinned changes.</summary>
+    event EventHandler<CompanionStateChangedEventArgs>? StateChanged;
 
-    /// <summary>Builds the welcome message shown when the companion first opens.</summary>
-    CompanionMessage BuildWelcomeMessage();
+    /// <summary>Makes the companion visible. Restores the last non-Hidden state.</summary>
+    void Show();
+
+    /// <summary>Hides the companion window.</summary>
+    void Hide();
+
+    /// <summary>
+    /// Toggles between Bubble and Expanded.
+    /// If Hidden, switches to Expanded first.
+    /// </summary>
+    void ToggleExpanded();
+
+    /// <summary>Collapses to bubble mode.</summary>
+    void CollapseToBubble();
+
+    /// <summary>Expands to full panel.</summary>
+    void Expand();
+
+    /// <summary>Sets IsPinned = true.</summary>
+    void Pin();
+
+    /// <summary>Sets IsPinned = false.</summary>
+    void Unpin();
+}
+
+/// <summary>
+/// Event data for companion state changes.
+/// Carries both the previous and new states for transition animation decisions.
+/// </summary>
+public sealed class CompanionStateChangedEventArgs : EventArgs
+{
+    public CompanionOverlayState PreviousState { get; init; }
+    public CompanionOverlayState NewState      { get; init; }
+    public bool                  IsPinned      { get; init; }
 }

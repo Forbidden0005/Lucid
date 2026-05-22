@@ -580,9 +580,10 @@ public static class AppServices
             "Call it from App.OnLaunched before creating the main window.");
 
     /// <summary>
-    /// Companion session manager.
-    /// Manages the in-session conversation message history for the Companion window.
-    /// Ephemeral — messages are not persisted to disk.
+    /// Companion session state manager.
+    /// Owns the overlay visibility state (Hidden / Bubble / Expanded) and pin state.
+    /// Does NOT own conversation messages — those live in CompanionChatViewModel.
+    /// Ephemeral — state is runtime-only, nothing is persisted to disk.
     /// </summary>
     public static ICompanionSessionManager CompanionSession =>
         _companionSession ?? throw new InvalidOperationException(
