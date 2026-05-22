@@ -57,6 +57,18 @@ public sealed partial class CompanionChatViewModel : ObservableObject
     [ObservableProperty]
     private string _inputText = string.Empty;
 
+    // ── Desktop context awareness (Phase 17B) ─────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ContextBannerVisibility))]
+    private string _contextBannerText = string.Empty;
+
+    [ObservableProperty]
+    private string _contextGlyph = "";   // Segoe MDL2 glyph
+
+    public string ContextBannerVisibility =>
+        string.IsNullOrEmpty(ContextBannerText) ? "Collapsed" : "Visible";
+
     // ── Overlay state (driven by ICompanionSessionManager via the window) ──────
 
     [ObservableProperty]

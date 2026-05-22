@@ -84,6 +84,10 @@ public enum TimelineEventType
     /// Detected when metrics return inside baseline thresholds after an active period.
     /// </summary>
     StabilizationDetected = 75,
+
+    // ── Desktop Context (17B) ─────────────────────────────────────────────────
+    /// <summary>The user's active desktop context changed in a meaningful way (app, folder, clipboard).</summary>
+    DesktopContextChanged = 80,
 }
 
 /// <summary>

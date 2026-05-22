@@ -1,5 +1,6 @@
 using ExplainMyPC.Services;
 using ExplainMyPC.Services.Analytics;
+using ExplainMyPC.Services.DesktopContext;
 using ExplainMyPC.Services.Companion;
 using ExplainMyPC.Services.Reasoning;
 using ExplainMyPC.Services.Workflow;
@@ -131,6 +132,9 @@ public static class AppServices
     // ── Operational Companion layer ────────────────────────────────────────────
     private static ICompanionSessionManager?       _companionSession;
     private static IOperationalConversationEngine? _conversationEngine;
+
+    // ── Desktop Context layer ─────────────────────────────────────────────────
+    private static DesktopContextService? _desktopContext;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -601,6 +605,17 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Desktop context awareness service.
+    /// Observes the active foreground window, File Explorer path, and clipboard
+    /// metadata via Win32 APIs. Observation-only — no automation, no screenshots.
+    /// All context is ephemeral; nothing is persisted to disk.
+    /// </summary>
+    public static IDesktopContextService DesktopContext =>
+        _desktopContext ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -958,6 +973,12 @@ public static class AppServices
             _evidenceGraph!,
             _rootCauseEngine!);
 
+        // ── Desktop Context layer ─────────────────────────────────────────────────
+        // Lightweight Win32 polling at 1750ms + dedicated STA thread for COM Explorer queries.
+        // Observation-only — no automation, no screenshots, no persistence.
+        _desktopContext = new DesktopContextService(uiDispatcher);
+        _desktopContext.Start();
+
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
@@ -997,6 +1018,10 @@ public static class AppServices
         // Companion layer — in-memory only, just null references.
         _companionSession   = null;
         _conversationEngine = null;
+
+        // Desktop context layer — stop polling and dispose STA thread.
+        _desktopContext?.Stop();
+        _desktopContext = null;
 
         // Stop remediation service first — it holds an InsightsUpdated subscription.
         _remediationService?.Stop();

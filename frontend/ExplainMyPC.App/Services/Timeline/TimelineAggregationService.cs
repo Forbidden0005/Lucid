@@ -91,6 +91,12 @@ public sealed class TimelineAggregationService : ITimelineAggregationService
     /// </summary>
     public void AddStorageEvent(TimelineEvent ev) => AddEvent(ev);
 
+    /// <summary>
+    /// Allows the desktop context layer to inject a desktop context change event
+    /// into the timeline. Call from the UI thread or marshal first.
+    /// </summary>
+    public void AddDesktopContextEvent(TimelineEvent ev) => AddEvent(ev);
+
     // ── Construction ──────────────────────────────────────────────────────────
 
     public TimelineAggregationService(

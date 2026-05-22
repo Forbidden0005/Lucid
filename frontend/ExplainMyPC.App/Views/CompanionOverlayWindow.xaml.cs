@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using ExplainMyPC.Services.Companion;
+using ExplainMyPC.Services.DesktopContext;
 using ExplainMyPC.ViewModels;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -105,9 +106,13 @@ public sealed partial class CompanionOverlayWindow : Window
         // ── Subscribe to state changes ─────────────────────────────────────
         AppServices.CompanionSession.StateChanged += OnSessionStateChanged;
 
+        // ── Subscribe to desktop context changes (Phase 17B) ──────────────
+        AppServices.DesktopContext.ContextChanged += OnDesktopContextChanged;
+
         Closed += (_, _) =>
         {
             AppServices.CompanionSession.StateChanged -= OnSessionStateChanged;
+            AppServices.DesktopContext.ContextChanged -= OnDesktopContextChanged;
 
             // If the window was destroyed by the OS (Alt+F4, task-kill, etc.) rather
             // than via CloseButton_Click, the session manager still thinks the overlay
@@ -359,6 +364,29 @@ public sealed partial class CompanionOverlayWindow : Window
         _ = _uiDispatcher.TryEnqueue(
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () => MessageScroller.ChangeView(null, double.MaxValue, null, true));
+    }
+
+    // ── Desktop context awareness (Phase 17B) ────────────────────────────────
+
+    private void OnDesktopContextChanged(object? sender, ContextChangedEventArgs e)
+    {
+        // Already on UI thread (DesktopContextService fires on DispatcherQueue)
+        var snap = e.Current;
+
+        if (!string.IsNullOrEmpty(snap.CurrentOperationalFocus))
+        {
+            ViewModel.ContextBannerText = snap.CurrentOperationalFocus;
+            ViewModel.ContextGlyph = snap.ActiveWindow?.AppCategory switch
+            {
+                AppCategory.Explorer => "",    // folder glyph
+                AppCategory.Browser  => "",    // web glyph
+                AppCategory.Editor   => "",    // edit glyph
+                AppCategory.Terminal => "",    // terminal glyph
+                AppCategory.Media    => "",    // media glyph
+                AppCategory.Settings => "",    // settings glyph
+                _                    => "",    // info glyph
+            };
+        }
     }
 
     // ── Native window helper ───────────────────────────────────────────────────
