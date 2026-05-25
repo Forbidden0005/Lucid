@@ -1,0 +1,116 @@
+﻿<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Card Styles
+        Cards are the primary layout block for all content surfaces.
+        Rounded corners, soft border, surface background — no hard
+        drop shadows (per UI guidelines: calm, not cluttered).
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- Standard card: sits on AppBackgroundBrush -->
+    <Style x:Key="CardStyle" TargetType="Border">
+        <Setter Property="Background"       Value="{StaticResource AppSurfaceBrush}" />
+        <Setter Property="CornerRadius"     Value="10" />
+        <Setter Property="BorderBrush"      Value="{StaticResource BorderSubtleBrush}" />
+        <Setter Property="BorderThickness"  Value="1" />
+        <Setter Property="Padding"          Value="20" />
+    </Style>
+
+    <!-- Elevated card: one layer higher than CardStyle -->
+    <Style x:Key="ElevatedCardStyle" TargetType="Border">
+        <Setter Property="Background"       Value="{StaticResource AppElevatedSurfaceBrush}" />
+        <Setter Property="CornerRadius"     Value="10" />
+        <Setter Property="BorderBrush"      Value="{StaticResource BorderDefaultBrush}" />
+        <Setter Property="BorderThickness"  Value="1" />
+        <Setter Property="Padding"          Value="20" />
+    </Style>
+
+    <!-- Inset card: used inside other cards for nested content -->
+    <Style x:Key="InsetCardStyle" TargetType="Border">
+        <Setter Property="Background"       Value="{StaticResource AppBackgroundBrush}" />
+        <Setter Property="CornerRadius"     Value="8" />
+        <Setter Property="BorderBrush"      Value="{StaticResource BorderSubtleBrush}" />
+        <Setter Property="BorderThickness"  Value="1" />
+        <Setter Property="Padding"          Value="16" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Status Badge
+        Small pill-shaped tag for severity / status labels.
+        Set Background manually to a status brush at the use-site.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="StatusBadgeStyle" TargetType="Border">
+        <Setter Property="CornerRadius"    Value="4" />
+        <Setter Property="Padding"         Value="8,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Horizontal Divider
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="DividerStyle" TargetType="Rectangle">
+        <Setter Property="Fill"                Value="{StaticResource BorderSubtleBrush}" />
+        <Setter Property="Height"              Value="1" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Primary Action Button
+        Full-width or inline accent-colored CTA. Override Width /
+        HorizontalAlignment at use-site as needed.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="Background"        Value="{StaticResource AccentBlueBrush}" />
+        <Setter Property="Foreground"        Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Padding"           Value="20,10" />
+        <Setter Property="CornerRadius"      Value="6" />
+        <Setter Property="FontSize"          Value="14" />
+        <Setter Property="FontWeight"        Value="SemiBold" />
+        <Setter Property="BorderThickness"   Value="0" />
+    </Style>
+
+    <!-- Ghost / secondary button — transparent background, border only -->
+    <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+        <Setter Property="Background"        Value="Transparent" />
+        <Setter Property="Foreground"        Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush"       Value="{StaticResource BorderDefaultBrush}" />
+        <Setter Property="BorderThickness"   Value="1" />
+        <Setter Property="Padding"           Value="20,10" />
+        <Setter Property="CornerRadius"      Value="6" />
+        <Setter Property="FontSize"          Value="14" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Progress Bar — slim, accent-colored
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="AccentProgressBarStyle" TargetType="ProgressBar">
+        <Setter Property="Height"            Value="4" />
+        <Setter Property="CornerRadius"      Value="2" />
+        <Setter Property="Foreground"        Value="{StaticResource AccentBlueBrush}" />
+        <Setter Property="Background"        Value="{StaticResource BorderSubtleBrush}" />
+        <Setter Property="BorderThickness"   Value="0" />
+    </Style>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Info Row — used for key/value pairs inside cards
+        ════════════════════════════════════════════════════════════════
+    -->
+    <Style x:Key="InfoRowStyle" TargetType="Grid">
+        <Setter Property="Margin" Value="0,6,0,0" />
+    </Style>
+
+</ResourceDictionary>
+

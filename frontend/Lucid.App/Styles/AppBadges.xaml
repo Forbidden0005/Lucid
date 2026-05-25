@@ -1,0 +1,98 @@
+﻿<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Lucid Badge / Severity Styles
+
+        A severity badge is a Border + TextBlock pair.
+        Apply the matching styles to each element:
+
+            <Border Style="{StaticResource BadgeModerate}">
+                <TextBlock Text="Moderate"
+                           Style="{StaticResource BadgeLabelModerate}" />
+            </Border>
+
+        Severity levels:
+          Good     — green    (StatusGood)
+          Moderate — orange   (StatusModerate)
+          Critical — red      (StatusCritical)
+          Info     — blue     (StatusInfo)
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── Badge Border base ─────────────────────────────────────────  -->
+    <Style x:Key="Badge" TargetType="Border">
+        <Setter Property="CornerRadius"      Value="6" />
+        <Setter Property="Padding"           Value="10,5" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+
+    <!-- Severity variants -->
+    <Style x:Key="BadgeGood" TargetType="Border"
+           BasedOn="{StaticResource Badge}">
+        <Setter Property="Background" Value="{StaticResource StatusGoodTintBrush}" />
+    </Style>
+
+    <Style x:Key="BadgeModerate" TargetType="Border"
+           BasedOn="{StaticResource Badge}">
+        <Setter Property="Background" Value="{StaticResource StatusModerateTintBrush}" />
+    </Style>
+
+    <Style x:Key="BadgeCritical" TargetType="Border"
+           BasedOn="{StaticResource Badge}">
+        <Setter Property="Background" Value="{StaticResource StatusCriticalTintBrush}" />
+    </Style>
+
+    <Style x:Key="BadgeInfo" TargetType="Border"
+           BasedOn="{StaticResource Badge}">
+        <Setter Property="Background" Value="{StaticResource StatusInfoTintBrush}" />
+    </Style>
+
+    <!-- ── Badge insight variant (horizontal row, centre-aligned) ────
+         Used inside the Active Insights card row in Dashboard.         -->
+    <Style x:Key="BadgeInline" TargetType="Border"
+           BasedOn="{StaticResource Badge}">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin"            Value="12,0,0,0" />
+    </Style>
+
+    <Style x:Key="BadgeInlineModerate" TargetType="Border"
+           BasedOn="{StaticResource BadgeInline}">
+        <Setter Property="Background" Value="{StaticResource StatusModerateTintBrush}" />
+    </Style>
+
+    <Style x:Key="BadgeInlineGood" TargetType="Border"
+           BasedOn="{StaticResource BadgeInline}">
+        <Setter Property="Background" Value="{StaticResource StatusGoodTintBrush}" />
+    </Style>
+
+    <!-- ── Badge label TextBlock base ───────────────────────────────  -->
+    <Style x:Key="BadgeLabel" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Severity variants -->
+    <Style x:Key="BadgeLabelGood" TargetType="TextBlock"
+           BasedOn="{StaticResource BadgeLabel}">
+        <Setter Property="Foreground" Value="{StaticResource StatusGoodBrush}" />
+    </Style>
+
+    <Style x:Key="BadgeLabelModerate" TargetType="TextBlock"
+           BasedOn="{StaticResource BadgeLabel}">
+        <Setter Property="Foreground" Value="{StaticResource StatusModerateBrush}" />
+    </Style>
+
+    <Style x:Key="BadgeLabelCritical" TargetType="TextBlock"
+           BasedOn="{StaticResource BadgeLabel}">
+        <Setter Property="Foreground" Value="{StaticResource StatusCriticalBrush}" />
+    </Style>
+
+    <Style x:Key="BadgeLabelInfo" TargetType="TextBlock"
+           BasedOn="{StaticResource BadgeLabel}">
+        <Setter Property="Foreground" Value="{StaticResource StatusInfoBrush}" />
+    </Style>
+
+</ResourceDictionary>

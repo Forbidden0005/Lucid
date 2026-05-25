@@ -1,0 +1,69 @@
+﻿<Page
+    x:Class="Lucid.Views.PrivacyPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Privacy"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="Data exposure and permission visibility"
+                           Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
+
+            <!-- Privacy status -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="24"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Permission Summary"
+                               Style="{StaticResource SectionTitleStyle}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Camera access" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="3 apps"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Microphone access" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="5 apps"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Location access" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="2 apps"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Background app refresh" Style="{StaticResource BodyTextStyle}" />
+                        <TextBlock Grid.Column="1" Text="8 apps"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource WarningBrush}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
+

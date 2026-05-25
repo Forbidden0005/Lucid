@@ -1,0 +1,59 @@
+﻿<UserControl
+    x:Class="Lucid.Controls.HealthScoreRing"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="160" Height="160"
+    SizeChanged="OnSizeChanged">
+
+    <Grid>
+
+        <!--
+            Background track — the full grey ring beneath the score arc.
+        -->
+        <Ellipse x:Name="TrackEllipse"
+                 Stroke="#252B38"
+                 StrokeThickness="10"
+                 Margin="8" />
+
+        <!--
+            Score arc — filled by the StrokeDashArray + StrokeDashOffset trick.
+            A RotateTransform of -90° makes the arc start from 12 o'clock.
+            Stroke colour and StrokeDashOffset are set in code-behind based
+            on the Score value. The initial offset (full circumference = empty
+            ring) is animated to the target offset on Loaded.
+        -->
+        <Ellipse x:Name="ScoreEllipse"
+                 StrokeThickness="10"
+                 StrokeStartLineCap="Round"
+                 StrokeEndLineCap="Round"
+                 Margin="8"
+                 RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform>
+                <RotateTransform Angle="-90" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+
+        <!--
+            Centre content: numeric score + label.
+        -->
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="2">
+
+            <TextBlock x:Name="ScoreText"
+                       FontFamily="Segoe UI Variable Display"
+                       FontSize="34"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center"
+                       Foreground="#F5F7FA" />
+
+            <TextBlock x:Name="LabelText"
+                       FontFamily="Segoe UI Variable"
+                       FontSize="12"
+                       HorizontalAlignment="Center"
+                       Foreground="#AAB2C0" />
+
+        </StackPanel>
+
+    </Grid>
+</UserControl>

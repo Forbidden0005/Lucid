@@ -1,0 +1,363 @@
+﻿<Page x:ConnectionId='1'
+    x:Class="ExplainMyPC.Views.ProcessesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:ExplainMyPC.ViewModels"
+    Background="{StaticResource AppBackgroundBrush}"
+                        >
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32,32,32,48" Spacing="24">
+
+            <!-- ── Header ────────────────────────────────────────── -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Process Intelligence"
+                               Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="Live behavioral analysis — runaway processes, memory growth, anomaly detection"
+                               Style="{StaticResource PageSubtitleStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            Spacing="16" VerticalAlignment="Center">
+                    <StackPanel Spacing="2" HorizontalAlignment="Right">
+                        <TextBlock x:ConnectionId='53'                                                    
+                                   Style="{StaticResource CardTitleStyle}" />
+                        <TextBlock x:ConnectionId='54'                                                   
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                    <Border Background="{StaticResource StatusModerateSubtleBrush}"
+                            CornerRadius="8" Padding="12,6"
+                            BorderBrush="{StaticResource StatusModerateBrush}"
+                            BorderThickness="1">
+                        <TextBlock x:ConnectionId='52'                                                    
+                                   Foreground="{StaticResource StatusModerateBrush}"
+                                   FontSize="12" FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- ── Tab bar ──────────────────────────────────────── -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:ConnectionId='48'                                                 
+                        Style="{StaticResource SecondaryButton}">
+                    <TextBlock Text="All Processes" />
+                </Button>
+                <Button x:ConnectionId='49'                                                       
+                        Style="{StaticResource SecondaryButton}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="12"
+                                  Foreground="{StaticResource StatusModerateBrush}" />
+                        <TextBlock Text="Anomalies" />
+                    </StackPanel>
+                </Button>
+                <Button x:ConnectionId='50'                                                   
+                        Style="{StaticResource SecondaryButton}">
+                    <TextBlock Text="Top CPU" />
+                </Button>
+                <Button x:ConnectionId='51'                                                   
+                        Style="{StaticResource SecondaryButton}">
+                    <TextBlock Text="Top RAM" />
+                </Button>
+            </StackPanel>
+
+            <!-- ── All Processes tab ────────────────────────────── -->
+            <StackPanel x:ConnectionId='2'                                                                
+                        Spacing="8">
+                <ItemsControl x:ConnectionId='35'                                                           >
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate                                    >
+                            <Border x:ConnectionId='37' Style="{StaticResource CardSurface}" Padding="16,12">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="64" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Name + badges -->
+                                    <StackPanel Spacing="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock x:ConnectionId='45'                     
+                                                       Style="{StaticResource CardTitleStyle}" />
+                                            <Border x:ConnectionId='46' Background="{StaticResource StatusModerateSubtleBrush}"
+                                                    CornerRadius="4" Padding="5,2"
+                                                                                                >
+                                                <TextBlock Text="&#x26A0;" FontSize="10"
+                                                           Foreground="{StaticResource StatusModerateBrush}" />
+                                            </Border>
+                                            <Border x:ConnectionId='47' Background="{StaticResource StatusCriticalSubtleBrush}"
+                                                    CornerRadius="4" Padding="5,2"
+                                                                                                 >
+                                                <TextBlock Text="CRITICAL" FontSize="9"
+                                                           Foreground="{StaticResource StatusCriticalBrush}" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock x:ConnectionId='43'                               
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource StatusModerateBrush}"
+                                                                                                />
+                                        <TextBlock x:ConnectionId='44'                         
+                                                   Style="{StaticResource CaptionTextStyle}" />
+                                    </StackPanel>
+
+                                    <!-- CPU -->
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock x:ConnectionId='42'                                 
+                                                   Style="{StaticResource CardTitleStyle}"
+                                                   HorizontalAlignment="Right"
+                                                   Foreground="{StaticResource AccentBlueBrush}" />
+                                        <TextBlock Text="CPU" FontSize="10"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   HorizontalAlignment="Right" />
+                                    </StackPanel>
+
+                                    <!-- RAM -->
+                                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock x:ConnectionId='41'                                 
+                                                   Style="{StaticResource CardTitleStyle}"
+                                                   HorizontalAlignment="Right"
+                                                   Foreground="{StaticResource AccentCyanBrush}" />
+                                        <TextBlock Text="RAM" FontSize="10"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   HorizontalAlignment="Right" />
+                                    </StackPanel>
+
+                                    <!-- Uptime -->
+                                    <TextBlock x:ConnectionId='38' Grid.Column="3"                       
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               VerticalAlignment="Center" />
+
+                                    <!-- Open location -->
+                                    <Button x:ConnectionId='39' Grid.Column="4"
+                                            Style="{StaticResource SecondaryButton}"
+                                                          
+                                                                      
+                                            VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xEC50;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                                    </Button>
+
+                                    <!-- Terminate -->
+                                    <Button x:ConnectionId='40' Grid.Column="5"
+                                            Style="{StaticResource SecondaryButton}"
+                                                          
+                                                                   
+                                                                                           
+                                            VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="12"
+                                                  Foreground="{StaticResource StatusCriticalBrush}" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ── Anomalies tab ────────────────────────────────── -->
+            <StackPanel x:ConnectionId='3'                                                                      
+                        Spacing="12">
+                <!-- No anomalies -->
+                <Border x:ConnectionId='23' Style="{StaticResource CardSurface}" Padding="32"
+                                                                                          >
+                    <StackPanel Spacing="8" HorizontalAlignment="Center">
+                        <FontIcon Glyph="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="32" Foreground="{StaticResource StatusGoodBrush}"
+                                  HorizontalAlignment="Center" />
+                        <TextBlock Text="No anomalies detected"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="All monitored processes are behaving normally."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <ItemsControl x:ConnectionId='24'                                                                 
+                                                                                                >
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate                                    >
+                            <Border x:ConnectionId='26' Style="{StaticResource CardElevated}" Padding="20"
+                                    BorderBrush="{StaticResource StatusModerateBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="10">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock x:ConnectionId='33'                     
+                                                       Style="{StaticResource CardTitleStyle}" />
+                                            <TextBlock x:ConnectionId='34'                               
+                                                       Style="{StaticResource CaptionTextStyle}"
+                                                       Foreground="{StaticResource StatusModerateBrush}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Spacing="2"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right">
+                                            <TextBlock x:ConnectionId='31'                                 
+                                                       Style="{StaticResource CardTitleStyle}"
+                                                       Foreground="{StaticResource AccentBlueBrush}" />
+                                            <TextBlock x:ConnectionId='32'                                 
+                                                       Style="{StaticResource CaptionTextStyle}"
+                                                       Foreground="{StaticResource AccentCyanBrush}" />
+                                        </StackPanel>
+                                        <Button x:ConnectionId='30' Grid.Column="2"
+                                                Style="{StaticResource SecondaryButton}"
+                                                              
+                                                                       
+                                                                                               
+                                                VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="12"
+                                                          Foreground="{StaticResource StatusCriticalBrush}" />
+                                                <TextBlock Text="Terminate" FontSize="11" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <!-- Detail chips -->
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <TextBlock x:ConnectionId='27'                          FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock x:ConnectionId='28'                                      FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="threads" FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock x:ConnectionId='29'                                      FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="handles" FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ── Top CPU tab ──────────────────────────────────── -->
+            <StackPanel x:ConnectionId='4'                                                                  
+                        Spacing="8">
+                <TextBlock Text="Top by CPU Usage" Style="{StaticResource SectionTitleStyle}" />
+                <ItemsControl x:ConnectionId='15'                                                       >
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate                                    >
+                            <Border x:ConnectionId='17' Style="{StaticResource CardSurface}" Padding="16,12">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock x:ConnectionId='21'                     
+                                                   Style="{StaticResource CardTitleStyle}" />
+                                        <TextBlock x:ConnectionId='22'                         
+                                                   Style="{StaticResource CaptionTextStyle}" />
+                                    </StackPanel>
+                                    <TextBlock x:ConnectionId='18' Grid.Column="1"                                 
+                                               Style="{StaticResource CardTitleStyle}"
+                                               Foreground="{StaticResource AccentBlueBrush}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                    <TextBlock x:ConnectionId='19' Grid.Column="2"                                 
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                    <Button x:ConnectionId='20' Grid.Column="3"
+                                            Style="{StaticResource SecondaryButton}"
+                                                          
+                                                                   
+                                                                                           
+                                            VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="12"
+                                                  Foreground="{StaticResource StatusCriticalBrush}" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ── Top RAM tab ──────────────────────────────────── -->
+            <StackPanel x:ConnectionId='5'                                                                  
+                        Spacing="8">
+                <TextBlock Text="Top by RAM Usage" Style="{StaticResource SectionTitleStyle}" />
+                <ItemsControl x:ConnectionId='7'                                                       >
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate                                    >
+                            <Border x:ConnectionId='9' Style="{StaticResource CardSurface}" Padding="16,12">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock x:ConnectionId='13'                     
+                                                   Style="{StaticResource CardTitleStyle}" />
+                                        <TextBlock x:ConnectionId='14'                         
+                                                   Style="{StaticResource CaptionTextStyle}" />
+                                    </StackPanel>
+                                    <TextBlock x:ConnectionId='10' Grid.Column="1"                                 
+                                               Style="{StaticResource CardTitleStyle}"
+                                               Foreground="{StaticResource AccentCyanBrush}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                    <TextBlock x:ConnectionId='11' Grid.Column="2"                                 
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                    <Button x:ConnectionId='12' Grid.Column="3"
+                                            Style="{StaticResource SecondaryButton}"
+                                                          
+                                                                   
+                                                                                           
+                                            VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="12"
+                                                  Foreground="{StaticResource StatusCriticalBrush}" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Status text -->
+            <TextBlock x:ConnectionId='6'                                                  
+                       Style="{StaticResource CaptionTextStyle}"
+                       Foreground="{StaticResource StatusModerateBrush}" />
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
+

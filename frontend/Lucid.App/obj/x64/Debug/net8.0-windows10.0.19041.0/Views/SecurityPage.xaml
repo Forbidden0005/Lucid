@@ -1,0 +1,370 @@
+﻿<Page x:ConnectionId='1'
+    x:Class="Lucid.Views.SecurityPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Lucid.ViewModels"
+    Background="{StaticResource AppBackgroundBrush}"
+                        >
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32,32,32,48" Spacing="24">
+
+            <!-- ── Header ────────────────────────────────────────── -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Security Intelligence"
+                               Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="Local trust analysis, startup persistence, and Windows security posture"
+                               Style="{StaticResource PageSubtitleStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                            VerticalAlignment="Center">
+                    <Button x:ConnectionId='45' Style="{StaticResource SecondaryButton}"
+                                                                                   >
+                        <TextBlock Text="Open Defender" />
+                    </Button>
+                    <Button x:ConnectionId='46' Style="{StaticResource PrimaryButton}"
+                                                                                             
+                                                                    >
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xEA18;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+                            <TextBlock Text="Scan" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:ConnectionId='47' Style="{StaticResource SecondaryButton}"
+                                                                                               
+                                                                          >
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+                            <TextBlock Text="Cancel" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- ── Scan progress ──────────────────────────────────── -->
+            <Border x:ConnectionId='2'                                                                
+                    Style="{StaticResource CardSurface}" Padding="20">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <ProgressRing x:ConnectionId='43'                                                      
+                                      Width="18" Height="18"
+                                      Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock x:ConnectionId='44'                                                 
+                                   Style="{StaticResource CardTitleStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ProgressBar x:ConnectionId='42'                                                     
+                                 Maximum="100" Height="4" CornerRadius="2"
+                                 Foreground="{StaticResource AccentBlueBrush}"
+                                 Background="{StaticResource BarTrackBrush}" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Empty state ────────────────────────────────────── -->
+            <Border x:ConnectionId='3'                                                                  
+                    Style="{StaticResource CardSurface}" Padding="40">
+                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                    <FontIcon Glyph="&#xEA18;" FontFamily="Segoe MDL2 Assets"
+                              FontSize="40" Foreground="{StaticResource TextSecondaryBrush}"
+                              HorizontalAlignment="Center" />
+                    <TextBlock Text="No scan results yet"
+                               Style="{StaticResource SectionTitleStyle}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Run a scan to analyze startup trust, Windows security features, and detect unsigned persistence."
+                               Style="{StaticResource CaptionTextStyle}"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Results ────────────────────────────────────────── -->
+            <StackPanel x:ConnectionId='4'                                                               
+                        Spacing="24">
+
+                <!-- Posture score + summary chips -->
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Border Style="{StaticResource CardSurface}" Padding="20,16">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Security Posture"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='40'                                                    
+                                       FontSize="36" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentBlueBrush}" />
+                            <TextBlock x:ConnectionId='41'                                                    
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardSurface}" Padding="20,16">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Findings"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='39'                                                      
+                                       Style="{StaticResource CardTitleStyle}"
+                                       FontSize="24" />
+                            <TextBlock Text="items to review"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardSurface}" Padding="20,16">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Startup Entries"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='38'                                                            
+                                       Style="{StaticResource CardTitleStyle}"
+                                       FontSize="24" />
+                            <TextBlock Text="analyzed"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ── Windows Security Features ────────────────── -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Windows Security Features"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <ItemsControl x:ConnectionId='30'                                                       >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate                                         >
+                                <Border x:ConnectionId='32' Style="{StaticResource CardSurface}" Padding="16,12">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <!-- Status icon -->
+                                        <Border x:ConnectionId='33' Width="32" Height="32" CornerRadius="6"
+                                                Background="{StaticResource StatusGoodSubtleBrush}"
+                                                                                    >
+                                            <FontIcon Glyph="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="14"
+                                                      Foreground="{StaticResource StatusGoodBrush}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                        </Border>
+                                        <Border x:ConnectionId='34' Width="32" Height="32" CornerRadius="6"
+                                                Background="{StaticResource StatusModerateSubtleBrush}"
+                                                                                       >
+                                            <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="14"
+                                                      Foreground="{StaticResource StatusModerateBrush}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                        </Border>
+                                        <!-- Name + detail -->
+                                        <StackPanel Grid.Column="1" Spacing="2"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock x:ConnectionId='36'                     
+                                                       Style="{StaticResource CardTitleStyle}" />
+                                            <TextBlock x:ConnectionId='37'                       
+                                                       Style="{StaticResource CaptionTextStyle}" />
+                                        </StackPanel>
+                                        <!-- Status label -->
+                                        <TextBlock x:ConnectionId='35' Grid.Column="2"                            
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ── Security Findings ────────────────────────── -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Security Findings"
+                               Style="{StaticResource SectionTitleStyle}" />
+
+                    <!-- No findings banner -->
+                    <Border x:ConnectionId='15' Style="{StaticResource CardSurface}" Padding="24"
+                                                                                             >
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                      FontSize="20"
+                                      Foreground="{StaticResource StatusGoodBrush}"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="No significant findings — your startup configuration looks clean."
+                                       Style="{StaticResource BodyTextStyle}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl x:ConnectionId='16'                                                       
+                                                                                                 >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="10" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate                                         >
+                                <Border x:ConnectionId='18' Style="{StaticResource CardSurface}" Padding="20">
+                                    <StackPanel Spacing="12">
+                                        <!-- Finding header -->
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Spacing="3">
+                                                <TextBlock x:ConnectionId='28'                      
+                                                           Style="{StaticResource CardTitleStyle}" />
+                                                <TextBlock x:ConnectionId='29'                       
+                                                           Style="{StaticResource CaptionTextStyle}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <Border x:ConnectionId='23' Grid.Column="1" CornerRadius="6"
+                                                    Padding="8,3"
+                                                    Background="{StaticResource StatusCriticalSubtleBrush}"
+                                                                                             >
+                                                <TextBlock x:ConnectionId='27'                         
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource StatusCriticalBrush}" />
+                                            </Border>
+                                            <Border x:ConnectionId='24' Grid.Column="1" CornerRadius="6"
+                                                    Padding="8,3"
+                                                    Background="{StaticResource StatusModerateSubtleBrush}"
+                                                                                                 >
+                                                <TextBlock x:ConnectionId='26'                         
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource StatusModerateBrush}" />
+                                            </Border>
+                                            <Border Grid.Column="2" CornerRadius="6"
+                                                    Padding="8,3"
+                                                    Background="{StaticResource AppBackgroundBrush}"
+                                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                                    BorderThickness="1">
+                                                <TextBlock x:ConnectionId='25'                           
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Explanation -->
+                                        <Border Background="{StaticResource AppBackgroundBrush}"
+                                                CornerRadius="8" Padding="12,10">
+                                            <TextBlock x:ConnectionId='22'                            
+                                                       Style="{StaticResource CaptionTextStyle}"
+                                                       TextWrapping="Wrap" />
+                                        </Border>
+
+                                        <!-- Confidence -->
+                                        <TextBlock x:ConnectionId='19'                           
+                                                   FontSize="11" FontStyle="Italic"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+
+                                        <!-- Action buttons -->
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button x:ConnectionId='20' Style="{StaticResource SecondaryButton}"
+                                                                  
+                                                                                  
+                                                                                            >
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xEC50;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                                                    <TextBlock Text="Open location" FontSize="11" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:ConnectionId='21' Style="{StaticResource SecondaryButton}"
+                                                                  
+                                                                                
+                                                                                            >
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                                                    <TextBlock Text="Search VirusTotal" FontSize="11" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ── Startup Trust Analysis ────────────────────── -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Startup Trust Analysis"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <ItemsControl x:ConnectionId='6'                                                             >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate                                      >
+                                <Border x:ConnectionId='8' Style="{StaticResource CardSurface}" Padding="16,12">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Spacing="2">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock x:ConnectionId='13'                     
+                                                           Style="{StaticResource CardTitleStyle}" />
+                                                <Border x:ConnectionId='14' Background="{StaticResource StatusModerateSubtleBrush}"
+                                                        CornerRadius="4" Padding="5,2"
+                                                                                                 >
+                                                    <TextBlock Text="Review" FontSize="10"
+                                                               Foreground="{StaticResource StatusModerateBrush}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock x:ConnectionId='12'                          
+                                                       Style="{StaticResource CaptionTextStyle}" />
+                                        </StackPanel>
+                                        <TextBlock x:ConnectionId='9' Grid.Column="1"                         
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock x:ConnectionId='10' Grid.Column="2"                           
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <Border x:ConnectionId='11' Grid.Column="3" CornerRadius="4" Padding="6,2"
+                                                Background="{StaticResource StatusGoodSubtleBrush}"
+                                                                                           >
+                                            <TextBlock Text="Signed" FontSize="10"
+                                                       Foreground="{StaticResource StatusGoodBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Disclaimer -->
+                <Border Background="{StaticResource AppBackgroundBrush}"
+                        CornerRadius="8" Padding="16,12">
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{StaticResource CaptionTextStyle}"
+                               Text="Lucid surfaces observations for your review — it does not claim to detect malware and is not a replacement for antivirus software. All analysis is local. No files are uploaded." />
+                </Border>
+
+                <!-- Status text -->
+                <TextBlock x:ConnectionId='5'                                                  
+                           Style="{StaticResource CaptionTextStyle}" />
+
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
+

@@ -1,0 +1,1420 @@
+﻿<Page x:ConnectionId='1'
+    x:Class="ExplainMyPC.Views.InsightsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ExplainMyPC.Views"
+    xmlns:vm="using:ExplainMyPC.ViewModels"
+    xmlns:intel="using:ExplainMyPC.Services.Intelligence"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <!--
+        InsightsPage — Intelligence Workspace
+        ═══════════════════════════════════════════════════════════════════════
+
+        Layout: fixed header → tab bar → filter/sort bar → scrollable content.
+        The outer Grid pins the top three rows and lets Row 3 (the content
+        ScrollViewer) fill the remaining height so the page controls stay
+        anchored while findings scroll.
+
+        Templates:
+          ActionCardTemplate   — exact copy from DashboardPage, no hover events
+          InsightCardTemplate  — exact copy from DashboardPage, no hover events
+          HistoryRecordTemplate — new timeline card for OperationRecord display
+
+        Note: CompositeTransform is omitted from the insight card Border here
+        (no hover-scale animation on this page). Each card in a long workspace
+        list animating on hover would be expensive; the interaction model on
+        this page is expand/collapse + action execution, not quick scan.
+    -->
+    <Page.Resources>
+
+        <!--
+            ══════════════════════════════════════════════════════════════════
+            ACTION CARD TEMPLATE
+            Immutable display card for a SystemAction. Identical to the one
+            in DashboardPage — see that file for authoring notes.
+            ══════════════════════════════════════════════════════════════════
+        -->
+        <DataTemplate x:Key="ActionCardTemplate"
+                                                         >
+            <Border x:ConnectionId='54' Background="#0AFFFFFF"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="14,12">
+                <StackPanel Spacing="10">
+
+                    <!-- ── Header: icon · title / description · risk badge ── -->
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border x:ConnectionId='85' Width="32" Height="32"
+                                CornerRadius="8"
+                                                                      
+                                VerticalAlignment="Top">
+                            <FontIcon x:ConnectionId='90' Glyph="&#xE8BD;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="13"
+                                                                       
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+
+                        <StackPanel Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Spacing="3">
+                            <TextBlock x:ConnectionId='88'                      
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                            <TextBlock x:ConnectionId='89'                            
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <Border x:ConnectionId='86' Grid.Column="2"
+                                                                    
+                                CornerRadius="6"
+                                Padding="8,4"
+                                VerticalAlignment="Top">
+                            <TextBlock x:ConnectionId='87'                          
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                                                       />
+                        </Border>
+                    </Grid>
+
+                    <!-- ── Chips: impact · effort · reversible ──────────── -->
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="6"
+                                Margin="44,0,0,0">
+
+                        <Border x:ConnectionId='81'                                       
+                                CornerRadius="4"
+                                Padding="8,3">
+                            <TextBlock x:ConnectionId='84'                            
+                                       FontSize="11"
+                                                                         />
+                        </Border>
+
+                        <Border Background="#0AFFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,3">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon Glyph="&#xE823;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="10"
+                                          Foreground="{StaticResource TextSecondaryBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock x:ConnectionId='83'                           
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:ConnectionId='82'                                           
+                                Background="{StaticResource StatusGoodSubtleBrush}"
+                                CornerRadius="4"
+                                Padding="8,3">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon Glyph="&#xE72C;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="10"
+                                          Foreground="{StaticResource StatusGoodBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Reversible"
+                                           FontSize="11"
+                                           Foreground="{StaticResource StatusGoodBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ── Static confirmation risk notice ─────────────────── -->
+                    <Border x:ConnectionId='55'                                             
+                            Background="{StaticResource StatusModerateSubtleBrush}"
+                            CornerRadius="6"
+                            Padding="10,7"
+                            Margin="44,0,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE7BA;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="12"
+                                      Foreground="{StaticResource StatusModerateBrush}"
+                                      VerticalAlignment="Top"
+                                      Margin="0,1,0,0" />
+                            <TextBlock x:ConnectionId='80'                                    
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       Foreground="{StaticResource StatusModerateBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══════════════════════════════════════════════════════
+                         EXECUTION PANEL — identical to DashboardPage
+                    ══════════════════════════════════════════════════════ -->
+
+                    <Border Height="1"
+                            Background="{StaticResource BorderSubtleBrush}"
+                            Margin="44,2,0,2" />
+
+                    <!-- IDLE: Run + Preview buttons -->
+                    <StackPanel x:ConnectionId='56'                                                                    
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="44,0,0,0">
+                        <Button x:ConnectionId='78'                                           
+                                CornerRadius="5"
+                                Padding="10,5">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <FontIcon Glyph="&#xE946;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="11"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Preview"
+                                           FontSize="12"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:ConnectionId='79'                                        
+                                Background="{StaticResource StatusInfoTintBrush}"
+                                CornerRadius="5"
+                                Padding="10,5">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <FontIcon Glyph="&#xE768;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="11"
+                                          Foreground="{StaticResource StatusInfoBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Run"
+                                           FontSize="12"
+                                           Foreground="{StaticResource StatusInfoBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- IDLE: Coming soon chip -->
+                    <Border x:ConnectionId='57'                                                         
+                            Background="#08FFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="9,4"
+                            Margin="44,0,0,0"
+                            HorizontalAlignment="Left">
+                        <TextBlock Text="Coming soon"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Border>
+
+                    <!-- CONFIRMATION PENDING -->
+                    <Border x:ConnectionId='58'                                                                    
+                            Background="{StaticResource StatusModerateSubtleBrush}"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="44,0,0,0">
+                        <StackPanel Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE7BA;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="13"
+                                          Foreground="{StaticResource StatusModerateBrush}"
+                                          VerticalAlignment="Top"
+                                          Margin="0,2,0,0" />
+                                <TextBlock x:ConnectionId='77'                                              
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           Foreground="{StaticResource StatusModerateBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:ConnectionId='75'                                            
+                                        CornerRadius="5"
+                                        Padding="12,5">
+                                    <TextBlock Text="Confirm" FontSize="12" />
+                                </Button>
+                                <Button x:ConnectionId='76'                                                       
+                                        CornerRadius="5"
+                                        Padding="12,5">
+                                    <TextBlock Text="Cancel" FontSize="12" />
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- RUNNING / DRY-RUNNING -->
+                    <StackPanel x:ConnectionId='59'                                                                
+                                Orientation="Horizontal"
+                                Spacing="10"
+                                Margin="44,0,0,0">
+                        <ProgressRing x:ConnectionId='72'                                                     
+                                      Width="16" Height="16" />
+                        <TextBlock x:ConnectionId='73'                                                     
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   VerticalAlignment="Center" />
+                        <Button x:ConnectionId='74'                                                    
+                                CornerRadius="4"
+                                Padding="8,3"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Cancel" FontSize="11" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- RESULT -->
+                    <StackPanel x:ConnectionId='60'                                                              
+                                Spacing="6"
+                                Margin="44,0,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon x:ConnectionId='70'                                                   
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="14"
+                                                                                             
+                                      VerticalAlignment="Center" />
+                            <TextBlock x:ConnectionId='71'                                                     
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                                                                              
+                                       VerticalAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:ConnectionId='68'                                                                
+                                                                                
+                                    CornerRadius="5"
+                                    Padding="10,4">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE72C;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="11"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Undo"
+                                               FontSize="11"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <HyperlinkButton x:ConnectionId='69'                                                
+                                             Content="Run again"
+                                             FontSize="11"
+                                             Padding="0"
+                                             VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- LOG PANEL -->
+                    <Border x:ConnectionId='61'                                                           
+                            Background="#07FFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,8"
+                            Margin="44,0,0,0">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="EXECUTION LOG"
+                                       FontSize="9"
+                                       FontWeight="SemiBold"
+                                       CharacterSpacing="100"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,0,0,4" />
+                            <ItemsRepeater x:ConnectionId='62'                                                         >
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="3" Orientation="Vertical" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate                                        >
+                                        <Grid x:ConnectionId='64' ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:ConnectionId='65'                          
+                                                       FontSize="10"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Top" />
+                                            <TextBlock x:ConnectionId='66' Grid.Column="1"
+                                                                                 
+                                                       FontSize="10"
+                                                       FontFamily="Cascadia Code, Consolas, Courier New"
+                                                                                       
+                                                       VerticalAlignment="Top" />
+                                            <TextBlock x:ConnectionId='67' Grid.Column="2"
+                                                                              
+                                                       FontSize="11"
+                                                                                       
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Top" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!--
+            ══════════════════════════════════════════════════════════════════
+            INSIGHT CARD TEMPLATE
+            Live DataTemplate bound to InsightCardViewModel.
+            Identical to DashboardPage except: no PointerEntered/PointerExited
+            handlers and no CompositeTransform (no hover-scale animation here).
+            ══════════════════════════════════════════════════════════════════
+        -->
+        <DataTemplate x:Key="InsightCardTemplate"
+                                                          >
+            <Border x:ConnectionId='20' Style="{StaticResource CardSurface}"
+                    Padding="20">
+                <StackPanel Spacing="10">
+
+                    <!-- ── Always-visible header row ────────────────────── -->
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Icon container -->
+                        <Border x:ConnectionId='41' Width="40" Height="40"
+                                CornerRadius="10"
+                                                                                          
+                                VerticalAlignment="Top">
+                            <FontIcon x:ConnectionId='52'                                        
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                                                                    
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+
+                        <!-- Title + one-line preview + confidence/timestamp -->
+                        <StackPanel Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Spacing="4">
+                            <TextBlock x:ConnectionId='48'                                   
+                                       Style="{StaticResource CardTitleStyle}" />
+                            <TextBlock x:ConnectionId='49'                                           
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="6"
+                                        Margin="0,2,0,0">
+                                <TextBlock x:ConnectionId='50'                                            
+                                           FontSize="11"
+                                                                                          />
+                                <TextBlock Text="confidence  ·"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock x:ConnectionId='51'                                          
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Severity badge + correlation tag + expand toggle -->
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Top"
+                                    HorizontalAlignment="Right"
+                                    Spacing="6">
+                            <Border x:ConnectionId='42'                                                   
+                                    CornerRadius="6"
+                                    Padding="10,5">
+                                <TextBlock x:ConnectionId='47'                                           
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                                                                          />
+                            </Border>
+
+                            <!-- Correlated tag — only visible for synthesis insights -->
+                            <Border x:ConnectionId='43'                                                           
+                                    Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,5"
+                                    HorizontalAlignment="Right">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE71B;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="10"
+                                              Foreground="{StaticResource TextSecondaryBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Correlated"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Trend tag — only visible for trend-aware findings -->
+                            <Border x:ConnectionId='44'                                                      
+                                    Background="{StaticResource StatusInfoTintBrush}"
+                                    CornerRadius="6"
+                                    Padding="10,5"
+                                    HorizontalAlignment="Right">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE9D2;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="10"
+                                              Foreground="{StaticResource StatusInfoBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Trend"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource StatusInfoBrush}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Button x:ConnectionId='45'                                         
+                                    HorizontalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="4,2"
+                                    CornerRadius="4">
+                                <FontIcon x:ConnectionId='46'                                            
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="11"
+                                          Foreground="{StaticResource TextSecondaryBrush}" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ── Sparkline strip (metric history + trend) ─────── -->
+                    <local:SparklineControl x:ConnectionId='21'
+                                                                              
+                                                                           
+                        Margin="0,4,0,0" />
+
+                    <!-- ── Expandable detail panel ───────────────────────── -->
+                    <StackPanel x:ConnectionId='22'                                                      
+                                Spacing="12">
+
+                        <Border Height="1"
+                                Background="{StaticResource BorderSubtleBrush}" />
+
+                        <!-- Full detail paragraph -->
+                        <TextBlock x:ConnectionId='23'                                    
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+
+                        <!-- Process attribution section -->
+                        <Border x:ConnectionId='24'                                                          
+                                Background="#07FFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="12,10">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="ATTRIBUTED PROCESSES"
+                                           FontSize="9"
+                                           FontWeight="SemiBold"
+                                           CharacterSpacing="100"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                <ItemsRepeater x:ConnectionId='35'                                                        >
+                                    <ItemsRepeater.Layout>
+                                        <StackLayout Spacing="6" Orientation="Vertical" />
+                                    </ItemsRepeater.Layout>
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate                                      >
+                                            <Grid x:ConnectionId='37' ColumnSpacing="10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock x:ConnectionId='38'                            
+                                                           FontFamily="Segoe UI Variable"
+                                                           FontSize="12"
+                                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock x:ConnectionId='39' Grid.Column="1"
+                                                                                    
+                                                           FontFamily="Segoe UI Variable"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                                           VerticalAlignment="Center" />
+                                                <Border Grid.Column="2"
+                                                        Background="#0AFFFFFF"
+                                                        BorderBrush="{StaticResource BorderSubtleBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Padding="7,2"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock x:ConnectionId='40'                          
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Action hint chip -->
+                        <Border x:ConnectionId='25'                                           
+                                                                          
+                                CornerRadius="6"
+                                Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon x:ConnectionId='33' Glyph="&#xE946;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="12"
+                                                                           
+                                          VerticalAlignment="Center" />
+                                <TextBlock x:ConnectionId='34'                           
+                                           Style="{StaticResource CaptionTextStyle}"
+                                                                            
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Confidence bar -->
+                        <StackPanel Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Confidence"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock x:ConnectionId='32'                                            
+                                           FontSize="11"
+                                                                                          />
+                            </StackPanel>
+                            <ProgressBar x:ConnectionId='31'                                                
+                                         Maximum="100"
+                                         Style="{StaticResource ConfidenceBar}"
+                                                                                        />
+                        </StackPanel>
+
+                        <!-- Recommended actions -->
+                        <StackPanel x:ConnectionId='26'                                                     
+                                    Spacing="8">
+                            <Border Height="1"
+                                    Background="{StaticResource BorderSubtleBrush}" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE8BD;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="11"
+                                          Foreground="{StaticResource TextSecondaryBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Recommended Actions"
+                                           FontFamily="Segoe UI Variable"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <ItemsRepeater x:ConnectionId='30'                                            
+                                           ItemTemplate="{StaticResource ActionCardTemplate}">
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="6" Orientation="Vertical" />
+                                </ItemsRepeater.Layout>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                        <!-- Investigate link — drill into the full workspace -->
+                        <Border Height="1"
+                                Background="{StaticResource BorderSubtleBrush}" />
+                        <Button x:ConnectionId='27'                                      
+                                HorizontalAlignment="Right"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,2"
+                                CornerRadius="4">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock x:ConnectionId='28' Text="Investigate"
+                                           FontFamily="Segoe UI Variable"
+                                           FontSize="12"
+                                                                                         
+                                           VerticalAlignment="Center" />
+                                <FontIcon x:ConnectionId='29' Glyph="&#xE76C;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="10"
+                                                                                        
+                                          VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!--
+            ══════════════════════════════════════════════════════════════════
+            HISTORY RECORD TEMPLATE
+            Timeline-style card for a persisted OperationRecord.
+            Shows: status icon · title / timestamp / duration · message ·
+            outcome badge · type badge · rollback/warning/error chips.
+            ══════════════════════════════════════════════════════════════════
+        -->
+        <DataTemplate x:Key="HistoryRecordTemplate"
+                                                            >
+            <Border x:ConnectionId='3' Background="#0AFFFFFF"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16,14">
+                <Grid ColumnSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="38" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Status icon circle -->
+                    <Border x:ConnectionId='4' Width="38" Height="38"
+                            CornerRadius="19"
+                                                                  
+                            VerticalAlignment="Top">
+                        <FontIcon x:ConnectionId='18'                             
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="15"
+                                                                   
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Content column -->
+                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Top">
+
+                        <TextBlock x:ConnectionId='8'                            
+                                   FontFamily="Segoe UI Variable"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+
+                        <!-- Timing row -->
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock x:ConnectionId='15'                              
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock Text="·"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='16'                             
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock Text="·"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='17'                             
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+
+                        <!-- Outcome message -->
+                        <TextBlock x:ConnectionId='9'                        
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Status chips row -->
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="6"
+                                    Margin="0,4,0,0">
+
+                            <!-- Rolled-back indicator (forward execution that was later undone) -->
+                            <Border x:ConnectionId='10'                                                
+                                    Background="{StaticResource StatusInfoTintBrush}"
+                                    CornerRadius="4"
+                                    Padding="7,3">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon Glyph="&#xE72C;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="9"
+                                              Foreground="{StaticResource StatusInfoBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Later rolled back"
+                                               FontSize="10"
+                                               Foreground="{StaticResource StatusInfoBrush}" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Warning chip -->
+                            <Border x:ConnectionId='11'                                        
+                                    Background="{StaticResource StatusModerateSubtleBrush}"
+                                    CornerRadius="4"
+                                    Padding="7,3">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon Glyph="&#xE7BA;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="9"
+                                              Foreground="{StaticResource StatusModerateBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock x:ConnectionId='14'                             
+                                               FontSize="10"
+                                               Foreground="{StaticResource StatusModerateBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Error chip -->
+                            <Border x:ConnectionId='12'                                      
+                                    Background="{StaticResource StatusCriticalSubtleBrush}"
+                                    CornerRadius="4"
+                                    Padding="7,3">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon Glyph="&#xEA39;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="9"
+                                              Foreground="{StaticResource StatusCriticalBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock x:ConnectionId='13'                           
+                                               FontSize="10"
+                                               Foreground="{StaticResource StatusCriticalBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Badge column: outcome + type -->
+                    <StackPanel Grid.Column="2"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Right"
+                                Spacing="4">
+                        <Border x:ConnectionId='5'                                       
+                                CornerRadius="6"
+                                Padding="9,4">
+                            <TextBlock x:ConnectionId='7'                            
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                                                         />
+                        </Border>
+                        <Border Background="#0AFFFFFF"
+                                BorderBrush="{StaticResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="7,3"
+                                HorizontalAlignment="Right">
+                            <TextBlock x:ConnectionId='6'                          
+                                       FontSize="10"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                        </Border>
+                    </StackPanel>
+
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+    </Page.Resources>
+
+    <!--
+        ════════════════════════════════════════════════════════════════════
+        PAGE ROOT — fixed header, tab bar, filter bar; scrollable content
+        ════════════════════════════════════════════════════════════════════
+    -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />   <!-- Row 0: header -->
+            <RowDefinition Height="Auto" />   <!-- Row 1: tab bar -->
+            <RowDefinition Height="Auto" />   <!-- Row 2: filter + sort bar -->
+            <RowDefinition Height="*" />      <!-- Row 3: scrollable content -->
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             ROW 0 — PAGE HEADER
+             Title, subtitle, live indicator, and stat summary badges.
+        ══════════════════════════════════════════════════════════════ -->
+        <StackPanel Grid.Row="0"
+                    Padding="32,32,32,20"
+                    Spacing="20">
+
+            <!-- Title row -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Intelligence Workspace"
+                               Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="Active findings, trend analysis, and correlated insights"
+                               Style="{StaticResource PageSubtitleStyle}" />
+                </StackPanel>
+
+                <!-- Live indicator pill -->
+                <Border Grid.Column="1"
+                        Background="{StaticResource StatusGoodSubtleBrush}"
+                        CornerRadius="12"
+                        Padding="12,6"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse Width="8" Height="8"
+                                 Fill="{StaticResource StatusGoodBrush}" />
+                        <TextBlock Text="Live"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource StatusGoodBrush}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Stat summary badges -->
+            <StackPanel Orientation="Horizontal" Spacing="10">
+
+                <!-- All findings count -->
+                <Border Background="#0AFFFFFF"
+                        BorderBrush="{StaticResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="14,8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="32" Height="32"
+                                CornerRadius="8"
+                                Background="#0AFFFFFF">
+                            <FontIcon Glyph="&#xE9CE;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="13"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:ConnectionId='142'                                                    
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="total findings"
+                                       FontSize="10"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Warnings badge (hidden when 0) -->
+                <Border x:ConnectionId='136'                                                                    
+                        Background="{StaticResource StatusModerateSubtleBrush}"
+                        CornerRadius="8"
+                        Padding="14,8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="32" Height="32"
+                                CornerRadius="8"
+                                Background="{StaticResource StatusModerateSubtleBrush}">
+                            <FontIcon Glyph="&#xE7BA;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="13"
+                                      Foreground="{StaticResource StatusModerateBrush}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:ConnectionId='141'                                                        
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource StatusModerateBrush}" />
+                            <TextBlock Text="warnings"
+                                       FontSize="10"
+                                       Foreground="{StaticResource StatusModerateBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Trend findings badge (hidden when 0) -->
+                <Border x:ConnectionId='137'                                                                  
+                        Background="{StaticResource StatusInfoTintBrush}"
+                        CornerRadius="8"
+                        Padding="14,8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="32" Height="32"
+                                CornerRadius="8"
+                                Background="{StaticResource StatusInfoTintBrush}">
+                            <FontIcon Glyph="&#xE9D2;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="13"
+                                      Foreground="{StaticResource StatusInfoBrush}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:ConnectionId='140'                                                      
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource StatusInfoBrush}" />
+                            <TextBlock Text="trend findings"
+                                       FontSize="10"
+                                       Foreground="{StaticResource StatusInfoBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Correlated badge (hidden when 0) -->
+                <Border x:ConnectionId='138'                                                                       
+                        Background="{StaticResource StatusGoodSubtleBrush}"
+                        CornerRadius="8"
+                        Padding="14,8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="32" Height="32"
+                                CornerRadius="8"
+                                Background="{StaticResource StatusGoodSubtleBrush}">
+                            <FontIcon Glyph="&#xE71B;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="13"
+                                      Foreground="{StaticResource StatusGoodBrush}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:ConnectionId='139'                                                           
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource StatusGoodBrush}" />
+                            <TextBlock Text="correlated"
+                                       FontSize="10"
+                                       Foreground="{StaticResource StatusGoodBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </StackPanel>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             ROW 1 — TAB BAR
+             Four content tabs: All Findings / Trends / Correlated / History.
+             Each tab is a Grid with two rows: the button row and a 3 px
+             accent indicator that is visible only when the tab is active.
+        ══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1"
+                Background="#0AFFFFFF"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="24,0,24,0">
+            <StackPanel Orientation="Horizontal" Spacing="0">
+
+                <!-- ── All Findings tab ─────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button x:ConnectionId='132' Grid.Row="0"
+                                                                            
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:ConnectionId='134' Text="All Findings"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                                                                                />
+                            <Border Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:ConnectionId='135'                                                    
+                                           FontSize="11"
+                                                                                                    />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Border x:ConnectionId='133' Grid.Row="1"
+                            Background="{StaticResource AccentBlueBrush}"
+                            CornerRadius="2,2,0,0"
+                                                                                                   />
+                </Grid>
+
+                <!-- ── Trends tab ───────────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button x:ConnectionId='127' Grid.Row="0"
+                                                                               
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:ConnectionId='129' Text="Trends"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                                                                                   />
+                            <Border x:ConnectionId='130'                                                                  
+                                    Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:ConnectionId='131'                                                      
+                                           FontSize="11"
+                                                                                                       />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Border x:ConnectionId='128' Grid.Row="1"
+                            Background="{StaticResource AccentBlueBrush}"
+                            CornerRadius="2,2,0,0"
+                                                                                                      />
+                </Grid>
+
+                <!-- ── Correlated tab ───────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button x:ConnectionId='122' Grid.Row="0"
+                                                                                   
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:ConnectionId='124' Text="Correlated"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                                                                                       />
+                            <Border x:ConnectionId='125'                                                                       
+                                    Background="#0AFFFFFF"
+                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:ConnectionId='126'                                                           
+                                           FontSize="11"
+                                                                                                           />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    <Border x:ConnectionId='123' Grid.Row="1"
+                            Background="{StaticResource AccentBlueBrush}"
+                            CornerRadius="2,2,0,0"
+                                                                                                          />
+                </Grid>
+
+                <!-- ── History tab ──────────────────────────────────── -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="3" />
+                    </Grid.RowDefinitions>
+                    <Button x:ConnectionId='119' Grid.Row="0"
+                                                                                
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="16,12">
+                        <TextBlock x:ConnectionId='121' Text="History"
+                                   FontFamily="Segoe UI Variable"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                                                                                />
+                    </Button>
+                    <Border x:ConnectionId='120' Grid.Row="1"
+                            Background="{StaticResource AccentBlueBrush}"
+                            CornerRadius="2,2,0,0"
+                                                                                                       />
+                </Grid>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             ROW 2 — FILTER + SORT BAR
+             Severity filter chips (left) and sort mode chips (right).
+             Hidden when the History tab is active.
+        ══════════════════════════════════════════════════════════════ -->
+        <Border x:ConnectionId='91' Grid.Row="2"
+                                                                                
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="32,8,32,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Severity filter chips -->
+                <StackPanel Orientation="Horizontal"
+                            Spacing="6"
+                            VerticalAlignment="Center">
+
+                    <TextBlock Text="Severity:"
+                               FontSize="11"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,4,0" />
+
+                    <Button x:ConnectionId='111'                                              
+                                                                                            
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4">
+                        <TextBlock x:ConnectionId='118' Text="All"
+                                   FontSize="11"
+                                                                                               />
+                    </Button>
+
+                    <Button x:ConnectionId='112'                                                   
+                                                                                                 
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4">
+                        <TextBlock x:ConnectionId='117' Text="Warnings"
+                                   FontSize="11"
+                                                                                                    />
+                    </Button>
+
+                    <Button x:ConnectionId='113'                                               
+                                                                                             
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4">
+                        <TextBlock x:ConnectionId='116' Text="Tips"
+                                   FontSize="11"
+                                                                                                />
+                    </Button>
+
+                    <Button x:ConnectionId='114'                                               
+                                                                                             
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4">
+                        <TextBlock x:ConnectionId='115' Text="Info"
+                                   FontSize="11"
+                                                                                                />
+                    </Button>
+
+                </StackPanel>
+
+                <!-- Sort chips -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="6"
+                            VerticalAlignment="Center">
+
+                    <TextBlock Text="Sort:"
+                               FontSize="11"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,4,0" />
+
+                    <Button x:ConnectionId='105'                                                     
+                                                                                                 
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4">
+                        <TextBlock x:ConnectionId='110' Text="Confidence ↓"
+                                   FontSize="11"
+                                                                                                    />
+                    </Button>
+
+                    <Button x:ConnectionId='106'                                                   
+                                                                                               
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4">
+                        <TextBlock x:ConnectionId='109' Text="Severity"
+                                   FontSize="11"
+                                                                                                  />
+                    </Button>
+
+                    <Button x:ConnectionId='107'                                                 
+                                                                                             
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4">
+                        <TextBlock x:ConnectionId='108' Text="Newest"
+                                   FontSize="11"
+                                                                                                />
+                    </Button>
+
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             ROW 3 — CONTENT
+             Two overlapping panels: findings list and history list.
+             Only one is visible at a time based on the active tab.
+        ══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="3">
+
+            <!-- ── FINDINGS PANEL (All / Trends / Correlated tabs) ──── -->
+            <ScrollViewer x:ConnectionId='92'                                                                     
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="32,20,32,48" Spacing="16">
+
+                    <!-- Findings list (visible when results exist) -->
+                    <StackPanel x:ConnectionId='100'                                                                    
+                                Spacing="12">
+
+                        <!-- Count header -->
+                        <TextBlock x:ConnectionId='103'                                                         
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+
+                        <!-- Insight cards -->
+                        <ItemsRepeater x:ConnectionId='104'                                                                
+                                       ItemTemplate="{StaticResource InsightCardTemplate}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="8" Orientation="Vertical" />
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+
+                    </StackPanel>
+
+                    <!-- Empty state (visible when no results match) -->
+                    <Border x:ConnectionId='101'                                                                 
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="40,40">
+                        <StackPanel HorizontalAlignment="Center"
+                                    Spacing="12">
+                            <FontIcon Glyph="&#xE9CE;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="36"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="No findings"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:ConnectionId='102'                                                         
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="380" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── HISTORY PANEL (History tab) ─────────────────────── -->
+            <ScrollViewer x:ConnectionId='93'                                                                    
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="32,20,32,48" Spacing="16">
+
+                    <!-- Loading state -->
+                    <StackPanel x:ConnectionId='94'                                                                      
+                                Orientation="Horizontal"
+                                Spacing="14"
+                                HorizontalAlignment="Center"
+                                Margin="0,48,0,0">
+                        <ProgressRing IsActive="True"
+                                      Width="22"
+                                      Height="22" />
+                        <TextBlock Text="Loading operation history…"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- History records list -->
+                    <StackPanel x:ConnectionId='95'                                                                   
+                                Spacing="12">
+
+                        <!-- Count header + refresh -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock x:ConnectionId='98'                                                        
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" />
+
+                            <Button x:ConnectionId='99' Grid.Column="1"
+                                                                                      
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="8,4">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE72C;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="11"
+                                              Foreground="{StaticResource TextSecondaryBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Refresh"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Timeline of records -->
+                        <ItemsRepeater x:ConnectionId='97'                                                             
+                                       ItemTemplate="{StaticResource HistoryRecordTemplate}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="6" Orientation="Vertical" />
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+
+                    </StackPanel>
+
+                    <!-- Empty history state -->
+                    <Border x:ConnectionId='96'                                                                    
+                            Background="#0AFFFFFF"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="40,40">
+                        <StackPanel HorizontalAlignment="Center"
+                                    Spacing="12">
+                            <FontIcon Glyph="&#xE823;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="36"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="No history yet"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Actions you run from insight cards are recorded here as an audit trail. Rollbacks are tracked automatically."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="340" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+        </Grid>
+
+    </Grid>
+</Page>
+

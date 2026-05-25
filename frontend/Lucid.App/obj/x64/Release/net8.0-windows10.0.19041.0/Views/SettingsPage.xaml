@@ -1,0 +1,96 @@
+﻿<Page
+    x:Class="ExplainMyPC.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32" Spacing="24">
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Settings"
+                           Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="App preferences and configuration"
+                           Style="{StaticResource PageSubtitleStyle}" />
+            </StackPanel>
+
+            <!-- General settings -->
+            <TextBlock Text="General"
+                       Style="{StaticResource SectionTitleStyle}" />
+
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Theme" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Controls the app appearance"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="Dark"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Telemetry refresh rate" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="How often system metrics update"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="1 second"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Start with Windows" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Launch ExplainMyPC when you sign in"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="Off"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- About -->
+            <TextBlock Text="About"
+                       Style="{StaticResource SectionTitleStyle}" />
+
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="ExplainMyPC" Style="{StaticResource CardTitleStyle}" />
+                    <TextBlock Text="Version 0.1.0 (Preview)"
+                               Style="{StaticResource CaptionTextStyle}" />
+                    <TextBlock Text="A trustworthy Windows intelligence platform."
+                               Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
+

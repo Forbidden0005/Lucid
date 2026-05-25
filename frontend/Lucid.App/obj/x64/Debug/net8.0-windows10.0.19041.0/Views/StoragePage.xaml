@@ -1,0 +1,357 @@
+﻿<Page x:ConnectionId='1'
+    x:Class="Lucid.Views.StoragePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Lucid.ViewModels"
+    Background="{StaticResource AppBackgroundBrush}"
+                        >
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32,32,32,48" Spacing="24">
+
+            <!-- ── Header ──────────────────────────────────────────── -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Storage Intelligence"
+                               Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="Large file discovery, duplicate detection, and cleanup opportunities"
+                               Style="{StaticResource PageSubtitleStyle}" />
+                </StackPanel>
+
+                <!-- Scan / Cancel buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                            VerticalAlignment="Center">
+                    <Button x:ConnectionId='51' Style="{StaticResource PrimaryButton}"
+                                                                                             
+                                                                    >
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE71E;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+                            <TextBlock Text="Scan Drive" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:ConnectionId='52' Style="{StaticResource SecondaryButton}"
+                                                                                               
+                                                                          >
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+                            <TextBlock Text="Cancel" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- ── Scan progress ──────────────────────────────────── -->
+            <Border x:ConnectionId='2'                                                                
+                    Style="{StaticResource CardSurface}" Padding="20">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <ProgressRing x:ConnectionId='49'                                                      
+                                      Width="18" Height="18"
+                                      Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock x:ConnectionId='50'                                                 
+                                   Style="{StaticResource CardTitleStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ProgressBar x:ConnectionId='47'                                                    
+                                 Maximum="100"
+                                 Foreground="{StaticResource AccentBlueBrush}"
+                                 Background="{StaticResource BarTrackBrush}"
+                                 Height="4" CornerRadius="2" />
+                    <TextBlock x:ConnectionId='48'                                                   
+                               Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Empty state ────────────────────────────────────── -->
+            <Border x:ConnectionId='3'                                                                  
+                    Style="{StaticResource CardSurface}" Padding="40">
+                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                    <FontIcon Glyph="&#xEDA2;" FontFamily="Segoe MDL2 Assets"
+                              FontSize="40" Foreground="{StaticResource TextSecondaryBrush}"
+                              HorizontalAlignment="Center" />
+                    <TextBlock Text="No scan results yet"
+                               Style="{StaticResource SectionTitleStyle}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Run a scan to discover large files, duplicates, and storage breakdown."
+                               Style="{StaticResource CaptionTextStyle}"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               MaxWidth="360" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Results area ───────────────────────────────────── -->
+            <StackPanel x:ConnectionId='4'                                                               
+                        Spacing="20">
+
+                <!-- Summary stat chips -->
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Border Style="{StaticResource CardSurface}" Padding="16,10">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Files Scanned"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='46'                                                    
+                                       Style="{StaticResource CardTitleStyle}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardSurface}" Padding="16,10">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Large Files"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='45'                                                         
+                                       Style="{StaticResource CardTitleStyle}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardSurface}" Padding="16,10">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Duplicate Waste"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='44'                                                    
+                                       Style="{StaticResource CardTitleStyle}"
+                                       Foreground="{StaticResource StatusModerateBrush}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource CardSurface}" Padding="16,10">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Scan Duration"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock x:ConnectionId='43'                                                    
+                                       Style="{StaticResource CardTitleStyle}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Tab bar -->
+                <StackPanel Orientation="Horizontal" Spacing="0">
+                    <Button x:ConnectionId='39'                                                      
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,8,0">
+                        <TextBlock Text="Overview" />
+                    </Button>
+                    <Button x:ConnectionId='40'                                                        
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,8,0">
+                        <TextBlock Text="Large Files" />
+                    </Button>
+                    <Button x:ConnectionId='41'                                                        
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,8,0">
+                        <TextBlock Text="Duplicates" />
+                    </Button>
+                    <Button x:ConnectionId='42'                                                       
+                            Style="{StaticResource SecondaryButton}">
+                        <TextBlock Text="Old Downloads" />
+                    </Button>
+                </StackPanel>
+
+                <!-- ── Overview tab: category heatmap ─────────────── -->
+                <StackPanel x:ConnectionId='5'                                                                     
+                            Spacing="12">
+                    <TextBlock Text="Storage by Category"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <ItemsControl x:ConnectionId='33'                                                         >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate                                     >
+                                <Border x:ConnectionId='35' Style="{StaticResource CardSurface}" Padding="16,12">
+                                    <StackPanel Spacing="8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:ConnectionId='36'                      
+                                                       Style="{StaticResource BodyTextStyle}" />
+                                            <TextBlock x:ConnectionId='37' Grid.Column="1"                          
+                                                       Style="{StaticResource CaptionTextStyle}"
+                                                       Margin="12,0" />
+                                            <TextBlock x:ConnectionId='38' Grid.Column="2"                     
+                                                       Style="{StaticResource CardTitleStyle}"
+                                                       Foreground="{StaticResource AccentBlueBrush}" />
+                                        </Grid>
+                                        <!-- Heatmap bar -->
+                                        <Grid Height="4" CornerRadius="2">
+                                            <Border Background="{StaticResource BarTrackBrush}"
+                                                    CornerRadius="2" />
+                                            <Border Background="{StaticResource AccentBlueBrush}"
+                                                    CornerRadius="2"
+                                                    HorizontalAlignment="Left"
+                                                    MinWidth="4" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ── Large Files tab ────────────────────────────── -->
+                <StackPanel x:ConnectionId='6'                                                                       
+                            Spacing="12">
+                    <TextBlock Text="Largest Files (≥ 50 MB)"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <ItemsControl x:ConnectionId='25'                                                         >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate                                   >
+                                <Border x:ConnectionId='27' Style="{StaticResource CardSurface}" Padding="16,14">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Spacing="2">
+                                            <TextBlock x:ConnectionId='31'                     
+                                                       Style="{StaticResource CardTitleStyle}" />
+                                            <TextBlock x:ConnectionId='32'                     
+                                                       Style="{StaticResource CaptionTextStyle}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock x:ConnectionId='28' Grid.Column="1"                    
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock x:ConnectionId='29' Grid.Column="2"                     
+                                                   Style="{StaticResource CardTitleStyle}"
+                                                   Foreground="{StaticResource StatusModerateBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <Button x:ConnectionId='30' Grid.Column="3"
+                                                Style="{StaticResource SecondaryButton}"
+                                                                           
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="Stage for deletion" FontSize="11" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ── Duplicates tab ─────────────────────────────── -->
+                <StackPanel x:ConnectionId='7'                                                                       
+                            Spacing="12">
+                    <TextBlock Text="Duplicate File Groups"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <ItemsControl x:ConnectionId='17'                                                              >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate                                        >
+                                <Border x:ConnectionId='19' Style="{StaticResource CardSurface}" Padding="16,14">
+                                    <StackPanel Spacing="10">
+                                        <!-- Group header -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock x:ConnectionId='23'                         
+                                                           Style="{StaticResource CardTitleStyle}" />
+                                                <TextBlock x:ConnectionId='24'                         
+                                                           Style="{StaticResource CaptionTextStyle}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="2"
+                                                        Margin="12,0" VerticalAlignment="Center">
+                                                <TextBlock x:ConnectionId='21'                      
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <TextBlock x:ConnectionId='22'                      
+                                                           Style="{StaticResource CardTitleStyle}"
+                                                           Foreground="{StaticResource StatusModerateBrush}" />
+                                            </StackPanel>
+                                            <Button x:ConnectionId='20' Grid.Column="2"
+                                                    Style="{StaticResource PrimaryButton}"
+                                                                               
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="Remove duplicates" FontSize="11" />
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ── Old Downloads tab ─────────────────────────── -->
+                <StackPanel x:ConnectionId='8'                                                                      
+                            Spacing="12">
+                    <TextBlock Text="Old Downloads (≥ 90 days)"
+                               Style="{StaticResource SectionTitleStyle}" />
+                    <Border Style="{StaticResource CardSurface}" Padding="16,12">
+                        <StackPanel Spacing="6">
+                            <TextBlock TextWrapping="Wrap"
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       Text="Files in your Downloads folder that haven't been modified in 90+ days. Use the Repair Center → Clean Old Downloads action to stage them for deletion with full rollback support." />
+                            <Button x:ConnectionId='16' Style="{StaticResource PrimaryButton}"
+                                    Margin="0,4,0,0"
+                                                                            >
+                                <TextBlock Text="Scan to find old downloads" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <ItemsControl x:ConnectionId='10'                                                           >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate                                   >
+                                <Border x:ConnectionId='12' Style="{StaticResource CardSurface}" Padding="14,10">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:ConnectionId='13'                     
+                                                   Style="{StaticResource BodyTextStyle}" />
+                                        <TextBlock x:ConnectionId='14' Grid.Column="1"                    
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock x:ConnectionId='15' Grid.Column="2"                     
+                                                   Style="{StaticResource CardTitleStyle}"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Status text -->
+                <TextBlock x:ConnectionId='9'                                                  
+                           Style="{StaticResource CaptionTextStyle}"
+                                                                                          />
+
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
+
