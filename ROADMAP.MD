@@ -550,7 +550,7 @@ Add:
 ## Build
 Use:
 
-`dotnet build ExplainMyPC.slnx -c Debug -p:Platform=x64`
+`dotnet build Lucid.slnx -c Debug -p:Platform=x64`
 
 Avoid AnyCPU.
 

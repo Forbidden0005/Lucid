@@ -89,9 +89,10 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="52" />    <!-- Row 0: Header / drag handle -->
                     <RowDefinition Height="Auto" />  <!-- Row 1: Context strip -->
-                    <RowDefinition Height="*" />     <!-- Row 2: Message list -->
-                    <RowDefinition Height="Auto" />  <!-- Row 3: Quick actions -->
-                    <RowDefinition Height="Auto" />  <!-- Row 4: Input area -->
+                    <RowDefinition Height="Auto" />  <!-- Row 2: LLM setup banner -->
+                    <RowDefinition Height="*" />     <!-- Row 3: Message list -->
+                    <RowDefinition Height="Auto" />  <!-- Row 4: Quick actions -->
+                    <RowDefinition Height="Auto" />  <!-- Row 5: Input area -->
                 </Grid.RowDefinitions>
 
                 <!-- ── Header (drag handle + controls) ──────────────────────── -->
@@ -211,8 +212,64 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ── LLM setup banner ─────────────────────────────────────────── -->
+                <Border Grid.Row="2"
+                        Visibility="{x:Bind ViewModel.SetupBannerVisibility, Mode=OneWay}"
+                        Background="#100D06"
+                        BorderBrush="#2E2010"
+                        BorderThickness="0,0,0,1"
+                        Padding="12,7">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Spinner while checking -->
+                        <ProgressRing Grid.Column="0"
+                                      Visibility="{x:Bind ViewModel.SetupBannerCheckingVisibility, Mode=OneWay}"
+                                      Width="14" Height="14"
+                                      IsActive="True"
+                                      Foreground="#C09030"
+                                      Margin="0,0,8,0" />
+
+                        <!-- Warning glyph after a failed check -->
+                        <FontIcon Grid.Column="0"
+                                  Visibility="{x:Bind ViewModel.SetupBannerRetryVisibility, Mode=OneWay}"
+                                  Glyph="&#xE7BA;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="12"
+                                  Foreground="#C09030"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0" />
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{x:Bind ViewModel.SetupBannerText, Mode=OneWay}"
+                                   FontSize="10.5"
+                                   Foreground="#A07828"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Retry button (shown only when status is known + failed) -->
+                        <Button Grid.Column="2"
+                                Visibility="{x:Bind ViewModel.SetupBannerRetryVisibility, Mode=OneWay}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="6,3"
+                                Margin="6,0,0,0"
+                                Click="RetryButton_Click"
+                                ToolTipService.ToolTip="Check AI availability again">
+                            <FontIcon Glyph="&#xE72C;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="12"
+                                      Foreground="#C09030" />
+                        </Button>
+                    </Grid>
+                </Border>
+
                 <!-- ── Message list ──────────────────────────────────────────── -->
-                <ScrollViewer Grid.Row="2"
+                <ScrollViewer Grid.Row="3"
                               x:Name="MessageScroller"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
@@ -405,7 +462,7 @@
                 </ScrollViewer>
 
                 <!-- ── Quick actions row ─────────────────────────────────────── -->
-                <Border Grid.Row="3"
+                <Border Grid.Row="4"
                         Background="#16162A"
                         BorderBrush="#2A2A3E"
                         BorderThickness="0,1,0,0">
@@ -443,7 +500,7 @@
                 </Border>
 
                 <!-- ── Input area ────────────────────────────────────────────── -->
-                <Border Grid.Row="4"
+                <Border Grid.Row="5"
                         Background="#16162A"
                         BorderBrush="#2A2A3E"
                         BorderThickness="0,1,0,0"

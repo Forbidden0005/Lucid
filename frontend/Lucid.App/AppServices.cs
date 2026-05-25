@@ -1,6 +1,8 @@
 ﻿using Lucid.Services;
 using Lucid.Services.Analytics;
+using Lucid.Services.Automation;
 using Lucid.Services.Conversation;
+using Lucid.Services.LlmChat;
 using Lucid.Services.DesktopContext;
 using Lucid.Services.Companion;
 using Lucid.Services.Reasoning;
@@ -131,12 +133,16 @@ public static class AppServices
     private static IOperationalWorkflowEngine?  _workflowEngine;
 
     // ── Operational Companion layer ────────────────────────────────────────────
-    private static ICompanionSessionManager?       _companionSession;
-    private static IOperationalConversationEngine? _conversationEngine;
+    private static ICompanionSessionManager?        _companionSession;
+    private static IOperationalConversationEngine?  _conversationEngine;
     private static IOperationalConversationService? _conversationService;
+    private static ILlmChatService?                 _llmChat;
 
     // ── Desktop Context layer ─────────────────────────────────────────────────
     private static DesktopContextService? _desktopContext;
+
+    // ── Desktop Automation layer (Phase 17D) ──────────────────────────────────
+    private static AutomationOrchestrator? _automationOrchestrator;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -617,6 +623,16 @@ public static class AppServices
             "Call it from App.OnLaunched before creating the main window.");
 
     /// <summary>
+    /// LLM-powered conversational chat service.
+    /// Backed by Ollama (localhost:11434) with llama3.2:3b.
+    /// Free, local, no cloud. Injects live system data on every message.
+    /// </summary>
+    public static ILlmChatService LlmChat =>
+        _llmChat ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
     /// Desktop context awareness service.
     /// Observes the active foreground window, File Explorer path, and clipboard
     /// metadata via Win32 APIs. Observation-only — no automation, no screenshots.
@@ -624,6 +640,17 @@ public static class AppServices
     /// </summary>
     public static IDesktopContextService DesktopContext =>
         _desktopContext ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Desktop Automation Orchestrator (Phase 17D).
+    /// Builds and executes guided, consent-driven automation plans.
+    /// NEVER auto-executes without explicit user approval.
+    /// All execution is narrated, interruptible, and logged to the timeline.
+    /// </summary>
+    public static AutomationOrchestrator AutomationOrchestrator =>
+        _automationOrchestrator ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -981,6 +1008,8 @@ public static class AppServices
         _desktopContext.Start();
 
         _companionSession = new CompanionSessionManager();
+        _llmChat          = new LlmChatService();
+
         var conversationSvc = new OperationalConversationService(
             _intelligence!,
             _narrative!,
@@ -990,6 +1019,14 @@ public static class AppServices
             _desktopContext!);
         _conversationService = conversationSvc;
         _conversationEngine  = conversationSvc;
+
+        // ── Desktop Automation Orchestrator (Phase 17D) ───────────────────────
+        // Created after timeline and execution engine so it can publish events
+        // and delegate to registered executors. Stateless — no Start()/Stop().
+        _automationOrchestrator = new AutomationOrchestrator(
+            _executionEngine!,
+            _timeline!,
+            uiDispatcher);
 
 
         // ── Hourly downsampling timer ─────────────────────────────────────────
@@ -1029,9 +1066,11 @@ public static class AppServices
         _workflowEngine     = null;
 
         // Companion layer — in-memory only, just null references.
-        _companionSession    = null;
-        _conversationEngine  = null;
-        _conversationService = null;
+        _companionSession       = null;
+        _conversationEngine     = null;
+        _conversationService    = null;
+        _llmChat                = null;
+        _automationOrchestrator = null;
 
         // Desktop context layer — stop polling and dispose STA thread.
         _desktopContext?.Stop();

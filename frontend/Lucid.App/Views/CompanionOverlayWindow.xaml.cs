@@ -72,7 +72,7 @@ public sealed partial class CompanionOverlayWindow : Window
     public CompanionOverlayWindow()
     {
         // Build ViewModel before InitializeComponent so x:Bind can resolve it.
-        ViewModel = new CompanionChatViewModel();
+        ViewModel = new CompanionChatViewModel(AppServices.LlmChat);
         InitializeComponent();
 
         _uiDispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
@@ -332,6 +332,9 @@ public sealed partial class CompanionOverlayWindow : Window
     private void ClearButton_Click(object sender, RoutedEventArgs e)
         => ViewModel.ClearConversationCommand.Execute(null);
 
+    private void RetryButton_Click(object sender, RoutedEventArgs e)
+        => ViewModel.RetryLlmCheckCommand.Execute(null);
+
     // ── Navigation event (Phase 17C) ─────────────────────────────────────────
     //    Fired when a suggested-action chip is tapped in a companion response.
     //    MainWindow subscribes to this and calls NavigateToPage(tag).
@@ -355,11 +358,69 @@ public sealed partial class CompanionOverlayWindow : Window
 
     private void SuggestedAction_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: Lucid.Services.Companion.SuggestedAction action }
-            && !string.IsNullOrEmpty(action.NavigationTag))
+        if (sender is not Button { Tag: Lucid.Services.Companion.SuggestedAction action }) return;
+        if (string.IsNullOrEmpty(action.NavigationTag)) return;
+
+        // Phase 17D: automation: prefix routes to the orchestrator instead of navigation.
+        if (action.IsAutomationAction && action.AutomationTarget is { } target)
         {
-            NavigationRequested?.Invoke(this, action.NavigationTag);
+            LaunchAutomation(target);
+            return;
         }
+
+        NavigationRequested?.Invoke(this, action.NavigationTag);
+    }
+
+    // ── Phase 17D: automation launch ─────────────────────────────────────────
+
+    private void LaunchAutomation(string target)
+    {
+        var orchestrator = AppServices.AutomationOrchestrator;
+        var plan = orchestrator.PlanLaunch(target);
+
+        // Subscribe to orchestrator events for narration feedback
+        // (subscribed fresh for each plan; unsubscribed on plan end)
+        WireOrchestratorEvents(orchestrator);
+
+        // Publish plan to timeline before asking for approval
+        // For zero/low risk plans: execute immediately (approval card shown via ConfirmationRequired)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await orchestrator.ExecutePlanAsync(plan).ConfigureAwait(false);
+            }
+            catch { /* narration events surface errors; don't crash */ }
+        });
+    }
+
+    private void WireOrchestratorEvents(Services.Automation.AutomationOrchestrator orchestrator)
+    {
+        // These handlers are lightweight — they just add a narration message to the chat.
+        // Use one-shot subscriptions to avoid leaking if the window is recycled.
+        EventHandler<Services.Automation.AutomationNarrationEventArgs>? onNarration = null;
+        EventHandler<Services.Automation.AutomationPlanEventArgs>?      onComplete  = null;
+        EventHandler<Services.Automation.AutomationPlanEventArgs>?      onCancel    = null;
+
+        onNarration = (_, args) =>
+            ViewModel.AddAutomationNarration(args.Message, args.IsWarning);
+
+        onComplete = (_, _) =>
+        {
+            orchestrator.NarrationUpdated -= onNarration;
+            orchestrator.PlanCompleted    -= onComplete;
+            orchestrator.PlanCancelled    -= onCancel;
+        };
+        onCancel = (_, _) =>
+        {
+            orchestrator.NarrationUpdated -= onNarration;
+            orchestrator.PlanCompleted    -= onComplete;
+            orchestrator.PlanCancelled    -= onCancel;
+        };
+
+        orchestrator.NarrationUpdated += onNarration;
+        orchestrator.PlanCompleted    += onComplete;
+        orchestrator.PlanCancelled    += onCancel;
     }
 
     // ── Input box ─────────────────────────────────────────────────────────────
