@@ -1,4 +1,5 @@
-﻿using Lucid.Views;
+﻿using Lucid.Services.Companion;
+using Lucid.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -27,6 +28,37 @@ public sealed partial class MainWindow : Window
         Title = "Lucid";
 
         ContentFrame.Navigate(typeof(DashboardPage));
+
+        // Ensure the overlay window is created whenever ANY code makes the
+        // companion visible — Dashboard button, page deep-links, automation, etc.
+        // StateChanged fires synchronously on the UI thread so this is safe.
+        AppServices.CompanionSession.StateChanged += (_, e) =>
+        {
+            if (e.NewState != CompanionOverlayState.Hidden)
+                EnsureCompanionWindow();
+        };
+    }
+
+    // ── Companion window lifecycle ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Creates the CompanionOverlayWindow on first use and wires it up.
+    /// Safe to call multiple times — no-ops if the window already exists.
+    /// </summary>
+    private void EnsureCompanionWindow()
+    {
+        if (_companionWindow is not null) return;
+
+        _companionWindow = new CompanionOverlayWindow();
+
+        // Clear the cached reference when the OS destroys the window (Alt+F4, etc.)
+        // so the next Show()/Expand() re-creates it cleanly.
+        _companionWindow.Closed += (_, _) => _companionWindow = null;
+
+        // Forward suggested-action navigation from the companion to the main frame.
+        _companionWindow.NavigationRequested += (_, tag) => NavigateToPage(tag);
+
+        _companionWindow.Activate();
     }
 
     // ── Sidebar navigation ─────────────────────────────────────────────────────
@@ -85,39 +117,14 @@ public sealed partial class MainWindow : Window
     // ── Companion window toggle ────────────────────────────────────────────────
 
     /// <summary>
-    /// Toggles the Companion overlay window.
-    /// Creates it on first use; subsequently the window manages its own
-    /// visibility in response to ICompanionSessionManager.StateChanged.
+    /// Sidebar "Companion" tap — toggles the overlay between Hidden/Bubble/Expanded.
+    /// Window creation is handled by the StateChanged subscription in the constructor.
     /// </summary>
     private void NavCompanion_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        if (_companionWindow is null)
-        {
-            // Create on first use — window subscribes to StateChanged in its constructor.
-            _companionWindow = new CompanionOverlayWindow();
-
-            // Clear the cached reference when the window is destroyed (e.g. Alt+F4).
-            // Without this, the null check above would never re-create the window after
-            // the user closes it via the OS, leaving the companion unreachable until restart.
-            _companionWindow.Closed += (_, _) => _companionWindow = null;
-
-            // Phase 17C: wire companion suggested-action navigation to the main frame.
-            // The companion fires NavigationRequested with a page tag string;
-            // we forward it to NavigateToPage() — same path as sidebar clicks.
-            _companionWindow.NavigationRequested += (_, tag) => NavigateToPage(tag);
-
-            // Drive initial state transition (Hidden → Expanded).
-            // CompanionOverlayWindow.OnSessionStateChanged handles the resize + show.
-            AppServices.CompanionSession.ToggleExpanded();
-
-            // Activate so the window receives focus and appears on screen.
-            _companionWindow.Activate();
-        }
-        else
-        {
-            // Window exists — delegate toggle to the session manager.
-            // The window's StateChanged handler resizes and shows/hides itself.
-            AppServices.CompanionSession.ToggleExpanded();
-        }
+        AppServices.CompanionSession.ToggleExpanded();
+        // EnsureCompanionWindow() already ran inside the StateChanged handler above
+        // (synchronously, before ToggleExpanded returns) if the new state is visible.
+        _companionWindow?.Activate();
     }
 }
