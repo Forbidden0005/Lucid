@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using Lucid.Services.Autonomy;
 using Lucid.Services.Companion;
 using Lucid.Services.DesktopContext;
 using Lucid.ViewModels;
@@ -59,6 +60,13 @@ public sealed partial class CompanionOverlayWindow : Window
     private PointInt32 _dragStartCursor;
     private PointInt32 _dragStartWindowPos;
 
+    // ── Workflow review gate (Phase 17F) ──────────────────────────────────────
+    //    Stored when HumanReviewGate raises ReviewRequired so that the
+    //    Approve / Decline buttons can unblock the awaiting RequestReviewAsync.
+
+    private Action? _approveCallback;
+    private Action? _denyCallback;
+
     // ── Win32 P/Invoke for reliable screen-pixel cursor position ──────────────
 
     [StructLayout(LayoutKind.Sequential)]
@@ -109,10 +117,23 @@ public sealed partial class CompanionOverlayWindow : Window
         // ── Subscribe to desktop context changes (Phase 17B) ──────────────
         AppServices.DesktopContext.ContextChanged += OnDesktopContextChanged;
 
+        // ── Subscribe to autonomous workflow events (Phase 17F) ───────────
+        AppServices.AutonomousWorkflowEngine.WorkflowPlanned   += OnWorkflowPlanned;
+        AppServices.AutonomousWorkflowEngine.WorkflowProgress  += OnWorkflowProgress;
+        AppServices.AutonomousWorkflowEngine.WorkflowCompleted += OnWorkflowCompleted;
+        AppServices.AutonomousWorkflowEngine.GoalUnresolved    += OnGoalUnresolved;
+        AppServices.HumanReviewGate.ReviewRequired             += OnReviewRequired;
+
         Closed += (_, _) =>
         {
             AppServices.CompanionSession.StateChanged -= OnSessionStateChanged;
             AppServices.DesktopContext.ContextChanged -= OnDesktopContextChanged;
+
+            AppServices.AutonomousWorkflowEngine.WorkflowPlanned   -= OnWorkflowPlanned;
+            AppServices.AutonomousWorkflowEngine.WorkflowProgress  -= OnWorkflowProgress;
+            AppServices.AutonomousWorkflowEngine.WorkflowCompleted -= OnWorkflowCompleted;
+            AppServices.AutonomousWorkflowEngine.GoalUnresolved    -= OnGoalUnresolved;
+            AppServices.HumanReviewGate.ReviewRequired             -= OnReviewRequired;
 
             // If the window was destroyed by the OS (Alt+F4, task-kill, etc.) rather
             // than via CloseButton_Click, the session manager still thinks the overlay
@@ -472,6 +493,111 @@ public sealed partial class CompanionOverlayWindow : Window
                 _                    => "",    // info glyph
             };
         }
+    }
+
+    // ── Phase 17F: Autonomous Workflow event handlers ─────────────────────────
+
+    /// <summary>
+    /// Raised on the thread pool when a workflow is planned and ready to begin.
+    /// Shows the workflow panel and seeds the initial title/step count.
+    /// </summary>
+    private void OnWorkflowPlanned(object? sender, AutonomousWorkflow workflow)
+    {
+        _uiDispatcher.TryEnqueue(() =>
+        {
+            WorkflowTitleText.Text     = workflow.Title;
+            WorkflowProgressText.Text  = $"Step 0 of {workflow.Steps.Count}";
+            WorkflowProgressBar.Value  = 0;
+            WorkflowNarrationText.Text = $"Planning complete · {workflow.Steps.Count} steps";
+            WorkflowReviewPanel.Visibility = Visibility.Collapsed;
+            WorkflowPanel.Visibility   = Visibility.Visible;
+        });
+    }
+
+    /// <summary>
+    /// Raised on the thread pool after each step transition.
+    /// Updates progress bar, step fraction, and narration text.
+    /// </summary>
+    private void OnWorkflowProgress(object? sender, WorkflowProgressEventArgs args)
+    {
+        _uiDispatcher.TryEnqueue(() =>
+        {
+            WorkflowProgressText.Text  = $"Step {args.CurrentStep} of {args.TotalSteps}";
+            WorkflowNarrationText.Text = args.Narration;
+            WorkflowProgressBar.Value  = args.TotalSteps > 0
+                ? (double)args.CurrentStep / args.TotalSteps * 100.0
+                : 0.0;
+
+            // Collapse the review panel when the step that triggered it has concluded.
+            if (args.IsCompleted || args.IsFailed)
+                WorkflowReviewPanel.Visibility = Visibility.Collapsed;
+        });
+    }
+
+    /// <summary>
+    /// Raised on the thread pool when the workflow finishes (any terminal status).
+    /// Hides the workflow panel and appends a completion/failure summary to chat.
+    /// </summary>
+    private void OnWorkflowCompleted(object? sender, WorkflowCompletedEventArgs args)
+    {
+        _uiDispatcher.TryEnqueue(() =>
+        {
+            WorkflowPanel.Visibility       = Visibility.Collapsed;
+            WorkflowReviewPanel.Visibility = Visibility.Collapsed;
+            _approveCallback = null;
+            _denyCallback    = null;
+
+            var summary = args.FinalStatus == WorkflowLifecycleStatus.Failed
+                ? $"Workflow failed. {args.FailureReason ?? "An unexpected error occurred."}"
+                : args.Summary;
+
+            ViewModel.AddAutomationNarration(summary,
+                isWarning: args.FinalStatus == WorkflowLifecycleStatus.Failed);
+        });
+    }
+
+    /// <summary>
+    /// Raised on the thread pool when the user's request could not be resolved
+    /// to a supported operational goal.
+    /// </summary>
+    private void OnGoalUnresolved(object? sender, string message)
+    {
+        _uiDispatcher.TryEnqueue(() =>
+            ViewModel.AddAutomationNarration(message, isWarning: true));
+    }
+
+    /// <summary>
+    /// Raised on the UI thread by HumanReviewGate before any destructive step executes.
+    /// Stores approve/deny callbacks and shows the review sub-panel.
+    /// </summary>
+    private void OnReviewRequired(object? sender, WorkflowReviewEventArgs args)
+    {
+        // HumanReviewGate already dispatches to the UI thread before raising.
+        _approveCallback           = args.Approve;
+        _denyCallback              = args.Deny;
+        ReviewNarrationText.Text   = args.ReviewNarration;
+        WorkflowReviewPanel.Visibility = Visibility.Visible;
+    }
+
+    private void CancelWorkflowButton_Click(object sender, RoutedEventArgs e)
+        => AppServices.AutonomousWorkflowEngine.CancelCurrentWorkflow();
+
+    private void ApproveButton_Click(object sender, RoutedEventArgs e)
+    {
+        WorkflowReviewPanel.Visibility = Visibility.Collapsed;
+        var cb = _approveCallback;
+        _approveCallback = null;
+        _denyCallback    = null;
+        cb?.Invoke();
+    }
+
+    private void DenyButton_Click(object sender, RoutedEventArgs e)
+    {
+        WorkflowReviewPanel.Visibility = Visibility.Collapsed;
+        var cb = _denyCallback;
+        _approveCallback = null;
+        _denyCallback    = null;
+        cb?.Invoke();
     }
 
     // ── Native window helper ───────────────────────────────────────────────────
