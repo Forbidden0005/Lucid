@@ -23,6 +23,8 @@
                     BorderBrush="{StaticResource BorderSubtleBrush}"
                     BorderThickness="1">
                 <StackPanel Spacing="16">
+
+                    <!-- Theme: dark is the native design; full theming planned for a future release -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -30,7 +32,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="Theme" Style="{StaticResource BodyTextStyle}" />
-                            <TextBlock Text="Controls the app appearance"
+                            <TextBlock Text="Full theme selection coming in a future release"
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="Dark"
@@ -39,6 +41,9 @@
                                    VerticalAlignment="Center" />
                     </Grid>
 
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Telemetry refresh rate: adaptive, driven by RuntimeGovernanceService -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -46,15 +51,20 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="Telemetry refresh rate" Style="{StaticResource BodyTextStyle}" />
-                            <TextBlock Text="How often system metrics update"
+                            <TextBlock Text="Adaptive — throttled automatically under system load"
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
-                        <TextBlock Grid.Column="1" Text="1 second"
+                        <TextBlock x:Name="TelemetryRateText"
+                                   Grid.Column="1"
+                                   Text="~1 second"
                                    Style="{StaticResource BodyTextStyle}"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    VerticalAlignment="Center" />
                     </Grid>
 
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Start with Windows: writes to HKCU\...\Run on change -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -62,14 +72,56 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="Start with Windows" Style="{StaticResource BodyTextStyle}" />
-                            <TextBlock Text="Launch Lucid when you sign in"
+                            <TextBlock Text="Launch Lucid automatically when you sign in"
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
-                        <TextBlock Grid.Column="1" Text="Off"
-                                   Style="{StaticResource BodyTextStyle}"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   VerticalAlignment="Center" />
+                        <ToggleSwitch x:Name="AutoStartToggle"
+                                      Grid.Column="1"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center"
+                                      Toggled="AutoStartToggle_Toggled" />
                     </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Periodic background scans: stored in settings -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Periodic background scans" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Lightweight analysis when the system is idle"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="AutoScanToggle"
+                                      Grid.Column="1"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center"
+                                      Toggled="AutoScanToggle_Toggled" />
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Usage telemetry: always opt-in, off by default -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Usage telemetry" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Anonymous app usage data — always opt-in, never auto-enabled"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="UsageTelemetryToggle"
+                                      Grid.Column="1"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center"
+                                      Toggled="UsageTelemetryToggle_Toggled" />
+                    </Grid>
+
                 </StackPanel>
             </Border>
 

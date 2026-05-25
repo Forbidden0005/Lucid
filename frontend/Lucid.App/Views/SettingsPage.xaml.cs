@@ -3,6 +3,7 @@ using Lucid.Services.Settings;
 using Lucid.Services.Trust;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Win32;
 
 namespace Lucid.Views;
 
@@ -17,6 +18,15 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class SettingsPage : Page
 {
+    // Guard flag: prevents toggle Toggled handlers from firing saves while we
+    // are programmatically initializing their IsOn state from persisted settings.
+    private bool _initializing;
+
+    // Registry key for Windows startup entries.
+    private const string AutoStartKeyPath =
+        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    private const string AutoStartValueName = "Lucid";
+
     public SettingsPage()
     {
         InitializeComponent();
@@ -25,7 +35,15 @@ public sealed partial class SettingsPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Sync combo box selection with current consent mode
+        _initializing = true;
+
+        // ── General toggles ────────────────────────────────────────────────────
+        var s = AppServices.Settings.Current;
+        AutoStartToggle.IsOn        = ReadAutoStartFromRegistry();
+        AutoScanToggle.IsOn         = s.AutoScanEnabled;
+        UsageTelemetryToggle.IsOn   = s.UsageTelemetryEnabled;
+
+        // ── Operational Trust combos ───────────────────────────────────────────
         var currentConsent = AppServices.AutomationConsent.CurrentMode;
         ConsentModeCombo.SelectedIndex = currentConsent switch
         {
@@ -37,7 +55,6 @@ public sealed partial class SettingsPage : Page
             _                                        => 1,
         };
 
-        // Sync automation mode combo
         var currentAuto = AppServices.AutomationOrchestrator.Mode;
         AutomationModeCombo.SelectedIndex = currentAuto switch
         {
@@ -48,11 +65,85 @@ public sealed partial class SettingsPage : Page
             _                                  => 0,
         };
 
-        // Subscribe to posture changes
+        _initializing = false;
+
         AppServices.TrustManager.PostureChanged += OnTrustPostureChanged;
         Unloaded += (_, _) => AppServices.TrustManager.PostureChanged -= OnTrustPostureChanged;
 
         RefreshTrustPostureCaption();
+    }
+
+    // ── General toggles ───────────────────────────────────────────────────────
+
+    private void AutoStartToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing) return;
+        ApplyAutoStart(AutoStartToggle.IsOn);
+    }
+
+    private void AutoScanToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing) return;
+        _ = AppServices.Settings.SaveAsync(
+            AppServices.Settings.Current with { AutoScanEnabled = AutoScanToggle.IsOn });
+    }
+
+    private void UsageTelemetryToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing) return;
+        _ = AppServices.Settings.SaveAsync(
+            AppServices.Settings.Current with { UsageTelemetryEnabled = UsageTelemetryToggle.IsOn });
+    }
+
+    // ── Auto-start helpers ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Reads the Windows startup registry key to determine the current auto-start state.
+    /// The registry is the single source of truth — not persisted in AppSettings.
+    /// </summary>
+    private static bool ReadAutoStartFromRegistry()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AutoStartKeyPath, writable: false);
+            return key?.GetValue(AutoStartValueName) is not null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Adds or removes the Lucid startup entry from the Windows run key.
+    /// Uses the current process executable path so packaged and unpackaged
+    /// deployments are handled correctly without hardcoding a path.
+    /// Best-effort — silently ignores registry access failures.
+    /// </summary>
+    private static void ApplyAutoStart(bool enable)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AutoStartKeyPath, writable: true);
+            if (key is null) return;
+
+            if (enable)
+            {
+                var exePath = System.Diagnostics.Process.GetCurrentProcess()
+                                  .MainModule?.FileName ?? string.Empty;
+                if (!string.IsNullOrEmpty(exePath))
+                    key.SetValue(AutoStartValueName, $"\"{exePath}\"");
+            }
+            else
+            {
+                key.DeleteValue(AutoStartValueName, throwOnMissingValue: false);
+            }
+        }
+        catch
+        {
+            // Registry access is best-effort. The toggle visual state may not
+            // match the registry if access is denied, but we never crash.
+        }
     }
 
     // ── Trust posture ─────────────────────────────────────────────────────────
