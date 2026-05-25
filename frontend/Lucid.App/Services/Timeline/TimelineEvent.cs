@@ -122,6 +122,20 @@ public enum TimelineEventType
     AutomationRollbackPerformed     = 113,
     /// <summary>An automation action was blocked by the hard boundary policy (never reaches the user).</summary>
     AutomationBoundaryBlocked       = 114,
+
+    // ── Autonomous Workflow Execution (17F) ────────────────────────────────────
+    /// <summary>An autonomous workflow was planned from a conversational request.</summary>
+    AutonomousWorkflowPlanned           = 120,
+    /// <summary>A workflow checkpoint was saved mid-execution (pause point).</summary>
+    AutonomousWorkflowCheckpointReached = 121,
+    /// <summary>An autonomous workflow was paused by the user.</summary>
+    AutonomousWorkflowPaused            = 122,
+    /// <summary>An autonomous workflow resumed from a saved checkpoint.</summary>
+    AutonomousWorkflowResumed           = 123,
+    /// <summary>An autonomous workflow completed all steps successfully.</summary>
+    AutonomousWorkflowCompleted         = 124,
+    /// <summary>Completed steps of an autonomous workflow were rolled back.</summary>
+    AutonomousWorkflowRollback          = 125,
 }
 
 /// <summary>

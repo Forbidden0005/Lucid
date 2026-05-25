@@ -1,5 +1,6 @@
 ﻿using Lucid.Services;
 using Lucid.Services.Analytics;
+using Lucid.Services.Autonomy;
 using Lucid.Services.Automation;
 using Lucid.Services.Conversation;
 using Lucid.Services.Trust;
@@ -151,6 +152,18 @@ public static class AppServices
     private static AutomationTransparencyEngine? _automationTransparency;
     private static AutomationConsentService?     _automationConsent;
     private static OperationalTrustManager?      _trustManager;
+
+    // ── Autonomous Workflow Execution layer (Phase 17F) ───────────────────────
+    private static SafeExecutionValidator?          _safeExecutionValidator;
+    private static ExecutionNarrativeService?       _executionNarrative;
+    private static OperationalGoalResolver?         _goalResolver;
+    private static WorkflowCheckpointManager?       _checkpointManager;
+    private static HumanReviewGate?                 _humanReviewGate;
+    private static FileOrganizationWorkflowService? _fileOrgWorkflow;
+    private static OperationalFileDiscoveryService? _fileDiscovery;
+    private static WorkflowExecutionPlanner?        _workflowPlanner;
+    private static TaskCompletionCoordinator?       _taskCoordinator;
+    private static AutonomousWorkflowEngine?        _autonomousWorkflowEngine;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -711,6 +724,35 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Autonomous workflow engine (Phase 17F).
+    /// Resolves conversational requests to operational goals, plans multi-step
+    /// workflows, and executes them with human review gates and safety validation.
+    /// NEVER executes file operations without explicit user approval.
+    /// </summary>
+    public static AutonomousWorkflowEngine AutonomousWorkflowEngine =>
+        _autonomousWorkflowEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Human review gate (Phase 17F).
+    /// Raises approval cards for workflow steps that require user confirmation.
+    /// </summary>
+    public static HumanReviewGate HumanReviewGate =>
+        _humanReviewGate ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational goal resolver (Phase 17F).
+    /// Maps plain-text requests to structured OperationalGoal objects.
+    /// </summary>
+    public static OperationalGoalResolver GoalResolver =>
+        _goalResolver ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -1110,6 +1152,45 @@ public static class AppServices
             _automationConsent,
             _timeline!);
 
+        // ── Autonomous Workflow Execution layer (Phase 17F) ───────────────────
+        // Stateless/pure services first — no I/O, no background work.
+        _safeExecutionValidator = new SafeExecutionValidator();
+        _executionNarrative     = new ExecutionNarrativeService();
+        _goalResolver           = new OperationalGoalResolver();
+
+        // Checkpoint manager loads persisted state from disk and prunes stale entries.
+        _checkpointManager = new WorkflowCheckpointManager();
+
+        // Review gate dispatches approval events to the UI thread.
+        _humanReviewGate = new HumanReviewGate(_timeline!, uiDispatcher);
+
+        // File-operation services depend on the safety validator.
+        _fileDiscovery  = new OperationalFileDiscoveryService(_safeExecutionValidator);
+        _fileOrgWorkflow = new FileOrganizationWorkflowService(_safeExecutionValidator);
+
+        // Planner is pure — no dependencies on runtime services.
+        _workflowPlanner = new WorkflowExecutionPlanner();
+
+        // Coordinator wires together all step-level concerns.
+        _taskCoordinator = new TaskCompletionCoordinator(
+            _safeExecutionValidator,
+            _humanReviewGate,
+            _checkpointManager,
+            _executionNarrative,
+            _fileOrgWorkflow,
+            _fileDiscovery,
+            _executionEngine!,
+            _timeline!);
+
+        // Top-level engine — created last so all dependencies are ready.
+        _autonomousWorkflowEngine = new AutonomousWorkflowEngine(
+            _goalResolver,
+            _workflowPlanner,
+            _taskCoordinator,
+            _executionNarrative,
+            _checkpointManager,
+            _timeline!);
+
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
@@ -1145,6 +1226,19 @@ public static class AppServices
         _rootCauseEngine    = null;
         _evidenceExplanation = null;
         _workflowEngine     = null;
+
+        // Autonomous workflow layer — cancel any running workflow, then null references.
+        _autonomousWorkflowEngine?.CancelCurrentWorkflow();
+        _autonomousWorkflowEngine = null;
+        _taskCoordinator          = null;
+        _workflowPlanner          = null;
+        _fileOrgWorkflow          = null;
+        _fileDiscovery            = null;
+        _humanReviewGate          = null;
+        _checkpointManager        = null;
+        _goalResolver             = null;
+        _executionNarrative       = null;
+        _safeExecutionValidator   = null;
 
         // Trust layer — stateless services, just null references.
         // AutomationAuditService persists to disk asynchronously; no explicit flush needed.
