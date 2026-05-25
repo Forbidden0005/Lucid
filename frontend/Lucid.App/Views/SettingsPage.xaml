@@ -73,6 +73,142 @@
                 </StackPanel>
             </Border>
 
+            <!-- Operational Trust -->
+            <TextBlock Text="Operational Trust"
+                       Style="{StaticResource SectionTitleStyle}" />
+
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="16">
+
+                    <!-- Automation consent mode -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Automation consent" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="When to ask before Lucid takes an action"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ComboBox x:Name="ConsentModeCombo"
+                                  Grid.Column="1"
+                                  Width="200"
+                                  SelectedIndex="1"
+                                  SelectionChanged="ConsentModeCombo_SelectionChanged"
+                                  VerticalAlignment="Center">
+                            <ComboBoxItem Content="Ask always" Tag="AskAlways" />
+                            <ComboBoxItem Content="Ask for medium &amp; high risk" Tag="AskForMediumAndHighRisk" />
+                            <ComboBoxItem Content="Ask for high risk only" Tag="AskHighRiskOnly" />
+                            <ComboBoxItem Content="Guided (no auto-execution)" Tag="GuidedOnly" />
+                            <ComboBoxItem Content="Observe only (no execution)" Tag="ObserveOnly" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Automation mode -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Automation mode" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="How Lucid handles automated steps"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ComboBox x:Name="AutomationModeCombo"
+                                  Grid.Column="1"
+                                  Width="200"
+                                  SelectedIndex="1"
+                                  SelectionChanged="AutomationModeCombo_SelectionChanged"
+                                  VerticalAlignment="Center">
+                            <ComboBoxItem Content="Confirm before each step" Tag="ConfirmBeforeAction" />
+                            <ComboBoxItem Content="Semi-automatic (low risk only)" Tag="SemiAutomatic" />
+                            <ComboBoxItem Content="Guided assist" Tag="GuidedAssist" />
+                            <ComboBoxItem Content="Observe only" Tag="ObserveOnly" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Trust posture -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Trust posture" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock x:Name="TrustPostureCaption"
+                                       Text="Loading..."
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <Button x:Name="ResetTrustPostureButton"
+                                Grid.Column="1"
+                                Content="Reset to standard"
+                                Style="{StaticResource SecondaryButton}"
+                                Click="ResetTrustPostureButton_Click"
+                                VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Audit log retention -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Audit log retention" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="How long action history is kept (30 days)"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text="30 days"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Permanent restrictions disclosure -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Lucid can never do the following — these restrictions cannot be changed:"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="• Access passwords, credentials, or authentication data"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="• Inspect browser autofill or saved logins"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="• Log or monitor keyboard input"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="• Take hidden screenshots"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="• Access webcam or microphone"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="• Read browser tab content or web page source"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="• Upload personal data to any external service"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Border>
+
             <!-- About -->
             <TextBlock Text="About"
                        Style="{StaticResource SectionTitleStyle}" />
