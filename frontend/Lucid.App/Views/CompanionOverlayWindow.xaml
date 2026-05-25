@@ -92,8 +92,9 @@
                     <RowDefinition Height="Auto" />  <!-- Row 2: LLM setup banner -->
                     <RowDefinition Height="*" />     <!-- Row 3: Message list -->
                     <RowDefinition Height="Auto" />  <!-- Row 4: Workflow progress panel -->
-                    <RowDefinition Height="Auto" />  <!-- Row 5: Quick actions -->
-                    <RowDefinition Height="Auto" />  <!-- Row 6: Input area -->
+                    <RowDefinition Height="Auto" />  <!-- Row 5: Visual consent panel (18B) -->
+                    <RowDefinition Height="Auto" />  <!-- Row 6: Quick actions -->
+                    <RowDefinition Height="Auto" />  <!-- Row 7: Input area -->
                 </Grid.RowDefinitions>
 
                 <!-- ── Header (drag handle + controls) ──────────────────────── -->
@@ -598,8 +599,95 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ── Quick actions row ─────────────────────────────────────── -->
+                <!-- ── Visual Consent Panel (Phase 18B) ─────────────────────── -->
+                <!--
+                    Collapsed by default. Shown when ConsentBoundScreenAnalysis fires
+                    ConsentRequired — the user must explicitly Allow or Deny before any
+                    visual analysis proceeds.  Hides when Allow or Deny is tapped.
+
+                    Privacy guarantees enforced at this layer:
+                      • One-time snapshot only — no continuous capture
+                      • Local only — no data leaves the device
+                      • Auto-expires in 5 minutes — never persisted to disk
+                -->
                 <Border Grid.Row="5"
+                        x:Name="VisualConsentPanel"
+                        Visibility="Collapsed"
+                        Background="#080C14"
+                        BorderBrush="#1A2A40"
+                        BorderThickness="0,1,0,0">
+                    <StackPanel Padding="12,8,12,10" Spacing="6">
+
+                        <!-- Header row: camera icon + label -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE722;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="12"
+                                      Foreground="#4E9FFF"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Visual Analysis Request"
+                                       FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="#C8D4E8"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Reason text set in code-behind -->
+                        <TextBlock x:Name="VisualConsentReasonText"
+                                   FontSize="11"
+                                   Foreground="#7A9CC0"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Privacy notice -->
+                        <TextBlock Text="One-time snapshot · Local only · Auto-expires in 5 min"
+                                   FontSize="9.5"
+                                   Foreground="#3A5068" />
+
+                        <!-- Allow / Deny buttons -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+
+                            <Button x:Name="VisualAllowButton"
+                                    Background="#0F1E14"
+                                    BorderBrush="#1E4028"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12,5"
+                                    FontSize="11.5"
+                                    Click="VisualAllowButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE722;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="10"
+                                              Foreground="#5ABF80" />
+                                    <TextBlock Text="Allow Once"
+                                               Foreground="#5ABF80" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="VisualDenyButton"
+                                    Background="#1C0F16"
+                                    BorderBrush="#3A1428"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12,5"
+                                    FontSize="11.5"
+                                    Click="VisualDenyButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="&#xE711;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="10"
+                                              Foreground="#BF5A7A" />
+                                    <TextBlock Text="Deny"
+                                               Foreground="#BF5A7A" />
+                                </StackPanel>
+                            </Button>
+
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Quick actions row ─────────────────────────────────────── -->
+                <Border Grid.Row="6"
                         Background="#16162A"
                         BorderBrush="#2A2A3E"
                         BorderThickness="0,1,0,0">
@@ -637,7 +725,7 @@
                 </Border>
 
                 <!-- ── Input area ────────────────────────────────────────────── -->
-                <Border Grid.Row="6"
+                <Border Grid.Row="7"
                         Background="#16162A"
                         BorderBrush="#2A2A3E"
                         BorderThickness="0,1,0,0"

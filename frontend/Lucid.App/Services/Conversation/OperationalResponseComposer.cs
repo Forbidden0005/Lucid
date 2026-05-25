@@ -180,6 +180,10 @@ public sealed class OperationalResponseComposer
                 "Windows Update",
                 "I'll open Windows Update so you can check for and install available updates.",
                 "automation.launch.windows-update", "windows-update"),
+            // ── Phase 18B: visual context responses ──────────────────────────
+            ConversationIntent.WhatAmILookingAt  => ComposeVisualContextResponse(),
+            ConversationIntent.LocateUiElement   => ComposeLocateElementResponse(),
+            ConversationIntent.RunVisualWorkflow => ComposeRunVisualWorkflowResponse(),
             _                                   => ComposeStatusResponse(),
         };
     }
@@ -598,6 +602,72 @@ public sealed class OperationalResponseComposer
                    "\n\nTap the action below to proceed. You can cancel at any time.";
 
         return (text, null_ev, 95, null, CompanionMessageCategory.Action);
+    }
+
+    // ── Phase 18B: visual context compose methods ─────────────────────────────
+
+    private (string, IReadOnlyList<ConversationEvidenceItem>, int, string?, CompanionMessageCategory)
+        ComposeVisualContextResponse()
+    {
+        var snap  = _desktopContext.CurrentSnapshot;
+        var focus = snap?.CurrentOperationalFocus;
+
+        if (string.IsNullOrEmpty(focus))
+            return ("No active window context available. Bring the window you want to analyze " +
+                    "to the foreground and ask again.",
+                    null_ev, 55,
+                    "Active window not detected by the desktop context service.",
+                    CompanionMessageCategory.Answer);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Current focus: {focus}");
+
+        if (snap?.DetectedWorkflowHints?.Count > 0)
+        {
+            sb.AppendLine();
+            foreach (var hint in snap.DetectedWorkflowHints.Take(3))
+                sb.AppendLine($"  · {hint}");
+        }
+
+        sb.AppendLine();
+        sb.Append("For detailed element detection, use the visual analysis action below. " +
+                  "One-time consent is required — no data leaves this device.");
+
+        var ev = new List<ConversationEvidenceItem>
+        {
+            new() { Source = "Desktop context", Summary = focus },
+        };
+        return (sb.ToString().TrimEnd(), ev, 75, null, CompanionMessageCategory.Answer);
+    }
+
+    private (string, IReadOnlyList<ConversationEvidenceItem>, int, string?, CompanionMessageCategory)
+        ComposeLocateElementResponse()
+    {
+        var snap  = _desktopContext.CurrentSnapshot;
+        var focus = snap?.CurrentOperationalFocus ?? string.Empty;
+
+        var text = string.IsNullOrEmpty(focus)
+            ? "To locate a UI element, bring the target window to the foreground first, " +
+              "then use the 'Find Element' action below — I'll highlight where to click."
+            : $"I can try to locate elements in '{focus}'. Tap 'Find Element' below — " +
+              "you'll be asked for one-time consent before I scan the window for controls.";
+
+        return (text, null_ev, 80, null, CompanionMessageCategory.Answer);
+    }
+
+    private (string, IReadOnlyList<ConversationEvidenceItem>, int, string?, CompanionMessageCategory)
+        ComposeRunVisualWorkflowResponse()
+    {
+        var snap  = _desktopContext.CurrentSnapshot;
+        var focus = snap?.CurrentOperationalFocus ?? string.Empty;
+
+        var text = string.IsNullOrEmpty(focus)
+            ? "I can walk you through operational tasks step-by-step. Bring the target window " +
+              "to the foreground, then tap 'Start Guide' below."
+            : $"I can guide you through '{focus}' step by step. " +
+              "Tap 'Start Guide' below — a floating guide panel will show where to click at each step.";
+
+        return (text, null_ev, 85, null, CompanionMessageCategory.Action);
     }
 
     // ── Static text ────────────────────────────────────────────────────────────
