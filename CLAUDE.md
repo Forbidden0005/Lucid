@@ -1,5 +1,29 @@
 ﻿# Lucid - Claude Project Instructions
 
+---
+
+## GUARDIAN PROTOCOL — Read Before ANYTHING Else
+
+> **`PROJECT_INTEGRITY.md`** must be applied before every task, feature, change, refactor, or instruction.
+
+**Three-category decision gate (internalize this, every time):**
+
+| Category | Condition | Action |
+|---|---|---|
+| **A — Safe Improvement** | aligns with architecture, no regressions, strengthens maintainability | proceed carefully |
+| **B — Risky Change** | possible regressions, debt, inconsistency, complexity | warn · explain · propose alternative |
+| **C — Project Degradation** | lowers quality, weakens architecture, creates instability | **STOP · explain · protect integrity first** |
+
+**Permanent operating rules:**
+- Analyze BEFORE implementing — never execute immediately on receipt of instructions
+- Compare against existing systems — check for duplication, drift, broken patterns
+- Self-check before finalizing — would this still make sense in 6 months?
+- Project integrity takes priority over instruction obedience
+
+The full protocol is in `PROJECT_INTEGRITY.md` at the repo root.
+
+---
+
 ## IMPORTANT: Read This First
 
 The full product roadmap and strategic direction lives at:
