@@ -149,7 +149,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         {
             Id        = "welcome-1",
             Role      = CompanionMessageRole.System,
-            Text      = "Hi — I'm your Operational Companion. Ask me anything about your system.",
+            Text      = "Hi — I'm Lucid, your operational companion. Ask me anything about your system.",
             Timestamp = DateTimeOffset.Now,
             Category  = CompanionMessageCategory.Welcome,
         });
@@ -158,7 +158,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         {
             Id        = "welcome-2",
             Role      = CompanionMessageRole.System,
-            Text      = "All analysis runs locally on this device. Nothing leaves your machine.",
+            Text      = "All analysis runs locally on this device. Nothing leaves your machine — ever.",
             Timestamp = DateTimeOffset.Now,
             Category  = CompanionMessageCategory.Answer,
         });

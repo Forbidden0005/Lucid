@@ -1,4 +1,4 @@
-# ExplainMyPC - Claude Project Instructions
+﻿# Lucid - Claude Project Instructions
 
 ## IMPORTANT: Read This First
 
@@ -8,7 +8,7 @@ The full product roadmap and strategic direction lives at:
 
 Key strategic directives (always active):
 
-- ExplainMyPC is a **local-first operational intelligence platform** — not a PC cleaner, not antivirus
+- Lucid is a **local-first operational intelligence platform** — not a PC cleaner, not antivirus
 - Every feature must reinforce: **trust, transparency, explainability, reversibility**
 - Features should deepen operational intelligence and **ecosystem cohesion** — each layer feeds the others
 - Never add: fake AI buzzwords, mystery optimization, aggressive auto-remediation, cloud dependency
@@ -33,7 +33,7 @@ This is **non-negotiable** and applies to every session, every file, every UI st
 - confidence scores or severity levels instead of binary good/bad
 
 **Why this matters:**
-ExplainMyPC is NOT antivirus. It explains, correlates, surfaces, and contextualizes.
+Lucid is NOT antivirus. It explains, correlates, surfaces, and contextualizes.
 Wording drift ("suspicious" → "likely malicious" → "dangerous") happens gradually across sessions.
 This rule prevents that drift and is what separates the platform from discount antivirus marketing copy.
 
@@ -70,7 +70,7 @@ Before adding new features, prioritize:
 
 ## Project Overview
 
-ExplainMyPC is a **local-first operational intelligence platform** for Windows.
+Lucid is a **local-first operational intelligence platform** for Windows.
 
 The goal is NOT to create:
 - a fake “PC booster”
@@ -402,7 +402,7 @@ When generating UI:
 
 # Long-Term Vision
 
-ExplainMyPC should eventually feel like:
+Lucid should eventually feel like:
 - a Windows intelligence layer
 - a trusted system analyst
 - a diagnostic cockpit

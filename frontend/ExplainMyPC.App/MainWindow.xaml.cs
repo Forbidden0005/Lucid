@@ -24,7 +24,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         AppWindow.Resize(new SizeInt32(1280, 820));
-        Title = "ExplainMyPC";
+        Title = "Lucid";
 
         ContentFrame.Navigate(typeof(DashboardPage));
     }
