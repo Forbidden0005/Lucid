@@ -25,6 +25,7 @@ using Lucid.Services.Persistence;
 using Lucid.Services.Replay;
 using Lucid.Services.Security;
 using Lucid.Services.Session;
+using Lucid.Services.Settings;
 using Lucid.Services.Startup;
 using Lucid.Services.Storage;
 using Lucid.Services.Timeline;
@@ -174,6 +175,9 @@ public static class AppServices
     private static SettingsPageInterpreter?     _settingsInterpreter;
     private static VisualWorkflowLocator?       _workflowLocator;
     private static VisualContextService?        _visualContext;
+
+    // ── Settings layer ────────────────────────────────────────────────────────
+    private static ISettingsService? _settings;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -782,6 +786,16 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// User settings service.
+    /// Loads from %LocalAppData%\Lucid\settings.json on startup and writes
+    /// atomically on every Save call.  Defaults are used on first run.
+    /// </summary>
+    public static ISettingsService Settings =>
+        _settings ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -791,6 +805,12 @@ public static class AppServices
     /// </summary>
     public static void Initialize(DispatcherQueue uiDispatcher)
     {
+        // ── Settings ──────────────────────────────────────────────────────────
+        // Loaded first — all downstream services can immediately read persisted
+        // preferences. File read is synchronous and fast (< 5 ms). Defaults are
+        // used silently on first run or if the file is corrupt.
+        _settings = new JsonSettingsStore();
+
         // ── SQLite persistence layer ──────────────────────────────────────────
         // Initialised first so repositories are ready before any services start
         // and before telemetry events begin firing.
@@ -1181,6 +1201,16 @@ public static class AppServices
             _automationConsent,
             _timeline!);
 
+        // ── Apply persisted operational trust settings ────────────────────────
+        // Restore consent and automation modes saved from the previous session.
+        // Enum.TryParse is tolerant — unknown/future values fall through to the
+        // service's own default without crashing.
+        var savedSettings = _settings.Current;
+        if (Enum.TryParse<TrustConsentMode>(savedSettings.ConsentMode, out var savedConsentMode))
+            _automationConsent!.SetMode(savedConsentMode);
+        if (Enum.TryParse<AutomationMode>(savedSettings.AutomationMode, out var savedAutoMode))
+            _automationOrchestrator!.SetMode(savedAutoMode);
+
         // ── Autonomous Workflow Execution layer (Phase 17F) ───────────────────
         // Stateless/pure services first — no I/O, no background work.
         _safeExecutionValidator = new SafeExecutionValidator();
@@ -1257,6 +1287,8 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        _settings = null;
+
         // Simulation, history, verification, and trajectory services are stateless — null them.
         _simulationEngine    = null;
         _simulationHistory   = null;

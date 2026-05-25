@@ -1,4 +1,5 @@
 using Lucid.Services.Automation;
+using Lucid.Services.Settings;
 using Lucid.Services.Trust;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -88,6 +89,10 @@ public sealed partial class SettingsPage : Page
                 _                         => TrustConsentMode.AskForMediumAndHighRisk,
             };
             AppServices.AutomationConsent.SetMode(mode);
+
+            // Persist inline — the tag string is the enum name, exactly what AppSettings stores.
+            _ = AppServices.Settings.SaveAsync(
+                AppServices.Settings.Current with { ConsentMode = tag });
         }
     }
 
@@ -106,6 +111,10 @@ public sealed partial class SettingsPage : Page
                 _                     => AutomationMode.ConfirmBeforeAction,
             };
             AppServices.AutomationOrchestrator.SetMode(mode);
+
+            // Persist inline — the tag string is the enum name, exactly what AppSettings stores.
+            _ = AppServices.Settings.SaveAsync(
+                AppServices.Settings.Current with { AutomationMode = tag });
         }
     }
 }
