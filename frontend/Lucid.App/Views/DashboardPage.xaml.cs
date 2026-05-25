@@ -91,7 +91,7 @@ public sealed partial class DashboardPage : Page
     // ── Companion shortcut ────────────────────────────────────────────────────
 
     private void OpenCompanionButton_Click(object sender, RoutedEventArgs e)
-        => AppServices.CompanionSession.Show();
+        => AppServices.CompanionSession.Expand();
 
     // ── Hover effects ─────────────────────────────────────────────────────
 
