@@ -65,6 +65,28 @@ public enum ConversationIntent
     /// <summary>"What can you do / help" — capability list</summary>
     Help                    = 51,
 
+    // ── Desktop Automation (60-79) — Phase 17D ────────────────────────────────
+    /// <summary>"Open Task Manager / show processes" — launches taskmgr.exe</summary>
+    LaunchTaskManager       = 60,
+    /// <summary>"Open Device Manager / check drivers" — launches devmgmt.msc</summary>
+    LaunchDeviceManager     = 61,
+    /// <summary>"Open Event Viewer / check logs / system errors" — launches eventvwr.msc</summary>
+    LaunchEventViewer       = 62,
+    /// <summary>"Open Storage settings / manage storage sense" — ms-settings:storagesense</summary>
+    LaunchStorageSettings   = 63,
+    /// <summary>"Open Startup Apps / manage startup" — ms-settings:startupapps</summary>
+    LaunchStartupApps       = 64,
+    /// <summary>"Open Windows Security / defender" — windowsdefender:</summary>
+    LaunchWindowsSecurity   = 65,
+    /// <summary>"Show downloads / open downloads folder" — opens Explorer to Downloads</summary>
+    OpenDownloadsFolder     = 66,
+    /// <summary>"Show documents / open documents folder" — opens Explorer to Documents</summary>
+    OpenDocumentsFolder     = 67,
+    /// <summary>"Open network settings / troubleshoot network"</summary>
+    LaunchNetworkSettings   = 68,
+    /// <summary>"Open Windows Update / check for updates"</summary>
+    LaunchWindowsUpdate     = 69,
+
     // ── Fallback ─────────────────────────────────────────────────────────────
     /// <summary>No keywords matched — provide general status</summary>
     Unknown                 = 99,

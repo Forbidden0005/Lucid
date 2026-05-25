@@ -52,4 +52,13 @@ public interface ITimelineAggregationService
     /// this aggregator depends on.
     /// </summary>
     void Stop();
+
+    /// <summary>
+    /// Adds an externally-produced event to the timeline.
+    /// Used by services (e.g. AutomationOrchestrator) that produce events
+    /// outside the four standard sources. The event is prepended to the ring
+    /// buffer and <see cref="NewEventAdded"/> is raised on the UI thread.
+    /// Thread-safe — marshals to UI thread if called off-thread.
+    /// </summary>
+    void AddExternalEvent(TimelineEvent ev);
 }

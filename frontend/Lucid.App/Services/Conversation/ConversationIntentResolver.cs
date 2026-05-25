@@ -41,6 +41,18 @@ public sealed class ConversationIntentResolver
             TryMatch(q, ConversationIntent.WhyIsDiskFull,         _diskWords)             ??
             TryMatch(q, ConversationIntent.WhyIsMemoryHigh,       _ramWords)              ??
             TryMatch(q, ConversationIntent.WhyIsSlow,             _slowWords)             ??
+            // ── Phase 17D: automation/launch intents (checked before generic nav) ──
+            TryMatch(q, ConversationIntent.LaunchTaskManager,     _taskManagerWords)      ??
+            TryMatch(q, ConversationIntent.LaunchDeviceManager,   _deviceManagerWords)    ??
+            TryMatch(q, ConversationIntent.LaunchEventViewer,     _eventViewerWords)      ??
+            TryMatch(q, ConversationIntent.LaunchStorageSettings, _storageSettingsWords)  ??
+            TryMatch(q, ConversationIntent.LaunchStartupApps,     _startupAppsWords)      ??
+            TryMatch(q, ConversationIntent.LaunchWindowsSecurity, _windowsSecurityWords)  ??
+            TryMatch(q, ConversationIntent.OpenDownloadsFolder,   _openDownloadsWords)    ??
+            TryMatch(q, ConversationIntent.OpenDocumentsFolder,   _openDocumentsWords)    ??
+            TryMatch(q, ConversationIntent.LaunchNetworkSettings, _networkSettingsWords)  ??
+            TryMatch(q, ConversationIntent.LaunchWindowsUpdate,   _windowsUpdateWords)    ??
+            // ── Standard navigation ────────────────────────────────────────────
             TryMatch(q, ConversationIntent.OpenRepairs,           _repairsWords)          ??
             TryMatch(q, ConversationIntent.OpenStorage,           _storageNavWords)       ??
             TryMatch(q, ConversationIntent.OpenTimeline,          _timelineNavWords)      ??
@@ -95,6 +107,16 @@ public sealed class ConversationIntentResolver
             ConversationIntent.FindRecentDownloads   => "downloads keywords matched",
             ConversationIntent.ReviewClipboardFiles  => "clipboard keywords matched",
             ConversationIntent.SummarizeCurrentState => "status/summary keywords matched",
+            ConversationIntent.LaunchTaskManager     => "Task Manager launch keywords matched",
+            ConversationIntent.LaunchDeviceManager   => "Device Manager launch keywords matched",
+            ConversationIntent.LaunchEventViewer     => "Event Viewer launch keywords matched",
+            ConversationIntent.LaunchStorageSettings => "storage settings keywords matched",
+            ConversationIntent.LaunchStartupApps     => "startup apps launch keywords matched",
+            ConversationIntent.LaunchWindowsSecurity => "Windows Security launch keywords matched",
+            ConversationIntent.OpenDownloadsFolder   => "downloads folder keywords matched",
+            ConversationIntent.OpenDocumentsFolder   => "documents folder keywords matched",
+            ConversationIntent.LaunchNetworkSettings => "network settings keywords matched",
+            ConversationIntent.LaunchWindowsUpdate   => "Windows Update keywords matched",
             _                                        => "keywords matched",
         };
 
@@ -238,4 +260,54 @@ public sealed class ConversationIntentResolver
         ["status", "how is", "how's", "overall", "summary", "what's going on",
          "what is happening", "general", "current state", "my pc", "my system",
          "everything ok", "all good", "system health"];
+
+    // ── Phase 17D: automation/launch keyword tables ────────────────────────────
+
+    private static readonly string[] _taskManagerWords =
+        ["task manager", "taskmgr", "open task manager", "show task manager",
+         "launch task manager", "show processes", "open processes", "process list"];
+
+    private static readonly string[] _deviceManagerWords =
+        ["device manager", "devmgmt", "open device manager", "show device manager",
+         "check drivers", "driver status", "hardware drivers", "driver issues",
+         "driver errors", "yellow warning"];
+
+    private static readonly string[] _eventViewerWords =
+        ["event viewer", "eventvwr", "open event viewer", "event logs", "windows logs",
+         "system logs", "application logs", "check logs", "see errors in logs",
+         "event log", "crash log"];
+
+    private static readonly string[] _storageSettingsWords =
+        ["storage settings", "storage sense", "open storage settings",
+         "show storage settings", "manage storage", "storage cleanup settings",
+         "storage sense settings"];
+
+    private static readonly string[] _startupAppsWords =
+        ["startup apps", "startup applications", "open startup", "show startup apps",
+         "manage startup", "startup settings", "apps at startup", "launch on boot",
+         "run on startup", "startup items", "open startup tab"];
+
+    private static readonly string[] _windowsSecurityWords =
+        ["windows security", "defender", "open defender", "antivirus", "open security",
+         "show windows security", "windows defender", "virus protection",
+         "protection status", "security center"];
+
+    private static readonly string[] _openDownloadsWords =
+        ["open downloads", "show downloads folder", "open downloads folder",
+         "take me to downloads", "downloads directory", "my downloads",
+         "show me downloads", "navigate to downloads"];
+
+    private static readonly string[] _openDocumentsWords =
+        ["open documents", "show documents folder", "open documents folder",
+         "my documents", "documents directory", "navigate to documents",
+         "show me documents"];
+
+    private static readonly string[] _networkSettingsWords =
+        ["network settings", "open network", "network troubleshooter",
+         "fix network", "troubleshoot network", "internet settings",
+         "wifi settings", "ethernet settings", "network adapter"];
+
+    private static readonly string[] _windowsUpdateWords =
+        ["windows update", "check for updates", "open updates", "update windows",
+         "update settings", "pending updates", "install updates", "update history"];
 }

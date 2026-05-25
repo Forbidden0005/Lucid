@@ -25,6 +25,10 @@ public enum NavigationTarget
 /// <summary>
 /// A tappable action chip rendered below a companion response.
 /// Navigates the main window to the target page — NEVER executes anything automatically.
+///
+/// Phase 17D: chips with an "automation:" prefix in NavigationTag are intercepted
+/// by CompanionOverlayWindow and routed to the AutomationOrchestrator instead of
+/// navigating to a page. The prefix is stripped before dispatching.
 /// </summary>
 public sealed record SuggestedAction
 {
@@ -34,22 +38,39 @@ public sealed record SuggestedAction
     public required NavigationTarget Target      { get; init; }
     public          string?          Description { get; init; }
 
-    /// <summary>NavigationView tag string for MainWindow.NavigateToPage().</summary>
-    public string NavigationTag => Target switch
+    /// <summary>
+    /// Navigation tag for MainWindow.NavigateToPage(), or an "automation:{target}"
+    /// string that the companion window routes to the automation orchestrator.
+    /// If set explicitly, overrides the computed value from Target.
+    /// </summary>
+    public string? NavigationTag
     {
-        NavigationTarget.Dashboard    => "dashboard",
-        NavigationTarget.Insights     => "insights",
-        NavigationTarget.Timeline     => "timeline",
-        NavigationTarget.Repairs      => "repairs",
-        NavigationTarget.Storage      => "storage",
-        NavigationTarget.Processes    => "processes",
-        NavigationTarget.Security     => "security",
-        NavigationTarget.Investigation => "investigation",
-        NavigationTarget.Explain      => "explain",
-        NavigationTarget.Replay       => "replay",
-        NavigationTarget.Historical   => "historical",
-        _                             => string.Empty,
-    };
+        get => _navigationTagOverride ?? Target switch
+        {
+            NavigationTarget.Dashboard     => "dashboard",
+            NavigationTarget.Insights      => "insights",
+            NavigationTarget.Timeline      => "timeline",
+            NavigationTarget.Repairs       => "repairs",
+            NavigationTarget.Storage       => "storage",
+            NavigationTarget.Processes     => "processes",
+            NavigationTarget.Security      => "security",
+            NavigationTarget.Investigation => "investigation",
+            NavigationTarget.Explain       => "explain",
+            NavigationTarget.Replay        => "replay",
+            NavigationTarget.Historical    => "historical",
+            _                              => string.Empty,
+        };
+        init => _navigationTagOverride = value;
+    }
+    private readonly string? _navigationTagOverride;
+
+    /// <summary>True if this chip routes to the automation orchestrator.</summary>
+    public bool IsAutomationAction =>
+        NavigationTag?.StartsWith("automation:", StringComparison.Ordinal) == true;
+
+    /// <summary>Automation target extracted from the "automation:{target}" tag.</summary>
+    public string? AutomationTarget =>
+        IsAutomationAction ? NavigationTag!["automation:".Length..] : null;
 }
 
 /// <summary>

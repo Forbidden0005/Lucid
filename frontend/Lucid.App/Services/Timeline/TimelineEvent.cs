@@ -136,6 +136,18 @@ public enum TimelineEventType
     AutonomousWorkflowCompleted         = 124,
     /// <summary>Completed steps of an autonomous workflow were rolled back.</summary>
     AutonomousWorkflowRollback          = 125,
+
+    // ── Semantic Desktop Understanding (18B) ──────────────────────────────────
+    /// <summary>A visual analysis consent card was shown to the user.</summary>
+    ScreenAnalysisRequested    = 130,
+    /// <summary>The user approved a visual analysis request.</summary>
+    ScreenAnalysisApproved     = 131,
+    /// <summary>A guided visual workflow started — the GuidedInteractionOverlay is now visible.</summary>
+    VisualWorkflowStarted      = 132,
+    /// <summary>A visual workflow step target was highlighted in the overlay.</summary>
+    VisualTargetHighlighted    = 133,
+    /// <summary>All steps of a guided visual workflow were completed successfully.</summary>
+    GuidedVisualStepCompleted  = 134,
 }
 
 /// <summary>
