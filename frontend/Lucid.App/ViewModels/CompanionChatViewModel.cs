@@ -1,64 +1,66 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Companion;
-using Lucid.Services.Conversation;
-using Lucid.Services.DesktopContext;
+using Lucid.Services.LlmChat;
+using Microsoft.UI.Dispatching;
 
 namespace Lucid.ViewModels;
 
 /// <summary>
 /// ViewModel for the Companion Overlay Window conversation area.
 ///
-/// Phase 17C: Fully wired to <see cref="IOperationalConversationService"/>.
-/// Queries are resolved deterministically via keyword matching and composed
-/// from live platform service data. Responses include:
-///   - Confidence labels
-///   - Evidence items (sources consulted)
-///   - Suggested navigation actions
-///   - Contextual quick-action chips from desktop context
+/// Powered by a local Ollama LLM (llama3.2:3b) — no cloud, no API keys, free.
+/// Each message injects live system data (telemetry, insights, processes, timeline)
+/// into the LLM context so responses are grounded in this machine's actual state.
 ///
-/// Threading: All mutations on the UI thread.
-/// Lifetime:  Created by CompanionOverlayWindow; scoped to the window lifetime.
+/// Streaming: responses arrive word-by-word. The last message in the collection
+/// is updated in place as chunks arrive (ObservableCollection index replace).
+///
+/// Threading: all ObservableCollection mutations happen on the UI thread via
+/// the captured DispatcherQueue.
 /// </summary>
 public sealed partial class CompanionChatViewModel : ObservableObject
 {
-    // ── Max conversation history ───────────────────────────────────────────────
     private const int MaxMessages = 100;
 
-    // ── Conversation messages ──────────────────────────────────────────────────
+    // ── Dependencies ───────────────────────────────────────────────────────────
 
-    /// <summary>All messages in the current session.</summary>
+    private readonly ILlmChatService  _llm;
+    private readonly DispatcherQueue  _dispatcher;
+
+    // ── Cancellation for in-flight stream ─────────────────────────────────────
+
+    private CancellationTokenSource? _streamCts;
+
+    // ── Messages ───────────────────────────────────────────────────────────────
+
     public ObservableCollection<CompanionMessage> Messages { get; } = [];
 
     // ── Quick actions ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Quick-action chips. The first 6 are static; contextual suggestions
-    /// are prepended dynamically when desktop context changes.
-    /// </summary>
     public ObservableCollection<QuickAction> QuickActions { get; } = [];
 
     private static readonly IReadOnlyList<QuickAction> StaticQuickActions =
     [
-        new QuickAction { Id = "investigate", Label = "Investigate",  Glyph = "",
-                          Description = "Start operational investigation",
-                          Query       = "Investigate root causes on my system." },
-        new QuickAction { Id = "replay",      Label = "Replay",        Glyph = "",
-                          Description = "Replay recent system events",
-                          Query       = "What changed in the last hour?" },
-        new QuickAction { Id = "cleanup",     Label = "Cleanup",       Glyph = "",
-                          Description = "Find cleanup opportunities",
-                          Query       = "What can I safely clean up?" },
-        new QuickAction { Id = "storage",     Label = "Storage",       Glyph = "",
-                          Description = "Analyze storage usage",
-                          Query       = "What's using the most storage space?" },
-        new QuickAction { Id = "explain",     Label = "Explain",       Glyph = "",
-                          Description = "Explain current system state",
-                          Query       = "Explain what my system is doing right now." },
-        new QuickAction { Id = "status",      Label = "Status",        Glyph = "",
+        new QuickAction { Id = "status",    Label = "Status",    Glyph = "",
                           Description = "Overall system status",
-                          Query       = "How's my PC right now?" },
+                          Query       = "How is my PC doing right now? Give me an overview." },
+        new QuickAction { Id = "slow",      Label = "Why Slow",  Glyph = "",
+                          Description = "Why is my PC slow?",
+                          Query       = "Why does my PC feel slow? What is causing it?" },
+        new QuickAction { Id = "storage",   Label = "Storage",   Glyph = "",
+                          Description = "What is using my storage?",
+                          Query       = "What is using the most storage space on my machine? Break it down for me." },
+        new QuickAction { Id = "memory",    Label = "Memory",    Glyph = "",
+                          Description = "Memory usage breakdown",
+                          Query       = "What is using the most RAM right now?" },
+        new QuickAction { Id = "heat",      Label = "Temps",     Glyph = "",
+                          Description = "CPU temperature status",
+                          Query       = "Is my CPU running hot? What are the temperatures?" },
+        new QuickAction { Id = "processes", Label = "Processes", Glyph = "",
+                          Description = "Top resource consumers",
+                          Query       = "Which processes are using the most resources right now?" },
     ];
 
     // ── Input ──────────────────────────────────────────────────────────────────
@@ -69,23 +71,57 @@ public sealed partial class CompanionChatViewModel : ObservableObject
     // ── Processing state ───────────────────────────────────────────────────────
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSend))]
     [NotifyPropertyChangedFor(nameof(SendButtonVisibility))]
+    [NotifyPropertyChangedFor(nameof(SpinnerVisibility))]
     private bool _isProcessing;
 
-    public string SendButtonVisibility => IsProcessing ? "Collapsed" : "Visible";
-    public string SpinnerVisibility    => IsProcessing ? "Visible"   : "Collapsed";
+    public bool   CanSend               => !IsProcessing;
+    public string SendButtonVisibility  => IsProcessing ? "Collapsed" : "Visible";
+    public string SpinnerVisibility     => IsProcessing ? "Visible"   : "Collapsed";
 
-    // ── Desktop context awareness ─────────────────────────────────────────────
+    // ── Desktop context banner (set by CompanionOverlayWindow from OS events) ──
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ContextBannerVisibility))]
     private string _contextBannerText = string.Empty;
 
     [ObservableProperty]
-    private string _contextGlyph = "";   // Segoe MDL2 glyph
+    private string _contextGlyph = "";
 
     public string ContextBannerVisibility =>
         string.IsNullOrEmpty(ContextBannerText) ? "Collapsed" : "Visible";
+
+    // ── LLM status ─────────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SetupBannerVisibility))]
+    [NotifyPropertyChangedFor(nameof(SetupBannerText))]
+    [NotifyPropertyChangedFor(nameof(SetupBannerCheckingVisibility))]
+    [NotifyPropertyChangedFor(nameof(SetupBannerRetryVisibility))]
+    private LlmStatus _llmStatus = LlmStatus.Unknown;
+
+    public string SetupBannerVisibility => LlmStatus == LlmStatus.Ready ? "Collapsed" : "Visible";
+
+    /// <summary>Shown while status check is in flight (spinner).</summary>
+    public string SetupBannerCheckingVisibility =>
+        LlmStatus == LlmStatus.Unknown ? "Visible" : "Collapsed";
+
+    /// <summary>Shown when status is known and failed — allows user to recheck.</summary>
+    public string SetupBannerRetryVisibility =>
+        LlmStatus is LlmStatus.OllamaNotAvailable or LlmStatus.ModelNotPulled
+            ? "Visible" : "Collapsed";
+
+    public string SetupBannerText => LlmStatus switch
+    {
+        LlmStatus.OllamaNotAvailable =>
+            "Ollama not running — run setup.bat to install it.",
+        LlmStatus.ModelNotPulled =>
+            "Model not downloaded — run: ollama pull llama3.2:3b",
+        LlmStatus.Unknown =>
+            "Checking AI…",
+        _ => string.Empty,
+    };
 
     // ── Overlay state ──────────────────────────────────────────────────────────
 
@@ -103,128 +139,161 @@ public sealed partial class CompanionChatViewModel : ObservableObject
 
     // ── Constructor ────────────────────────────────────────────────────────────
 
-    public CompanionChatViewModel()
+    public CompanionChatViewModel(ILlmChatService llm)
     {
-        // Populate static quick actions
+        _llm        = llm;
+        _dispatcher = DispatcherQueue.GetForCurrentThread()
+                      ?? throw new InvalidOperationException(
+                          "CompanionChatViewModel must be created on the UI thread.");
+
         foreach (var qa in StaticQuickActions)
             QuickActions.Add(qa);
 
         AddWelcomeMessages();
+
+        // Check LLM status in background — don't block the UI
+        _ = CheckLlmStatusAsync();
     }
 
-    // ── Contextual suggestion refresh ──────────────────────────────────────────
+    // ── LLM status check ───────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Called by the window whenever the desktop context changes.
-    /// Replaces any existing contextual chips with fresh suggestions from the engine.
-    /// </summary>
-    public void RefreshContextualSuggestions()
+    private async Task CheckLlmStatusAsync()
     {
-        try
-        {
-            var suggestions = AppServices.ConversationService.GetContextualSuggestions();
+        var status = await _llm.CheckStatusAsync().ConfigureAwait(false);
+        _dispatcher.TryEnqueue(() => LlmStatus = status);
+    }
 
-            // Remove existing contextual chips
-            for (var i = QuickActions.Count - 1; i >= 0; i--)
-            {
-                if (QuickActions[i].IsContextual)
-                    QuickActions.RemoveAt(i);
-            }
-
-            // Prepend new contextual chips (max 2 to avoid overwhelming the strip)
-            for (var i = Math.Min(suggestions.Count, 2) - 1; i >= 0; i--)
-                QuickActions.Insert(0, ContextualSuggestionEngine.ToQuickAction(suggestions[i]));
-        }
-        catch
-        {
-            // Suggestion refresh is best-effort; never surface an error to the user
-        }
+    [RelayCommand]
+    private async Task RetryLlmCheckAsync()
+    {
+        LlmStatus = LlmStatus.Unknown;   // show spinner while checking
+        var status = await _llm.CheckStatusAsync().ConfigureAwait(true);
+        LlmStatus = status;
     }
 
     // ── Welcome messages ───────────────────────────────────────────────────────
 
     private void AddWelcomeMessages()
     {
-        Messages.Add(new CompanionMessage
-        {
-            Id        = "welcome-1",
-            Role      = CompanionMessageRole.System,
-            Text      = "Hi — I'm Lucid, your operational companion. Ask me anything about your system.",
-            Timestamp = DateTimeOffset.Now,
-            Category  = CompanionMessageCategory.Welcome,
-        });
+        Messages.Add(MakeMessage(
+            "Hi — I am Lucid. Ask me anything about your PC and I will answer " +
+            "using real data from this machine.",
+            CompanionMessageCategory.Welcome));
 
-        Messages.Add(new CompanionMessage
-        {
-            Id        = "welcome-2",
-            Role      = CompanionMessageRole.System,
-            Text      = "All analysis runs locally on this device. Nothing leaves your machine — ever.",
-            Timestamp = DateTimeOffset.Now,
-            Category  = CompanionMessageCategory.Answer,
-        });
+        Messages.Add(MakeMessage(
+            "All analysis runs locally. No internet connection needed. " +
+            "Nothing ever leaves this device.",
+            CompanionMessageCategory.Answer));
     }
 
-    // ── Commands ───────────────────────────────────────────────────────────────
+    // ── Send message ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Sends the current InputText as a user message and gets a real
-    /// operational response from the conversation service.
-    /// </summary>
     [RelayCommand]
     private async Task SendMessageAsync()
     {
         var text = InputText.Trim();
         if (string.IsNullOrEmpty(text) || IsProcessing) return;
 
-        // Add user message immediately
-        AddUserMessage(text);
-        InputText  = string.Empty;
+        // Add the user message bubble
+        AddMessage(new CompanionMessage
+        {
+            Id        = NewId(),
+            Role      = CompanionMessageRole.User,
+            Text      = text,
+            Timestamp = DateTimeOffset.Now,
+            Category  = CompanionMessageCategory.Answer,
+        });
+
+        InputText    = string.Empty;
         IsProcessing = true;
         OnPropertyChanged(nameof(NoMessagesVisibility));
 
+        // Check LLM availability first
+        if (!_llm.IsReady)
+        {
+            var status = await _llm.CheckStatusAsync().ConfigureAwait(true);
+            LlmStatus = status;
+
+            if (!_llm.IsReady)
+            {
+                AddMessage(MakeMessage(SetupBannerText, CompanionMessageCategory.Warning));
+                IsProcessing = false;
+                return;
+            }
+        }
+
+        // Add a placeholder message that will be updated as text streams in
+        var streamingId = NewId();
+        AddMessage(new CompanionMessage
+        {
+            Id        = streamingId,
+            Role      = CompanionMessageRole.System,
+            Text      = "",
+            Timestamp = DateTimeOffset.Now,
+            Category  = CompanionMessageCategory.Answer,
+        });
+
+        _streamCts = new CancellationTokenSource();
+        var accumulated = new System.Text.StringBuilder();
+
         try
         {
-            var snap = AppServices.DesktopContext.CurrentSnapshot;
-            var prompt = new OperationalPrompt
-            {
-                Text               = text,
-                DesktopContextFocus = snap?.CurrentOperationalFocus,
-                ActiveAppCategory  = snap?.ActiveWindow?.AppCategory.ToString(),
-                ClipboardHasFiles  = snap?.ClipboardContext?.HasFiles ?? false,
-            };
+            await _llm.StreamResponseAsync(
+                text,
+                onChunk: chunk =>
+                {
+                    accumulated.Append(chunk);
+                    var current = accumulated.ToString();
 
-            var response = await AppServices.ConversationService
-                .ProcessQueryAsync(prompt)
-                .ConfigureAwait(true); // stay on UI thread
-
-            var message = OperationalConversationService.ResponseToMessage(response);
-            EnqueueMessage(message);
+                    // Dispatch to UI thread to update the streaming message in place
+                    _dispatcher.TryEnqueue(() =>
+                    {
+                        var idx = Messages.Count - 1;
+                        if (idx >= 0 && Messages[idx].Id == streamingId)
+                            Messages[idx] = Messages[idx] with { Text = current };
+                    });
+                },
+                ct: _streamCts.Token
+            ).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            // User cancelled — leave whatever text arrived
         }
         catch (Exception ex)
         {
-            EnqueueMessage(new CompanionMessage
+            // Replace the streaming placeholder with an error message
+            _dispatcher.TryEnqueue(() =>
             {
-                Id        = Guid.NewGuid().ToString("N")[..8],
-                Role      = CompanionMessageRole.System,
-                Text      = $"Analysis encountered an error: {ex.Message}",
-                Timestamp = DateTimeOffset.Now,
-                Category  = CompanionMessageCategory.Error,
+                var idx = Messages.Count - 1;
+                if (idx >= 0 && Messages[idx].Id == streamingId)
+                    Messages[idx] = Messages[idx] with
+                    {
+                        Text     = BuildErrorMessage(ex),
+                        Category = CompanionMessageCategory.Error,
+                    };
             });
         }
         finally
         {
+            _streamCts?.Dispose();
+            _streamCts   = null;
             IsProcessing = false;
             OnPropertyChanged(nameof(NoMessagesVisibility));
         }
     }
 
-    // Synchronous alias — used by code-behind only; NOT a RelayCommand.
-    // XAML binds to SendMessageCommand which [RelayCommand] on SendMessageAsync generates.
-    private void SendMessage() => _ = SendMessageAsync();
+    private static string BuildErrorMessage(Exception ex)
+    {
+        if (ex is HttpRequestException or System.Net.Sockets.SocketException)
+            return "Could not reach Ollama. Make sure Ollama is running " +
+                   "(it starts automatically with setup.bat).";
 
-    /// <summary>
-    /// Submits a quick-action or contextual suggestion query as a user message.
-    /// </summary>
+        return $"Something went wrong: {ex.Message}";
+    }
+
+    // ── Quick actions ──────────────────────────────────────────────────────────
+
     [RelayCommand]
     private void ExecuteQuickAction(QuickAction action)
     {
@@ -233,36 +302,49 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         _ = SendMessageAsync();
     }
 
-    /// <summary>Clears all messages and restores the welcome state.</summary>
+    // ── Clear conversation ─────────────────────────────────────────────────────
+
     [RelayCommand]
     private void ClearConversation()
     {
+        _streamCts?.Cancel();
         Messages.Clear();
+        _llm.ClearHistory();
         AddWelcomeMessages();
         OnPropertyChanged(nameof(NoMessagesVisibility));
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // ── Automation narration (called from CompanionOverlayWindow) ─────────────
 
-    private void AddUserMessage(string text)
+    public void AddAutomationNarration(string narration, bool isWarning = false)
     {
-        EnqueueMessage(new CompanionMessage
-        {
-            Id        = Guid.NewGuid().ToString("N")[..8],
-            Role      = CompanionMessageRole.User,
-            Text      = text,
-            Timestamp = DateTimeOffset.Now,
-            Category  = CompanionMessageCategory.Answer,
-        });
+        AddMessage(MakeMessage(narration,
+            isWarning ? CompanionMessageCategory.Warning : CompanionMessageCategory.Action));
     }
 
-    private void EnqueueMessage(CompanionMessage message)
+    // ── Contextual suggestions (no-op with LLM — LLM handles context natively) ─
+
+    public void RefreshContextualSuggestions() { /* LLM sees desktop context via system prompt */ }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private void AddMessage(CompanionMessage message)
     {
-        // Trim oldest messages if we exceed the cap (keeps memory bounded)
         while (Messages.Count >= MaxMessages)
             Messages.RemoveAt(0);
-
         Messages.Add(message);
         OnPropertyChanged(nameof(NoMessagesVisibility));
     }
+
+    private static CompanionMessage MakeMessage(string text, CompanionMessageCategory category) =>
+        new()
+        {
+            Id        = NewId(),
+            Role      = CompanionMessageRole.System,
+            Text      = text,
+            Timestamp = DateTimeOffset.Now,
+            Category  = category,
+        };
+
+    private static string NewId() => Guid.NewGuid().ToString("N")[..8];
 }
