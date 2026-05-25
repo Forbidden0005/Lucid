@@ -2,6 +2,7 @@
 using Lucid.Services.Analytics;
 using Lucid.Services.Automation;
 using Lucid.Services.Conversation;
+using Lucid.Services.Trust;
 using Lucid.Services.LlmChat;
 using Lucid.Services.DesktopContext;
 using Lucid.Services.Companion;
@@ -143,6 +144,13 @@ public static class AppServices
 
     // ── Desktop Automation layer (Phase 17D) ──────────────────────────────────
     private static AutomationOrchestrator? _automationOrchestrator;
+
+    // ── Operational Trust layer (Phase 17E) ───────────────────────────────────
+    private static AutomationAuditService?       _automationAudit;
+    private static ConsentExplanationService?    _consentExplanation;
+    private static AutomationTransparencyEngine? _automationTransparency;
+    private static AutomationConsentService?     _automationConsent;
+    private static OperationalTrustManager?      _trustManager;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -654,6 +662,55 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Append-oriented audit ledger for all automation consent decisions and outcomes (Phase 17E).
+    /// Persists to %LOCALAPPDATA%\Lucid\audit-log.json. Retained for 30 days.
+    /// </summary>
+    public static AutomationAuditService AutomationAudit =>
+        _automationAudit ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Consent explanation service (Phase 17E).
+    /// Generates plain-English "what changes" / "how to undo" text for consent cards.
+    /// Pure — stateless, no side effects.
+    /// </summary>
+    public static ConsentExplanationService ConsentExplanation =>
+        _consentExplanation ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Automation transparency engine (Phase 17E).
+    /// Produces causality-exposing "why suggested" narration for consent cards.
+    /// Pure — stateless, no side effects.
+    /// </summary>
+    public static AutomationTransparencyEngine AutomationTransparency =>
+        _automationTransparency ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Central consent authority for automation actions (Phase 17E).
+    /// All actions that modify system state must request consent here before executing.
+    /// Enforces the boundary policy, consent mode, and audit trail.
+    /// </summary>
+    public static AutomationConsentService AutomationConsent =>
+        _automationConsent ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Operational trust posture manager (Phase 17E).
+    /// Tracks session-level trust history and adapts narration tone and
+    /// consent card prominence based on recent consent patterns.
+    /// </summary>
+    public static OperationalTrustManager TrustManager =>
+        _trustManager ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -1028,6 +1085,30 @@ public static class AppServices
             _timeline!,
             uiDispatcher);
 
+        // ── Operational Trust layer (Phase 17E) ───────────────────────────────
+        // Pure / stateless services first (no dependencies):
+        _consentExplanation    = new ConsentExplanationService();
+        _automationTransparency = new AutomationTransparencyEngine();
+
+        // Audit service loads persisted entries from disk in its constructor and
+        // prunes entries older than 30 days. Non-blocking — file read is fast.
+        _automationAudit = new AutomationAuditService();
+
+        // Consent service depends on timeline (for publishing consent events),
+        // audit (for recording every decision), and the two stateless services.
+        _automationConsent = new AutomationConsentService(
+            _timeline!,
+            _automationAudit,
+            _consentExplanation,
+            _automationTransparency,
+            uiDispatcher);
+
+        // Trust manager subscribes to consent events to adapt the posture.
+        // Created last so the audit ledger is populated before it begins listening.
+        _trustManager = new OperationalTrustManager(
+            _automationAudit,
+            _automationConsent,
+            _timeline!);
 
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
@@ -1064,6 +1145,14 @@ public static class AppServices
         _rootCauseEngine    = null;
         _evidenceExplanation = null;
         _workflowEngine     = null;
+
+        // Trust layer — stateless services, just null references.
+        // AutomationAuditService persists to disk asynchronously; no explicit flush needed.
+        _trustManager           = null;
+        _automationConsent      = null;
+        _automationAudit        = null;
+        _consentExplanation     = null;
+        _automationTransparency = null;
 
         // Companion layer — in-memory only, just null references.
         _companionSession       = null;

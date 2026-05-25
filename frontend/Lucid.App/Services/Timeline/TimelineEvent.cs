@@ -96,6 +96,32 @@ public enum TimelineEventType
     WorkflowSuggestedByConversation = 91,
     /// <summary>The companion engine suggested an investigation based on current system state.</summary>
     InvestigationSuggested          = 92,
+
+    // ── Desktop Automation (17D) ──────────────────────────────────────────────
+    /// <summary>An automation plan was built and surfaced to the user for approval.</summary>
+    AutomationPlanned               = 100,
+    /// <summary>The user approved an automation plan.</summary>
+    AutomationApproved              = 101,
+    /// <summary>An approved automation plan began executing.</summary>
+    AutomationStarted               = 102,
+    /// <summary>An automation plan completed all steps successfully.</summary>
+    AutomationCompleted             = 103,
+    /// <summary>An automation plan was cancelled by the user before completing.</summary>
+    AutomationCancelled             = 104,
+    /// <summary>An automation plan was interrupted by an error or emergency halt.</summary>
+    AutomationInterrupted           = 105,
+
+    // ── Trust, Permissions & Operational Consent (17E) ────────────────────────
+    /// <summary>A consent card was shown to the user before a permission-gated action.</summary>
+    ConsentRequested                = 110,
+    /// <summary>The user approved a consent request — action was permitted to execute.</summary>
+    ConsentGranted                  = 111,
+    /// <summary>The user denied a consent request — action was not executed.</summary>
+    ConsentDenied                   = 112,
+    /// <summary>A previously executed automation action was rolled back at the user's request.</summary>
+    AutomationRollbackPerformed     = 113,
+    /// <summary>An automation action was blocked by the hard boundary policy (never reaches the user).</summary>
+    AutomationBoundaryBlocked       = 114,
 }
 
 /// <summary>
