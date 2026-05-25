@@ -1,0 +1,213 @@
+<Window
+    x:Class="Lucid.Views.GuidedInteractionOverlay"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!--
+        GuidedInteractionOverlay — Phase 18B
+        A compact floating guide panel that walks users through operational
+        UI interactions step-by-step.
+
+        Always-on-top, frameless, 320 px wide.
+        Positioned near the target element by the code-behind.
+
+        Safety: NEVER auto-clicks. Shows where to click; user acts.
+        Dismiss: Next advances the step; Done/Cancel closes the overlay.
+    -->
+    <Grid x:Name="RootGrid">
+
+        <!--
+            Outer glass-effect container.
+            CornerRadius gives the floating card appearance.
+            BorderThickness left accent = colored bar indicating guide is active.
+        -->
+        <Border Background="#EE0D1220"
+                BorderBrush="#4E9FFF"
+                BorderThickness="3,0,0,0"
+                CornerRadius="0,12,12,0"
+                Padding="0">
+
+            <StackPanel>
+
+                <!-- ── Header ───────────────────────────────────────────── -->
+                <Grid x:Name="DragHandle"
+                      Background="Transparent"
+                      Padding="14,12,12,6"
+                      PointerPressed="DragHandle_PointerPressed"
+                      PointerMoved="DragHandle_PointerMoved"
+                      PointerReleased="DragHandle_PointerReleased">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Step badge -->
+                    <Border Grid.Column="0"
+                            Background="#1A3050"
+                            BorderBrush="#2A4878"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="6,2"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0">
+                        <TextBlock x:Name="StepBadgeText"
+                                   Text="Step 1"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#4E9FFF" />
+                    </Border>
+
+                    <!-- Guide title -->
+                    <TextBlock Grid.Column="1"
+                               x:Name="GuideTitleText"
+                               Text="Guided workflow"
+                               FontSize="11.5"
+                               FontWeight="SemiBold"
+                               Foreground="#C8D4E8"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <!-- Close -->
+                    <Button Grid.Column="2"
+                            x:Name="CloseButton"
+                            Width="24" Height="24"
+                            CornerRadius="6"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            Click="CloseButton_Click"
+                            ToolTipService.ToolTip="Cancel guide">
+                        <FontIcon Glyph="&#xE711;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="9"
+                                  Foreground="#6B7A8A" />
+                    </Button>
+                </Grid>
+
+                <!-- ── Separator ─────────────────────────────────────────── -->
+                <Rectangle Fill="#1A2A3E" Height="1" Margin="0,0,0,0" />
+
+                <!-- ── Step instruction ──────────────────────────────────── -->
+                <StackPanel Padding="14,10,14,4" Spacing="6">
+
+                    <!-- Step title -->
+                    <TextBlock x:Name="StepTitleText"
+                               Text="Looking for…"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#D0E0F0"
+                               TextWrapping="Wrap" />
+
+                    <!-- Main instruction -->
+                    <TextBlock x:Name="InstructionText"
+                               Text=""
+                               FontSize="11.5"
+                               Foreground="#8AAAC8"
+                               TextWrapping="Wrap"
+                               LineHeight="17" />
+
+                </StackPanel>
+
+                <!-- ── Target indicator ──────────────────────────────────── -->
+                <Border x:Name="TargetIndicator"
+                        Visibility="Collapsed"
+                        Background="#0A1828"
+                        BorderBrush="#1E3050"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="10,4,10,2"
+                        Padding="10,7">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Direction arrow -->
+                        <TextBlock x:Name="DirectionArrow"
+                                   Grid.Column="0"
+                                   Text="↗"
+                                   FontSize="16"
+                                   Foreground="#4E9FFF"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <!-- Target label + position -->
+                        <StackPanel Grid.Column="1" Spacing="1">
+                            <TextBlock x:Name="TargetLabelText"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#C8D4E8"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="TargetPositionText"
+                                       FontSize="10"
+                                       Foreground="#4B5C7A" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ── Progress bar ──────────────────────────────────────── -->
+                <ProgressBar x:Name="StepProgressBar"
+                             Minimum="0" Maximum="100" Value="0"
+                             Foreground="#4E9FFF"
+                             Background="#1A2035"
+                             Height="2"
+                             Margin="0,8,0,0" />
+
+                <!-- ── Action buttons ─────────────────────────────────────── -->
+                <Grid Padding="12,8,12,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Step counter -->
+                    <TextBlock Grid.Column="0"
+                               x:Name="StepCounterText"
+                               Text="1 / 1"
+                               FontSize="10"
+                               Foreground="#3A4C60"
+                               VerticalAlignment="Center" />
+
+                    <!-- Previous step -->
+                    <Button Grid.Column="1"
+                            x:Name="PrevButton"
+                            Content="← Back"
+                            FontSize="11"
+                            Foreground="#5A7088"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="8,5"
+                            Margin="0,0,4,0"
+                            Visibility="Collapsed"
+                            Click="PrevButton_Click" />
+
+                    <!-- Next / Done -->
+                    <Button Grid.Column="2"
+                            x:Name="NextButton"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Background="#1A3050"
+                            BorderBrush="#2A4878"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,5"
+                            Click="NextButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock x:Name="NextButtonLabel"
+                                       Text="Next →"
+                                       Foreground="#4E9FFF" />
+                        </StackPanel>
+                    </Button>
+
+                </Grid>
+
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

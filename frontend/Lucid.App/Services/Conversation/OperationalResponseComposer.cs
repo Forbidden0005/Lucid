@@ -139,6 +139,47 @@ public sealed class OperationalResponseComposer
                                                 => ComposeClipboardResponse(prompt),
             ConversationIntent.ExplainCurrentContext
                                                 => ComposeContextResponse(prompt),
+            // ── Phase 17D: automation launch responses ────────────────────────
+            ConversationIntent.LaunchTaskManager     => ComposeAutomationLaunchResponse(
+                "Task Manager",
+                "I'll open Task Manager so you can see real-time CPU, memory, disk, and network usage by process.",
+                "automation.launch.task-manager", "task-manager"),
+            ConversationIntent.LaunchDeviceManager   => ComposeAutomationLaunchResponse(
+                "Device Manager",
+                "I'll open Device Manager so you can check hardware devices and driver status. Look for yellow warning triangles.",
+                "automation.launch.device-manager", "device-manager"),
+            ConversationIntent.LaunchEventViewer     => ComposeAutomationLaunchResponse(
+                "Event Viewer",
+                "I'll open Event Viewer so you can review Windows system and application error logs. Navigate to Windows Logs → System.",
+                "automation.launch.event-viewer", "event-viewer"),
+            ConversationIntent.LaunchStorageSettings => ComposeAutomationLaunchResponse(
+                "Storage Settings",
+                "I'll open the Storage settings page to show you a breakdown of disk usage by category.",
+                "automation.launch.storage-settings", "storage-settings"),
+            ConversationIntent.LaunchStartupApps     => ComposeAutomationLaunchResponse(
+                "Startup Apps",
+                "I'll open the Startup Apps settings so you can see which apps run at login and their impact on boot time.",
+                "automation.launch.startup-apps", "startup-apps"),
+            ConversationIntent.LaunchWindowsSecurity => ComposeAutomationLaunchResponse(
+                "Windows Security",
+                "I'll open Windows Security so you can review your antivirus, firewall, and account protection status.",
+                "automation.launch.windows-security", "windows-security"),
+            ConversationIntent.OpenDownloadsFolder   => ComposeAutomationLaunchResponse(
+                "Downloads folder",
+                "I'll open your Downloads folder in File Explorer so you can review its contents.",
+                "automation.explorer.downloads", "downloads"),
+            ConversationIntent.OpenDocumentsFolder   => ComposeAutomationLaunchResponse(
+                "Documents folder",
+                "I'll open your Documents folder in File Explorer.",
+                "automation.explorer.documents", "documents"),
+            ConversationIntent.LaunchNetworkSettings => ComposeAutomationLaunchResponse(
+                "Network Settings",
+                "I'll open Network Settings so you can review your connection status or run the network troubleshooter.",
+                "automation.launch.network-settings", "network-settings"),
+            ConversationIntent.LaunchWindowsUpdate   => ComposeAutomationLaunchResponse(
+                "Windows Update",
+                "I'll open Windows Update so you can check for and install available updates.",
+                "automation.launch.windows-update", "windows-update"),
             _                                   => ComposeStatusResponse(),
         };
     }
@@ -545,6 +586,18 @@ public sealed class OperationalResponseComposer
             new() { Source = "Desktop context", Summary = snap.CurrentOperationalFocus },
         };
         return (sb.ToString().TrimEnd(), ev, 75, null, CompanionMessageCategory.Answer);
+    }
+
+    // ── Phase 17D: automation launch response ─────────────────────────────────
+
+    private (string, IReadOnlyList<ConversationEvidenceItem>, int, string?, CompanionMessageCategory)
+        ComposeAutomationLaunchResponse(
+            string targetLabel, string narration, string actionId, string launchTarget)
+    {
+        var text = narration +
+                   "\n\nTap the action below to proceed. You can cancel at any time.";
+
+        return (text, null_ev, 95, null, CompanionMessageCategory.Action);
     }
 
     // ── Static text ────────────────────────────────────────────────────────────

@@ -31,6 +31,7 @@ using Lucid.Services.Timeline;
 using Lucid.Services.Remediation;
 using Lucid.Services.Simulation;
 using Lucid.Services.Watchtower;
+using Lucid.Services.VisualContext;
 using Microsoft.UI.Dispatching;
 
 
@@ -164,6 +165,15 @@ public static class AppServices
     private static WorkflowExecutionPlanner?        _workflowPlanner;
     private static TaskCompletionCoordinator?       _taskCoordinator;
     private static AutonomousWorkflowEngine?        _autonomousWorkflowEngine;
+
+    // ── Semantic Desktop Understanding layer (Phase 18B) ─────────────────────
+    private static ConsentBoundScreenAnalysis?  _visualConsent;
+    private static ScreenCaptureCoordinator?    _screenCapture;
+    private static WindowSemanticAnalyzer?      _windowAnalyzer;
+    private static ExplorerVisualInterpreter?   _explorerInterpreter;
+    private static SettingsPageInterpreter?     _settingsInterpreter;
+    private static VisualWorkflowLocator?       _workflowLocator;
+    private static VisualContextService?        _visualContext;
 
     // ── Service accessors ─────────────────────────────────────────────────────
 
@@ -753,6 +763,25 @@ public static class AppServices
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
+    /// <summary>
+    /// Visual context service (Phase 18B).
+    /// Provides consent-gated semantic understanding of the visible desktop.
+    /// All analysis is explicit, local-only, and auto-expiring.
+    /// </summary>
+    public static IVisualContextService VisualContext =>
+        _visualContext ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Consent gate for visual analysis (Phase 18B).
+    /// Subscribe ConsentRequired in the companion overlay to show approval cards.
+    /// </summary>
+    public static ConsentBoundScreenAnalysis VisualConsent =>
+        _visualConsent ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -1191,6 +1220,26 @@ public static class AppServices
             _checkpointManager,
             _timeline!);
 
+        // ── Semantic Desktop Understanding layer (Phase 18B) ─────────────────
+        // ConsentBoundScreenAnalysis gates ALL visual analysis behind user approval.
+        // VisualContextService is the top-level orchestrator; it is lazy (runs only
+        // when explicitly invoked) and never polls in the background.
+        _visualConsent       = new ConsentBoundScreenAnalysis(_timeline!, uiDispatcher);
+        _screenCapture       = new ScreenCaptureCoordinator();
+        _windowAnalyzer      = new WindowSemanticAnalyzer();
+        _explorerInterpreter = new ExplorerVisualInterpreter();
+        _settingsInterpreter = new SettingsPageInterpreter();
+        _workflowLocator     = new VisualWorkflowLocator();
+        _visualContext       = new VisualContextService(
+            _visualConsent,
+            _screenCapture,
+            _windowAnalyzer,
+            _explorerInterpreter,
+            _settingsInterpreter,
+            _workflowLocator,
+            _timeline!,
+            uiDispatcher);
+
         // ── Hourly downsampling timer ─────────────────────────────────────────
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
@@ -1226,6 +1275,16 @@ public static class AppServices
         _rootCauseEngine    = null;
         _evidenceExplanation = null;
         _workflowEngine     = null;
+
+        // Visual context layer — no background work; just null all references.
+        _visualContext?.Dispose();
+        _visualContext       = null;
+        _workflowLocator     = null;
+        _settingsInterpreter = null;
+        _explorerInterpreter = null;
+        _windowAnalyzer      = null;
+        _screenCapture       = null;
+        _visualConsent       = null;
 
         // Autonomous workflow layer — cancel any running workflow, then null references.
         _autonomousWorkflowEngine?.CancelCurrentWorkflow();

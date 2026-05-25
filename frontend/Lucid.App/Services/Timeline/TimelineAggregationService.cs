@@ -97,6 +97,18 @@ public sealed class TimelineAggregationService : ITimelineAggregationService
     /// </summary>
     public void AddDesktopContextEvent(TimelineEvent ev) => AddEvent(ev);
 
+    /// <summary>
+    /// ITimelineAggregationService.AddExternalEvent — generic external injection.
+    /// Thread-safe: marshals to the UI thread if not already on it.
+    /// </summary>
+    public void AddExternalEvent(TimelineEvent ev)
+    {
+        if (_dispatcher.HasThreadAccess)
+            AddEvent(ev);
+        else
+            _dispatcher.TryEnqueue(() => AddEvent(ev));
+    }
+
     // ── Construction ──────────────────────────────────────────────────────────
 
     public TimelineAggregationService(
