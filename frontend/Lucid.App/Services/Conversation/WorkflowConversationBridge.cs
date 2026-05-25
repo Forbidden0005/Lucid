@@ -201,6 +201,25 @@ public sealed class WorkflowConversationBridge
                 actions.Add(AutomationAction("windows-update", "Open Windows Update",
                     "Launch Windows Update settings"));
                 break;
+
+            // ── Phase 18B: visual context chips ───────────────────────────────
+
+            case ConversationIntent.WhatAmILookingAt:
+                actions.Add(VisualAction("analyze-window", "Analyze Visually",
+                    "One-time visual analysis of the active window — consent required"));
+                break;
+
+            case ConversationIntent.LocateUiElement:
+                actions.Add(VisualAction("locate-element", "Find Element",
+                    "Locate a specific UI element in the active window"));
+                actions.Add(VisualAction("guide-window", "Start Guide",
+                    "Step-by-step visual guide for the current window — consent required"));
+                break;
+
+            case ConversationIntent.RunVisualWorkflow:
+                actions.Add(VisualAction("guide-window", "Start Guide",
+                    "Step-by-step visual guide for the current window — consent required"));
+                break;
         }
 
         return actions;
@@ -221,6 +240,22 @@ public sealed class WorkflowConversationBridge
             Glyph       = glyph,
             Target      = target,
             Description = description,
+        };
+
+    /// <summary>
+    /// Creates a visual context chip — carries a "visual:{target}" NavigationTag
+    /// that CompanionOverlayWindow routes to VisualContextService for consent-gated analysis.
+    /// </summary>
+    private static SuggestedAction VisualAction(
+        string target, string label, string? description = null) =>
+        new()
+        {
+            Id            = $"visual-{target}",
+            Label         = label,
+            Glyph         = "\xE722",  // Segoe MDL2: Camera
+            Target        = NavigationTarget.None,
+            NavigationTag = $"visual:{target}",
+            Description   = description,
         };
 
     /// <summary>

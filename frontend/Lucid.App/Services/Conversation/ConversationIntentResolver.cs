@@ -52,6 +52,10 @@ public sealed class ConversationIntentResolver
             TryMatch(q, ConversationIntent.OpenDocumentsFolder,   _openDocumentsWords)    ??
             TryMatch(q, ConversationIntent.LaunchNetworkSettings, _networkSettingsWords)  ??
             TryMatch(q, ConversationIntent.LaunchWindowsUpdate,   _windowsUpdateWords)    ??
+            // ── Phase 18B: visual context (checked before standard nav) ────────
+            TryMatch(q, ConversationIntent.WhatAmILookingAt,  _whatAmILookingAtWords)  ??
+            TryMatch(q, ConversationIntent.LocateUiElement,   _locateUiElementWords)   ??
+            TryMatch(q, ConversationIntent.RunVisualWorkflow, _runVisualWorkflowWords) ??
             // ── Standard navigation ────────────────────────────────────────────
             TryMatch(q, ConversationIntent.OpenRepairs,           _repairsWords)          ??
             TryMatch(q, ConversationIntent.OpenStorage,           _storageNavWords)       ??
@@ -117,6 +121,9 @@ public sealed class ConversationIntentResolver
             ConversationIntent.OpenDocumentsFolder   => "documents folder keywords matched",
             ConversationIntent.LaunchNetworkSettings => "network settings keywords matched",
             ConversationIntent.LaunchWindowsUpdate   => "Windows Update keywords matched",
+            ConversationIntent.WhatAmILookingAt      => "visual context description keywords matched",
+            ConversationIntent.LocateUiElement       => "UI element location keywords matched",
+            ConversationIntent.RunVisualWorkflow     => "visual workflow guidance keywords matched",
             _                                        => "keywords matched",
         };
 
@@ -310,4 +317,22 @@ public sealed class ConversationIntentResolver
     private static readonly string[] _windowsUpdateWords =
         ["windows update", "check for updates", "open updates", "update windows",
          "update settings", "pending updates", "install updates", "update history"];
+
+    // ── Phase 18B: visual context keyword tables ───────────────────────────────
+
+    private static readonly string[] _whatAmILookingAtWords =
+        ["what am i looking at", "what is this", "describe this window",
+         "what page is this", "what app is this", "analyze screen",
+         "what's on screen", "explain what i see", "what is this page",
+         "identify this window", "what is open"];
+
+    private static readonly string[] _locateUiElementWords =
+        ["where is the", "find the toggle", "find the setting", "find the button",
+         "locate the", "where do i click", "startup toggle", "find startup",
+         "locate startup", "show me the toggle", "where is the option"];
+
+    private static readonly string[] _runVisualWorkflowWords =
+        ["show me how to", "visual guide", "guided steps to", "guide me to",
+         "visual workflow", "show me where to click", "interactive guide",
+         "step by step how to navigate", "navigate me to", "guide me through this"];
 }

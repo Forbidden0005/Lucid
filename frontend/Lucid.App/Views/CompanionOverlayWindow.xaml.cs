@@ -2,6 +2,7 @@
 using Lucid.Services.Autonomy;
 using Lucid.Services.Companion;
 using Lucid.Services.DesktopContext;
+using Lucid.Services.VisualContext;
 using Lucid.ViewModels;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -67,6 +68,19 @@ public sealed partial class CompanionOverlayWindow : Window
     private Action? _approveCallback;
     private Action? _denyCallback;
 
+    // ── Visual consent gate (Phase 18B) ───────────────────────────────────────
+    //    Stored when ConsentBoundScreenAnalysis raises ConsentRequired so that
+    //    the Allow Once / Deny buttons can unblock the awaiting RequestConsentAsync.
+
+    private Action? _visualApproveCallback;
+    private Action? _visualDenyCallback;
+
+    // ── Guided interaction overlay (Phase 18B) ────────────────────────────────
+    //    Lazily created on first visual guide request. Kept as a field so we can
+    //    re-use the same window instance across multiple guides in one session.
+
+    private GuidedInteractionOverlay? _guidedOverlay;
+
     // ── Win32 P/Invoke for reliable screen-pixel cursor position ──────────────
 
     [StructLayout(LayoutKind.Sequential)]
@@ -117,6 +131,9 @@ public sealed partial class CompanionOverlayWindow : Window
         // ── Subscribe to desktop context changes (Phase 17B) ──────────────
         AppServices.DesktopContext.ContextChanged += OnDesktopContextChanged;
 
+        // ── Subscribe to visual consent events (Phase 18B) ───────────────
+        AppServices.VisualConsent.ConsentRequired += OnVisualConsentRequired;
+
         // ── Subscribe to autonomous workflow events (Phase 17F) ───────────
         AppServices.AutonomousWorkflowEngine.WorkflowPlanned   += OnWorkflowPlanned;
         AppServices.AutonomousWorkflowEngine.WorkflowProgress  += OnWorkflowProgress;
@@ -128,6 +145,7 @@ public sealed partial class CompanionOverlayWindow : Window
         {
             AppServices.CompanionSession.StateChanged -= OnSessionStateChanged;
             AppServices.DesktopContext.ContextChanged -= OnDesktopContextChanged;
+            AppServices.VisualConsent.ConsentRequired -= OnVisualConsentRequired;
 
             AppServices.AutonomousWorkflowEngine.WorkflowPlanned   -= OnWorkflowPlanned;
             AppServices.AutonomousWorkflowEngine.WorkflowProgress  -= OnWorkflowProgress;
@@ -141,6 +159,10 @@ public sealed partial class CompanionOverlayWindow : Window
             // can create a fresh window on the next companion toggle.
             if (AppServices.CompanionSession.CurrentState != CompanionOverlayState.Hidden)
                 AppServices.CompanionSession.Hide();
+
+            // Hide the guided overlay if it was open — it has no owner relationship
+            // so it survives on its own; we just hide it cleanly.
+            try { _guidedOverlay?.HideOverlay(); } catch { /* best-effort */ }
         };
     }
 
@@ -383,9 +405,16 @@ public sealed partial class CompanionOverlayWindow : Window
         if (string.IsNullOrEmpty(action.NavigationTag)) return;
 
         // Phase 17D: automation: prefix routes to the orchestrator instead of navigation.
-        if (action.IsAutomationAction && action.AutomationTarget is { } target)
+        if (action.IsAutomationAction && action.AutomationTarget is { } autoTarget)
         {
-            LaunchAutomation(target);
+            LaunchAutomation(autoTarget);
+            return;
+        }
+
+        // Phase 18B: visual: prefix routes to the visual context service.
+        if (action.IsVisualAction && action.VisualActionTarget is { } visualTarget)
+        {
+            LaunchVisualAction(visualTarget);
             return;
         }
 
@@ -598,6 +627,180 @@ public sealed partial class CompanionOverlayWindow : Window
         _approveCallback = null;
         _denyCallback    = null;
         cb?.Invoke();
+    }
+
+    // ── Phase 18B: Visual consent handlers ───────────────────────────────────
+
+    /// <summary>
+    /// Raised by ConsentBoundScreenAnalysis on the UI thread when visual analysis
+    /// needs explicit user approval. Shows the consent card and stores callbacks.
+    /// </summary>
+    private void OnVisualConsentRequired(object? sender, VisualAnalysisConsentEventArgs args)
+    {
+        // ConsentBoundScreenAnalysis already dispatches to the UI thread before raising.
+        _visualApproveCallback         = args.Approve;
+        _visualDenyCallback            = args.Deny;
+        VisualConsentReasonText.Text   = args.Reason;
+        VisualConsentPanel.Visibility  = Visibility.Visible;
+    }
+
+    private void VisualAllowButton_Click(object sender, RoutedEventArgs e)
+    {
+        VisualConsentPanel.Visibility = Visibility.Collapsed;
+        var cb = _visualApproveCallback;
+        _visualApproveCallback = null;
+        _visualDenyCallback    = null;
+        cb?.Invoke();
+    }
+
+    private void VisualDenyButton_Click(object sender, RoutedEventArgs e)
+    {
+        VisualConsentPanel.Visibility = Visibility.Collapsed;
+        var cb = _visualDenyCallback;
+        _visualApproveCallback = null;
+        _visualDenyCallback    = null;
+        cb?.Invoke();
+    }
+
+    // ── Phase 18B: Visual action launch ───────────────────────────────────────
+
+    /// <summary>
+    /// Dispatches a visual context action.  All heavy work happens on the thread
+    /// pool; the consent card is surfaced via the ConsentRequired event (already
+    /// wired to OnVisualConsentRequired above).
+    /// </summary>
+    private void LaunchVisualAction(string target)
+    {
+        switch (target)
+        {
+            case "analyze-window":
+                // Full consent-gated analysis: semantic + element detection + pixel capture.
+                _ = Task.Run(async () =>
+                {
+                    var result = await AppServices.VisualContext
+                        .AnalyzeCurrentWindowAsync(
+                            "You asked to analyze the current window",
+                            "companion")
+                        .ConfigureAwait(false);
+
+                    if (result.Approved)
+                    {
+                        var summary = result.AnalysisSummary
+                            ?? AppServices.VisualContext.DescribeActiveWindow();
+                        _uiDispatcher.TryEnqueue(() =>
+                            ViewModel.AddAutomationNarration(summary, isWarning: false));
+                    }
+                });
+                break;
+
+            case "guide-window":
+            case "locate-element":
+                // Guide-only: semantic analysis + element detection, no pixel capture.
+                _ = Task.Run(async () =>
+                {
+                    var result = await AppServices.VisualContext
+                        .GuideAnalysisAsync(
+                            "You asked for guided visual assistance",
+                            "companion")
+                        .ConfigureAwait(false);
+
+                    if (result.Approved && result.WindowContext is { } ctx)
+                    {
+                        var steps = BuildGuidedSteps(ctx, target);
+                        if (steps.Count > 0)
+                        {
+                            _uiDispatcher.TryEnqueue(() =>
+                                ShowGuidedOverlay(steps, ctx.ContextDescription ?? ctx.WindowTitle));
+                        }
+                        else
+                        {
+                            // No targeted steps — surface a summary narration instead.
+                            var summary = result.AnalysisSummary
+                                ?? AppServices.VisualContext.DescribeActiveWindow();
+                            _uiDispatcher.TryEnqueue(() =>
+                                ViewModel.AddAutomationNarration(summary, isWarning: false));
+                        }
+                    }
+                });
+                break;
+
+            default:
+                _ = Task.Run(async () =>
+                    await AppServices.VisualContext
+                        .AnalyzeCurrentWindowAsync($"Visual analysis: {target}", "companion")
+                        .ConfigureAwait(false));
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Shows the GuidedInteractionOverlay for the given steps.
+    /// Must be called on the UI thread.
+    /// </summary>
+    private void ShowGuidedOverlay(IReadOnlyList<GuidedVisualStep> steps, string workflowTitle)
+    {
+        if (_guidedOverlay is null)
+        {
+            _guidedOverlay = new GuidedInteractionOverlay();
+
+            _guidedOverlay.GuideCompleted += (_, _) =>
+                ViewModel.AddAutomationNarration(
+                    $"Visual guide completed: {workflowTitle}", isWarning: false);
+
+            // GuideCancelled is a no-op — the overlay already manages its own cleanup.
+        }
+
+        _guidedOverlay.StartWorkflow(steps, workflowTitle);
+
+        // Drive timeline events via the service (does not show the overlay — we own that).
+        _ = Task.Run(() =>
+            AppServices.VisualContext.RunGuidedWorkflowAsync(steps, workflowTitle));
+    }
+
+    /// <summary>
+    /// Converts a semantic window context into GuidedVisualStep objects.
+    /// Uses WorkflowHints from the analyzer for the step instructions.
+    /// </summary>
+    private static IReadOnlyList<GuidedVisualStep> BuildGuidedSteps(
+        SemanticWindowContext ctx, string target)
+    {
+        var steps = new List<GuidedVisualStep>();
+
+        // Startup-settings specific guide
+        if (ctx.WindowType == SemanticWindowType.StartupSettings
+            || target.Contains("startup", StringComparison.OrdinalIgnoreCase))
+        {
+            steps.Add(new GuidedVisualStep
+            {
+                StepTitle     = "Startup Apps list",
+                Instruction   = "You are on the Startup Apps page. The list below shows all " +
+                                "apps that launch at login. Each row has a toggle on the right.",
+                TargetLabel   = "App list",
+                DirectionHint = "bottom",
+            });
+            steps.Add(new GuidedVisualStep
+            {
+                StepTitle     = "Disable a startup app",
+                Instruction   = "Tap the toggle next to any app you want to stop from auto-starting. " +
+                                "Blue = enabled, grey = disabled.",
+                TargetLabel   = "Toggle switch",
+                DirectionHint = "right",
+            });
+            return steps;
+        }
+
+        // Generic: one step per WorkflowHint (max 3)
+        foreach (var hint in ctx.WorkflowHints.Take(3))
+        {
+            steps.Add(new GuidedVisualStep
+            {
+                StepTitle     = ctx.ContextDescription ?? ctx.WindowTitle,
+                Instruction   = hint,
+                DirectionHint = "right",
+            });
+        }
+
+        return steps;
     }
 
     // ── Native window helper ───────────────────────────────────────────────────

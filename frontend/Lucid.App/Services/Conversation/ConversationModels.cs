@@ -87,6 +87,14 @@ public enum ConversationIntent
     /// <summary>"Open Windows Update / check for updates"</summary>
     LaunchWindowsUpdate     = 69,
 
+    // ── Visual Context (70-79) — Phase 18B ───────────────────────────────────
+    /// <summary>"What am I looking at?" — semantic description of the active window</summary>
+    WhatAmILookingAt        = 70,
+    /// <summary>"Where is the X / find the toggle" — UI element location guidance</summary>
+    LocateUiElement         = 71,
+    /// <summary>"Show me how to / guide me through" — guided visual workflow</summary>
+    RunVisualWorkflow       = 72,
+
     // ── Fallback ─────────────────────────────────────────────────────────────
     /// <summary>No keywords matched — provide general status</summary>
     Unknown                 = 99,

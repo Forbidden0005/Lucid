@@ -71,6 +71,14 @@ public sealed record SuggestedAction
     /// <summary>Automation target extracted from the "automation:{target}" tag.</summary>
     public string? AutomationTarget =>
         IsAutomationAction ? NavigationTag!["automation:".Length..] : null;
+
+    /// <summary>True if this chip routes to the visual context service (Phase 18B).</summary>
+    public bool IsVisualAction =>
+        NavigationTag?.StartsWith("visual:", StringComparison.Ordinal) == true;
+
+    /// <summary>Visual action target extracted from the "visual:{target}" tag.</summary>
+    public string? VisualActionTarget =>
+        IsVisualAction ? NavigationTag!["visual:".Length..] : null;
 }
 
 /// <summary>
