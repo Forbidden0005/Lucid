@@ -1,0 +1,648 @@
+﻿<Page x:ConnectionId='1'
+    x:Class="Lucid.Views.InvestigationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Lucid.Views"
+    xmlns:vm="using:Lucid.ViewModels"
+    xmlns:wf="using:Lucid.Services.Workflow"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <!--
+        InvestigationPage — Unified Operational Investigation Workspace
+        ═══════════════════════════════════════════════════════════════
+
+        Seven sections (top-down):
+          1. Page header + graph meta
+          2. Root cause candidates (ranked list)
+          3. Primary root cause detail (headline + evidence items + why it matters)
+          4. Suggested guided workflows (priority cards)
+          5. Workflow detail (steps + expected outcome + fallback)
+          6. Connected evidence chain (node list)
+          7. Rebuild / loading states
+
+        All data is read from InvestigationViewModel via x:Bind.
+        No business logic in this file.
+    -->
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
+        <StackPanel Spacing="0" Padding="24,28,24,32">
+
+            <!-- ── 1. Page header ──────────────────────────────────────────── -->
+            <Grid Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Title + subtitle -->
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="&#xE8B3;" FontFamily="Segoe MDL2 Assets"
+                                   FontSize="22" VerticalAlignment="Center"
+                                   Foreground="{StaticResource AccentBrush}" />
+                        <TextBlock Text="Investigate" Style="{StaticResource PageTitleStyle}" />
+                    </StackPanel>
+                    <TextBlock Text="Causal evidence analysis and guided remediation workflows"
+                               Style="{StaticResource PageSubtitleStyle}"
+                               Margin="0,0,0,0" />
+                </StackPanel>
+
+                <!-- Rebuild button -->
+                <Button x:ConnectionId='69' Grid.Column="1"
+                                                                              
+                        VerticalAlignment="Center"
+                        Style="{StaticResource SecondaryButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                        <TextBlock Text="Rebuild" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ── Loading state ──────────────────────────────────────────── -->
+            <Border x:ConnectionId='2'                                                               
+                    Background="#0D6B7280"
+                    CornerRadius="10"
+                    Padding="20,16"
+                    Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <ProgressRing IsActive="True" Width="24" Height="24"
+                                  Foreground="{StaticResource AccentBrush}" />
+                    <TextBlock x:ConnectionId='68'                                                      
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Error state ────────────────────────────────────────────── -->
+            <Border x:ConnectionId='3'                                                             
+                    Background="#1AF87171"
+                    CornerRadius="10"
+                    Padding="20,16"
+                    Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="&#xEA39;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                               Foreground="#F87171" VerticalAlignment="Center" />
+                    <TextBlock x:ConnectionId='67'                                                    
+                               Foreground="#F87171" VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── No-graph placeholder ───────────────────────────────────── -->
+            <Border x:ConnectionId='4'                                                               
+                    Background="#0D6B7280"
+                    CornerRadius="10"
+                    Padding="32"
+                    Margin="0,0,0,20">
+                <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <TextBlock Text="&#xE8B3;" FontFamily="Segoe MDL2 Assets"
+                               FontSize="40" HorizontalAlignment="Center"
+                               Foreground="#6B7280" />
+                    <TextBlock Text="No evidence available yet"
+                               FontSize="16" FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               Foreground="{StaticResource TextPrimaryBrush}" />
+                    <TextBlock Text="The intelligence engine is still warming up. Click Rebuild once insights are active."
+                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" TextWrapping="Wrap"
+                               MaxWidth="440" TextAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══════ Main content (visible when graph is available) ══════ -->
+            <StackPanel x:ConnectionId='5' Spacing="0"
+                                                                                    >
+
+                <!-- ── 1b. Evidence graph meta card ────────────────────────── -->
+                <Border Background="#0D60A5FA"
+                        BorderBrush="#1A60A5FA"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="20,14"
+                        Margin="0,0,0,20">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Node count -->
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock x:ConnectionId='66'                                                         
+                                       FontSize="28" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentBrush}" />
+                            <TextBlock Text="Evidence nodes"
+                                       FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+
+                        <!-- Link count -->
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock x:ConnectionId='65'                                                         
+                                       FontSize="28" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentBrush}" />
+                            <TextBlock Text="Causal links"
+                                       FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+
+                        <!-- Built at -->
+                        <StackPanel Grid.Column="2" Spacing="2">
+                            <TextBlock x:ConnectionId='64'                                                         
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text="Graph freshness"
+                                       FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ── 2. Root cause candidates ────────────────────────────── -->
+                <TextBlock x:ConnectionId='6'                                                           
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Margin="0,0,0,12" />
+
+                <!-- No-root-cause placeholder -->
+                <Border x:ConnectionId='7'                                                                    
+                        Background="#0D6B7280"
+                        CornerRadius="8"
+                        Padding="16"
+                        Margin="0,0,0,20">
+                    <TextBlock x:ConnectionId='63'                                                       
+                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <!-- Root cause list -->
+                <ItemsRepeater x:ConnectionId='8'                                                                  
+                                                                                       
+                               Margin="0,0,0,20">
+                    <ItemsRepeater.Layout>
+                        <StackLayout Spacing="8" />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate                                            >
+                            <Border x:ConnectionId='58' Background="#0D1F2937"
+                                    BorderBrush="#1A374151"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="16,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Confidence stripe -->
+                                    <Border x:ConnectionId='59' Grid.Column="0"
+                                                                                 
+                                            CornerRadius="2"
+                                            Margin="0,0,12,0" />
+
+                                    <!-- Content -->
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock x:ConnectionId='61'                           
+                                                   FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock x:ConnectionId='62'                                
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </StackPanel>
+
+                                    <!-- Confidence badge -->
+                                    <Border Grid.Column="2" VerticalAlignment="Center"
+                                            CornerRadius="4" Padding="8,4">
+                                        <TextBlock x:ConnectionId='60'                                
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                                                         />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+
+                <!-- ── 3. Primary root cause detail ────────────────────────── -->
+                <Border x:ConnectionId='9'                                                                     
+                        Background="#0D1F2937"
+                        BorderBrush="#1A374151"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="20,18"
+                        Margin="0,0,0,24">
+                    <StackPanel Spacing="14">
+
+                        <!-- Section label -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="&#xE8B3;" FontFamily="Segoe MDL2 Assets"
+                                       FontSize="16" Foreground="{StaticResource AccentBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="Primary Root Cause Analysis"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <!-- Headline -->
+                        <TextBlock x:ConnectionId='49'                                                       
+                                   FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Why it matters -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Why this matters"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       CharacterSpacing="60" />
+                            <TextBlock x:ConnectionId='56'                                                         
+                                       FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Supporting evidence items -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Supporting evidence"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       CharacterSpacing="60" />
+                            <ItemsRepeater x:ConnectionId='52'                                                              >
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="4" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate                      >
+                                        <StackPanel x:ConnectionId='54' Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="•" FontSize="12"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       VerticalAlignment="Top"
+                                                       Margin="0,1,0,0" />
+                                            <TextBlock x:ConnectionId='55'                
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                        <!-- Suggested next step -->
+                        <Border Background="#0D60A5FA" CornerRadius="6" Padding="12,10">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="&#xE8CB;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="14" Foreground="{StaticResource AccentBrush}"
+                                           VerticalAlignment="Top" Margin="0,1,0,0" />
+                                <TextBlock x:ConnectionId='51'                                                       
+                                           FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Confidence summary -->
+                        <TextBlock x:ConnectionId='50'                                                         
+                                   FontSize="11" Foreground="{StaticResource TextTertiaryBrush}"
+                                   FontStyle="Italic" />
+
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 4. Suggested workflows ───────────────────────────────── -->
+                <TextBlock x:ConnectionId='10'                                                          
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Margin="0,0,0,12" />
+
+                <!-- No-workflows placeholder -->
+                <Border x:ConnectionId='11'                                                                   
+                        Background="#0D6B7280"
+                        CornerRadius="8"
+                        Padding="16"
+                        Margin="0,0,0,20">
+                    <TextBlock Text="No guided workflows are available for the current evidence pattern. Review the Insights page for individual recommendations."
+                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <!-- Workflow cards -->
+                <ItemsRepeater x:ConnectionId='12'                                                                 
+                                                                                               
+                               Margin="0,0,0,24">
+                    <ItemsRepeater.Layout>
+                        <StackLayout Spacing="10" />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate                                  >
+                            <Border x:ConnectionId='41' CornerRadius="10"
+                                    Padding="0"
+                                    Background="#0D1F2937"
+                                    BorderThickness="1"
+                                    BorderBrush="#1A374151">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Header row -->
+                                    <Border x:ConnectionId='42' Grid.Row="0"
+                                                                                 
+                                            CornerRadius="10,10,0,0"
+                                            Padding="16,12">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock x:ConnectionId='47'                      
+                                                           FontSize="14" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" />
+                                                <TextBlock x:ConnectionId='48'                               
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Spacing="4" HorizontalAlignment="Right">
+                                                <Border CornerRadius="4" Padding="8,3">
+                                                    <TextBlock x:ConnectionId='46'                              
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                                                                   />
+                                                </Border>
+                                                <TextBlock x:ConnectionId='45'                                 
+                                                           FontSize="10"
+                                                                                                 
+                                                           HorizontalAlignment="Right" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Body row -->
+                                    <Border Grid.Row="1" Padding="16,12">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock x:ConnectionId='43'                               
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       TextWrapping="Wrap"
+                                                       MaxLines="3" />
+                                            <TextBlock x:ConnectionId='44'                                
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextTertiaryBrush}"
+                                                       TextWrapping="Wrap"
+                                                       FontStyle="Italic" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+
+                <!-- ── 5. Workflow detail (selected workflow) ───────────────── -->
+                <Border x:ConnectionId='13'                                                                      
+                        Background="#0D1F2937"
+                        BorderBrush="#1A374151"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="20,18"
+                        Margin="0,0,0,24">
+                    <StackPanel Spacing="14">
+
+                        <!-- Section label -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="&#xE9F5;" FontFamily="Segoe MDL2 Assets"
+                                       FontSize="16" Foreground="{StaticResource AccentBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock x:ConnectionId='39'                                                              
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <!-- Risk summary -->
+                        <Border Background="#1AF59E0B" CornerRadius="6" Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="14" Foreground="#F59E0B"
+                                           VerticalAlignment="Top" Margin="0,1,0,0" />
+                                <TextBlock x:ConnectionId='38'                                                                    
+                                           FontSize="12" Foreground="#F59E0B"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Steps -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Guided steps"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       CharacterSpacing="60" />
+                            <ItemsRepeater x:ConnectionId='29'                                                                     >
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="8" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate                             >
+                                        <Border x:ConnectionId='31' Background="#0D374151"
+                                                CornerRadius="6"
+                                                Padding="14,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="28" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Step number circle -->
+                                                <Border Grid.Column="0"
+                                                        Width="22" Height="22"
+                                                        CornerRadius="11"
+                                                        Background="#1A60A5FA"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Top"
+                                                        Margin="0,1,0,0">
+                                                    <TextBlock x:ConnectionId='37'                           
+                                                               FontSize="11" FontWeight="Bold"
+                                                               Foreground="{StaticResource AccentBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+
+                                                <!-- Step glyph -->
+                                                <TextBlock x:ConnectionId='32' Grid.Column="1"
+                                                                                    
+                                                           FontFamily="Segoe MDL2 Assets"
+                                                           FontSize="14"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           VerticalAlignment="Top"
+                                                           Margin="8,2,10,0" />
+
+                                                <!-- Step content -->
+                                                <StackPanel Grid.Column="2" Spacing="3">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock x:ConnectionId='35'                          
+                                                                   FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}" />
+                                                        <Border CornerRadius="3" Padding="5,2"
+                                                                Background="#0A6B7280">
+                                                            <TextBlock x:ConnectionId='36'                              
+                                                                       FontSize="10"
+                                                                       Foreground="#6B7280"
+                                                                                                                     />
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <TextBlock x:ConnectionId='33'                                
+                                                               FontSize="12"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               TextWrapping="Wrap" />
+                                                    <TextBlock x:ConnectionId='34'                               
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextTertiaryBrush}"
+                                                               FontStyle="Italic"
+                                                               TextWrapping="Wrap"
+                                                               Margin="0,2,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                        <!-- Expected outcome -->
+                        <Border Background="#0D34D399" CornerRadius="6" Padding="12,10">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="14" Foreground="#34D399"
+                                           VerticalAlignment="Top" Margin="0,1,0,0" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Expected outcome"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="#34D399" />
+                                    <TextBlock x:ConnectionId='28'                                                                        
+                                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Fallback actions -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="If it doesn't work"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       CharacterSpacing="60" />
+                            <ItemsRepeater x:ConnectionId='24'                                                                               >
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Spacing="4" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate                      >
+                                        <StackPanel x:ConnectionId='26' Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="→" FontSize="12"
+                                                       Foreground="{StaticResource TextTertiaryBrush}"
+                                                       VerticalAlignment="Top" Margin="0,1,0,0" />
+                                            <TextBlock x:ConnectionId='27'                
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 6. Connected evidence chain ──────────────────────────── -->
+                <TextBlock x:ConnectionId='14'                                                          
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Margin="0,0,0,12"
+                                                                                                />
+
+                <ItemsRepeater x:ConnectionId='15'                                                                     
+                                                                                          
+                               Margin="0,0,0,16">
+                    <ItemsRepeater.Layout>
+                        <StackLayout Spacing="6" />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate                                      >
+                            <Border x:ConnectionId='17' Background="#0D1F2937"
+                                    BorderBrush="#0F374151"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Node glyph with color accent -->
+                                    <Border Grid.Column="0"
+                                            Width="32" Height="32"
+                                            CornerRadius="6"
+                                            Background="#0D374151"
+                                            Margin="0,0,12,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock x:ConnectionId='23'                          
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="15"
+                                                                                  
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <!-- Node content -->
+                                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock x:ConnectionId='21'                      
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <TextBlock x:ConnectionId='22'                         
+                                                       FontSize="10"
+                                                       Foreground="{StaticResource TextTertiaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock x:ConnectionId='20'                        
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap"
+                                                   MaxLines="2" />
+                                    </StackPanel>
+
+                                    <!-- Confidence + age -->
+                                    <StackPanel Grid.Column="2"
+                                                Spacing="2"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Margin="12,0,0,0">
+                                        <TextBlock x:ConnectionId='18'                                
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                                                  
+                                                   HorizontalAlignment="Right" />
+                                        <TextBlock x:ConnectionId='19'                        
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource TextTertiaryBrush}"
+                                                   HorizontalAlignment="Right" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+
+            </StackPanel>
+            <!-- end main content StackPanel -->
+
+        </StackPanel>
+    </ScrollViewer>
+
+</Page>
+

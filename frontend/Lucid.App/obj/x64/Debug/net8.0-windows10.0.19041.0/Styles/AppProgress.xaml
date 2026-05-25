@@ -1,0 +1,41 @@
+﻿<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Lucid Progress Bar Styles
+
+        Two variants:
+          ConfidenceBar — slim 3px bar for diagnostic confidence scores.
+          UsageBar      — medium 4px bar for live resource readings.
+
+        Set Foreground per element — it varies by finding severity or
+        by which metric the bar represents (CPU/RAM/GPU/Disk).
+
+        Usage:
+          <ProgressBar x:Name="CpuBar"
+                       Style="{StaticResource UsageBar}"
+                       Foreground="{StaticResource AccentBlueBrush}" />
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- 3-px confidence / diagnostic bar -->
+    <Style x:Key="ConfidenceBar" TargetType="ProgressBar">
+        <Setter Property="Maximum"      Value="100" />
+        <Setter Property="Height"       Value="3" />
+        <Setter Property="CornerRadius" Value="2" />
+        <!-- #1AFFFFFF = very subtle white overlay track -->
+        <Setter Property="Background"   Value="#1AFFFFFF" />
+    </Style>
+
+    <!-- 4-px resource usage / metric bar -->
+    <Style x:Key="UsageBar" TargetType="ProgressBar">
+        <Setter Property="Maximum"      Value="100" />
+        <Setter Property="Height"       Value="4" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Background"   Value="#1AFFFFFF" />
+    </Style>
+
+</ResourceDictionary>
+

@@ -1,9 +1,0 @@
-﻿{
-  "$schema": "http://json.schemastore.org/launchsettings.json",
-  "profiles": {
-    "ExplainMyPC.App (Unpackaged)": {
-      "commandName": "Project",
-      "nativeDebugging": false
-    }
-  }
-}

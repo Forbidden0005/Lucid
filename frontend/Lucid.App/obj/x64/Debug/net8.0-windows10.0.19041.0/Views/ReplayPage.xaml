@@ -1,0 +1,862 @@
+﻿<Page x:ConnectionId='1'
+    x:Class="Lucid.Views.ReplayPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Lucid.Views"
+    Background="{StaticResource AppBackgroundBrush}"
+                        >
+
+    <!--
+        ReplayPage.xaml — Operational Replay Workspace
+        ═══════════════════════════════════════════════════════════════════════
+
+        An immersive forensic timeline that lets users scrub through session
+        history, reconstruct system state at any moment, trace causal chains,
+        and compare before/after effects of remediation actions.
+
+        Sections (top to bottom):
+          1. Page header + window-selector chips
+          2. Loading / no-data states
+          3. Session info bar (coverage · data points · health label)
+          4. Timeline scrubber (Slider + cursor time label)
+          5. Event markers rail (horizontal chip strip, click to seek)
+          6. State at Cursor (metrics + active insights)
+          7. What Changed + Causal Chain (two-column area)
+          8. Before/After Comparison card (shown near action events)
+          9. Replay Narrative (prose paragraphs)
+
+        All content binds to ReplayViewModel via DataContext (set in code-behind).
+        Slider uses Mode=TwoWay; every cursor move triggers state reconstruction.
+    -->
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32,32,32,56" Spacing="24">
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 1. PAGE HEADER
+            ═══════════════════════════════════════════════════════════════ -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Operational Replay"
+                               Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="Scrub through session history — reconstruct system state, trace causal chains, and review remediation effects"
+                               Style="{StaticResource PageSubtitleStyle}" />
+                </StackPanel>
+
+                <!-- Refresh button -->
+                <Button Grid.Column="1"
+                        Command="{Binding RefreshCommand}"
+                        VerticalAlignment="Center"
+                        Padding="14,8"
+                        CornerRadius="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                        <TextBlock Text="Refresh" FontSize="13" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ── Window selector chips ─────────────────────────────────── -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="Window:"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource CaptionTextStyle}"
+                           Margin="0,0,4,0" />
+
+                <ToggleButton Content="Full Session"
+                              IsChecked="{Binding IsWindowFull, Mode=TwoWay}"
+                              Command="{Binding SelectWindowFullCommand}"
+                              Padding="12,6" CornerRadius="8" FontSize="12" />
+
+                <ToggleButton Content="1 Hour"
+                              IsChecked="{Binding IsWindowHour, Mode=TwoWay}"
+                              Command="{Binding SelectWindowHourCommand}"
+                              Padding="12,6" CornerRadius="8" FontSize="12" />
+
+                <ToggleButton Content="15 Min"
+                              IsChecked="{Binding IsWindow15m, Mode=TwoWay}"
+                              Command="{Binding SelectWindow15mCommand}"
+                              Padding="12,6" CornerRadius="8" FontSize="12" />
+
+                <ToggleButton Content="5 Min"
+                              IsChecked="{Binding IsWindow5m, Mode=TwoWay}"
+                              Command="{Binding SelectWindow5mCommand}"
+                              Padding="12,6" CornerRadius="8" FontSize="12" />
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 2. LOADING STATE
+            ═══════════════════════════════════════════════════════════════ -->
+            <Border Style="{StaticResource CardSurface}"
+                    Padding="32"
+                    Visibility="{Binding LoadingVisibility}">
+                <StackPanel HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="16">
+                    <ProgressRing IsActive="True" Width="40" Height="40" />
+                    <TextBlock Text="Building replay session…"
+                               Style="{StaticResource CaptionTextStyle}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── No data state ────────────────────────────────────────── -->
+            <Border Style="{StaticResource CardSurface}"
+                    Padding="40,32"
+                    Visibility="{Binding NoDataVisibility}">
+                <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <FontIcon Glyph="&#xE81C;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="36"
+                              Foreground="{StaticResource SecondaryTextBrush}"
+                              HorizontalAlignment="Center" />
+                    <TextBlock Text="No replay data yet"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="The system monitor needs a few minutes to gather telemetry and events before a session replay is available."
+                               Style="{StaticResource CaptionTextStyle}"
+                               TextWrapping="Wrap"
+                               MaxWidth="400"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 3–9. SESSION CONTENT (shown once session is loaded)
+            ═══════════════════════════════════════════════════════════════ -->
+            <StackPanel Spacing="20"
+                        Visibility="{Binding SessionVisibility}">
+
+                <!-- ── 3. Session info bar ───────────────────────────────── -->
+                <Border Style="{StaticResource CardSurface}" Padding="20,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Coverage -->
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE81C;" FontFamily="Segoe MDL2 Assets"
+                                      FontSize="14"
+                                      Foreground="{StaticResource AccentBlueBrush}" />
+                            <TextBlock FontSize="13" VerticalAlignment="Center">
+                                <Run Text="Coverage: " Foreground="{StaticResource SecondaryTextBrush}" />
+                                <Run Text="{Binding SessionCoverage}" />
+                            </TextBlock>
+                            <TextBlock Text="·"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding DataPointsText}"
+                                       FontSize="13"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Health at cursor -->
+                        <Border Grid.Column="1"
+                                Background="#1AFFFFFF"
+                                CornerRadius="6"
+                                Padding="10,4"
+                                Margin="16,0">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Health:"
+                                           FontSize="12"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding HealthStateLabel}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Samples -->
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding SamplesText}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- ── 4. Timeline scrubber ──────────────────────────────── -->
+                <Border Style="{StaticResource CardElevated}" Padding="24,20">
+                    <StackPanel Spacing="12">
+
+                        <!-- Section title -->
+                        <TextBlock Text="TIMELINE SCRUBBER"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   CharacterSpacing="75"
+                                   Foreground="{StaticResource SecondaryTextBrush}" />
+
+                        <!-- Seek buttons -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Command="{Binding SeekToBeginCommand}"
+                                    Padding="8,4" CornerRadius="6" FontSize="12">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE892;" FontFamily="Segoe MDL2 Assets"
+                                              FontSize="12" />
+                                    <TextBlock Text="Oldest" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding SeekToEndCommand}"
+                                    Padding="8,4" CornerRadius="6" FontSize="12">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Present" />
+                                    <FontIcon Glyph="&#xE893;" FontFamily="Segoe MDL2 Assets"
+                                              FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Slider + time labels -->
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Slider Grid.Row="0"
+                                    Minimum="0"
+                                    Maximum="{Binding TotalSessionSeconds}"
+                                    Value="{Binding CursorSeconds, Mode=TwoWay}"
+                                    StepFrequency="1"
+                                    TickFrequency="60"
+                                    IsThumbToolTipEnabled="False"
+                                    HorizontalAlignment="Stretch" />
+
+                            <!-- Cursor time + sample count below slider -->
+                            <StackPanel Grid.Row="1"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Spacing="8">
+                                <FontIcon Glyph="&#xE916;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="12"
+                                          Foreground="{StaticResource AccentBlueBrush}" />
+                                <TextBlock Text="{Binding CursorTimeText}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Grid>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 5. Event markers rail ─────────────────────────────── -->
+                <Border Style="{StaticResource CardSurface}" Padding="16,12">
+                    <StackPanel Spacing="10">
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="EVENTS"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       CharacterSpacing="75"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="— click to seek"
+                                       FontSize="11"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding HasEventMarkersVisibility}" />
+                        </StackPanel>
+
+                        <!-- Empty state -->
+                        <TextBlock Text="No events recorded yet in this session window."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Visibility="{Binding NoEventMarkersVisibility}" />
+
+                        <!-- Chips rail -->
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      Visibility="{Binding HasEventMarkersVisibility}">
+                            <ItemsControl x:ConnectionId='6' x:Name="EventMarkersPanel"
+                                          ItemsSource="{Binding EventMarkers}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <!-- Each chip is a Button with Tag=OffsetSeconds -->
+                                        <Button x:ConnectionId='7' Tag="{Binding OffsetSeconds}"
+                                                                         
+                                                Padding="8,4"
+                                                CornerRadius="6"
+                                                Background="#18FFFFFF"
+                                                BorderBrush="#20FFFFFF"
+                                                BorderThickness="1">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <FontIcon Glyph="{Binding GlyphText}"
+                                                          FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="11"
+                                                          Foreground="{Binding AccentBrush}" />
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="11"
+                                                           MaxWidth="100"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding TimeText}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 6 + 7. State at cursor + What Changed (two columns) ── -->
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ── LEFT: State at Cursor ─────────────────────────── -->
+                    <Border Grid.Column="0"
+                            Style="{StaticResource CardSurface}"
+                            Padding="20"
+                            VerticalAlignment="Top">
+                        <StackPanel Spacing="14">
+
+                            <TextBlock Text="STATE AT CURSOR"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       CharacterSpacing="75"
+                                       Foreground="{StaticResource SecondaryTextBrush}" />
+
+                            <!-- Metrics -->
+                            <StackPanel Spacing="10">
+
+                                <!-- CPU -->
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="CPU"
+                                               FontSize="12"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               VerticalAlignment="Center" />
+                                    <ProgressBar Grid.Column="1"
+                                                 Value="{Binding CpuAtCursor}"
+                                                 Maximum="100"
+                                                 VerticalAlignment="Center"
+                                                 Height="6"
+                                                 CornerRadius="3" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding CpuText}"
+                                               FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+
+                                <!-- RAM -->
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="RAM"
+                                               FontSize="12"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               VerticalAlignment="Center" />
+                                    <ProgressBar Grid.Column="1"
+                                                 Value="{Binding RamAtCursor}"
+                                                 Maximum="100"
+                                                 VerticalAlignment="Center"
+                                                 Height="6"
+                                                 CornerRadius="3" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding RamText}"
+                                               FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+
+                                <!-- GPU -->
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="GPU"
+                                               FontSize="12"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               VerticalAlignment="Center" />
+                                    <ProgressBar Grid.Column="1"
+                                                 Value="{Binding GpuAtCursor}"
+                                                 Maximum="100"
+                                                 VerticalAlignment="Center"
+                                                 Height="6"
+                                                 CornerRadius="3" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding GpuText}"
+                                               FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+
+                                <!-- Disk -->
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="Disk"
+                                               FontSize="12"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               VerticalAlignment="Center" />
+                                    <ProgressBar Grid.Column="1"
+                                                 Value="{Binding DiskAtCursor}"
+                                                 Maximum="100"
+                                                 VerticalAlignment="Center"
+                                                 Height="6"
+                                                 CornerRadius="3" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding DiskText}"
+                                               FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+
+                                <!-- Temp (conditional) -->
+                                <Grid ColumnSpacing="10"
+                                      Visibility="{Binding TempRowVisibility}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="Temp"
+                                               FontSize="12"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               VerticalAlignment="Center" />
+                                    <ProgressBar Grid.Column="1"
+                                                 Value="{Binding TempAtCursor}"
+                                                 Maximum="100"
+                                                 VerticalAlignment="Center"
+                                                 Height="6"
+                                                 CornerRadius="3" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding TempText}"
+                                               FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+
+                            </StackPanel>
+
+                            <!-- Divider -->
+                            <Rectangle Height="1" Fill="#15FFFFFF" />
+
+                            <!-- Active insights heading -->
+                            <TextBlock Text="ACTIVE CONDITIONS"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       CharacterSpacing="75"
+                                       Foreground="{StaticResource SecondaryTextBrush}" />
+
+                            <!-- No insights empty state -->
+                            <StackPanel Orientation="Horizontal" Spacing="8"
+                                        Visibility="{Binding NoInsightsVisibility}">
+                                <FontIcon Glyph="&#xE73E;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="14"
+                                          Foreground="{StaticResource SuccessBrush}" />
+                                <TextBlock Text="No active conditions at this moment."
+                                           FontSize="13"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- Insight list -->
+                            <ItemsControl ItemsSource="{Binding ActiveInsights}"
+                                          Visibility="{Binding HasInsightsVisibility}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#10FFFFFF"
+                                                CornerRadius="8"
+                                                Padding="12,10"
+                                                Margin="0,0,0,6">
+                                            <StackPanel Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="{Binding SeverityGlyph}"
+                                                              FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="14"
+                                                              Foreground="{Binding SeverityBrush}" />
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               TextWrapping="Wrap"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="12"
+                                                            Margin="22,0,0,0">
+                                                    <TextBlock Text="{Binding SeverityLabel}"
+                                                               FontSize="11"
+                                                               Foreground="{Binding SeverityBrush}" />
+                                                    <TextBlock Text="{Binding DurationText}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding ProcessText}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                                           Margin="22,0,0,0"
+                                                           Visibility="{Binding ProcessesVisibility}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── RIGHT: What Changed + Causal Chain ─────────────── -->
+                    <Border Grid.Column="1"
+                            Style="{StaticResource CardSurface}"
+                            Padding="20"
+                            VerticalAlignment="Top">
+                        <StackPanel Spacing="14">
+
+                            <!-- What Changed section -->
+                            <TextBlock Text="WHAT CHANGED"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       CharacterSpacing="75"
+                                       Foreground="{StaticResource SecondaryTextBrush}" />
+
+                            <TextBlock Text="No significant changes from session start to cursor position."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       TextWrapping="Wrap"
+                                       Visibility="{Binding NoDeltaVisibility}" />
+
+                            <ItemsControl ItemsSource="{Binding DeltaItems}"
+                                          Visibility="{Binding HasDeltaVisibility}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal"
+                                                    Spacing="10"
+                                                    Margin="0,0,0,6">
+                                            <FontIcon Glyph="{Binding Glyph}"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="13"
+                                                      Foreground="{Binding GlyphBrush}"
+                                                      VerticalAlignment="Top"
+                                                      Margin="0,1,0,0" />
+                                            <TextBlock Text="{Binding Label}"
+                                                       FontSize="13"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Divider -->
+                            <Rectangle Height="1" Fill="#15FFFFFF" />
+
+                            <!-- Causal Chain section -->
+                            <TextBlock Text="CAUSAL CHAIN"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       CharacterSpacing="75"
+                                       Foreground="{StaticResource SecondaryTextBrush}" />
+
+                            <TextBlock Text="No significant event sequence detected in this window."
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       TextWrapping="Wrap"
+                                       Visibility="{Binding NoCausalLinksVisibility}" />
+
+                            <ItemsControl ItemsSource="{Binding CausalLinks}"
+                                          Visibility="{Binding HasCausalLinksVisibility}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="32" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Icon column -->
+                                            <Border Grid.Column="0"
+                                                    Width="28"
+                                                    Height="28"
+                                                    CornerRadius="14"
+                                                    Background="#12FFFFFF"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Top">
+                                                <FontIcon Glyph="{Binding Glyph}"
+                                                          FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="12"
+                                                          Foreground="{Binding GlyphBrush}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- Content column -->
+                                            <StackPanel Grid.Column="1"
+                                                        Spacing="2"
+                                                        Margin="8,0,0,0">
+                                                <StackPanel Orientation="Horizontal"
+                                                            Spacing="8">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding TimeText}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Description}"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource SecondaryTextBrush}" />
+                                                <TextBlock Text="{Binding ConfidenceText}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                                           Opacity="0.7" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+
+                <!-- ── 8. Before/After Comparison card ──────────────────── -->
+                <Border Style="{StaticResource CardElevated}"
+                        Padding="20"
+                        Visibility="{Binding ComparisonVisibility}">
+                    <StackPanel Spacing="14">
+
+                        <!-- Title row -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <FontIcon Glyph="&#xE81C;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                      Foreground="{StaticResource AccentBlueBrush}" />
+                            <TextBlock Text="{Binding ComparisonTitle}"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Metrics comparison grid -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" MinWidth="60" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Header row -->
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="Metric"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Margin="0,0,0,6" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="Before"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Margin="0,0,0,6"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Grid.Row="0" Grid.Column="2"
+                                       Text="After"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Margin="0,0,0,6"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Grid.Row="0" Grid.Column="3"
+                                       Text="Change"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Margin="0,0,0,6"
+                                       HorizontalAlignment="Center" />
+
+                            <!-- Metric rows (built from ComparisonMetrics collection) -->
+                            <ItemsControl Grid.Row="1" Grid.Column="0"
+                                          Grid.ColumnSpan="4"
+                                          ItemsSource="{Binding ComparisonMetrics}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,3,0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" MinWidth="60" />
+                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="80" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Label}"
+                                                       FontSize="13"
+                                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding BeforeText}"
+                                                       FontSize="13"
+                                                       HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding AfterText}"
+                                                       FontSize="13"
+                                                       HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{Binding DeltaText}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{Binding DeltaBrush}"
+                                                       HorizontalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                        </Grid>
+
+                        <!-- Outcome badge -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE73E;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="14"
+                                      Foreground="{StaticResource SuccessBrush}"
+                                      Visibility="{Binding ImprovementVisibility}" />
+                            <FontIcon Glyph="&#xE946;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="14"
+                                      Foreground="{StaticResource SecondaryTextBrush}"
+                                      Visibility="{Binding NoImprovementVisibility}" />
+                            <TextBlock Text="{Binding ComparisonOutcomeText}"
+                                       FontSize="13"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Narrative text -->
+                        <TextBlock Text="{Binding ComparisonNarrative}"
+                                   FontSize="13"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   TextWrapping="Wrap"
+                                   LineHeight="20" />
+
+                        <!-- Effectiveness context badge (visible when warm learning data exists) -->
+                        <Border Visibility="{Binding ComparisonEffectivenessVisible}"
+                                CornerRadius="8" Padding="12,8"
+                                Background="{StaticResource AppBackgroundBrush}"
+                                BorderBrush="{StaticResource StatusGoodBrush}"
+                                BorderThickness="1">
+                            <StackPanel Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE930;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="12"
+                                              Foreground="{StaticResource StatusGoodBrush}"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding ComparisonEffectivenessLabel}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{StaticResource StatusGoodBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding ComparisonEffectivenessText}"
+                                           FontSize="12"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 9. Replay Narrative ───────────────────────────────── -->
+                <Border Style="{StaticResource CardSurface}" Padding="24,20">
+                    <StackPanel Spacing="14">
+
+                        <!-- Heading -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <FontIcon Glyph="&#xE8A9;"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                      Foreground="{StaticResource AccentBlueBrush}" />
+                            <TextBlock Text="Replay Narrative"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Paragraph 1 (always shown when narrative available) -->
+                        <TextBlock Text="{Binding NarrativeParagraph1}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   LineHeight="22"
+                                   Foreground="{StaticResource SecondaryTextBrush}" />
+
+                        <!-- Paragraphs 2–4 (conditional) -->
+                        <TextBlock Text="{Binding NarrativeParagraph2}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   LineHeight="22"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   Visibility="{Binding P2Visibility}" />
+
+                        <TextBlock Text="{Binding NarrativeParagraph3}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   LineHeight="22"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   Visibility="{Binding P3Visibility}" />
+
+                        <TextBlock Text="{Binding NarrativeParagraph4}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   LineHeight="22"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   Visibility="{Binding P4Visibility}" />
+
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+            <!-- end SessionVisibility block -->
+
+        </StackPanel>
+    </ScrollViewer>
+
+</Page>
+

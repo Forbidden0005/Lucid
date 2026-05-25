@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ExplainMyPC (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "ExplainMyPC (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -421,10 +421,10 @@ The app should make users feel:
 
 ```
 # Debug build (run from frontend/)
-dotnet build ExplainMyPC.slnx -c Debug -p:Platform=x64
+dotnet build Lucid.slnx -c Debug -p:Platform=x64
 
 # Release build
-dotnet build ExplainMyPC.slnx -c Release -p:Platform=x64
+dotnet build Lucid.slnx -c Release -p:Platform=x64
 ```
 
 Warning `NETSDK1206` (version-specific RIDs) is non-critical — it comes from the Windows App SDK NuGet, not your code. Ignore it.

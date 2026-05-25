@@ -1,4 +1,4 @@
-# Lucid — Claude Onboarding Guide
+﻿# Lucid — Claude Onboarding Guide
 
 > Hey Claude. Welcome to Lucid. Here's everything you need to hit the ground running — the stuff that took sessions to figure out, handed to you upfront.
 
@@ -45,7 +45,7 @@ The repo was originally named `ExplainMyPC` — the GitHub URL and namespaces st
 
 ```bat
 cd frontend
-dotnet build ExplainMyPC.slnx -c Debug -p:Platform=x64
+dotnet build Lucid.slnx -c Debug -p:Platform=x64
 ```
 
 **If you get a XamlCompiler.exe error (MSB3073):**
@@ -66,7 +66,7 @@ ExplainMyPC/
 ├── CLAUDE.md                          ← Project doctrine (read this too)
 ├── ROADMAP.md                         ← Full phase-by-phase roadmap
 ├── frontend/
-│   └── ExplainMyPC.App/
+│   └── Lucid.App/
 │       ├── AppServices.cs             ← Service registry (no DI container)
 │       ├── MainWindow.xaml(.cs)       ← App shell, sidebar nav, companion toggle
 │       ├── Services/
