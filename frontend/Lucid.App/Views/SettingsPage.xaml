@@ -261,6 +261,86 @@
                 </StackPanel>
             </Border>
 
+            <!-- AI Assistant -->
+            <TextBlock Text="AI Assistant"
+                       Style="{StaticResource SectionTitleStyle}" />
+
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="10" Padding="20"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="16">
+
+                    <!-- Ollama endpoint URL -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Endpoint URL" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Ollama server address (default: localhost:11434)"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBox x:Name="LlmEndpointBox"
+                                 Grid.Column="1"
+                                 PlaceholderText="http://localhost:11434"
+                                 VerticalAlignment="Center"
+                                 LostFocus="LlmEndpointBox_LostFocus" />
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Model name -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Model" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Ollama model name — must be pulled first (e.g. ollama pull llama3.2:3b)"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBox x:Name="LlmModelBox"
+                                 Grid.Column="1"
+                                 PlaceholderText="llama3.2:3b"
+                                 VerticalAlignment="Center"
+                                 LostFocus="LlmModelBox_LostFocus" />
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Test connection -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Connection" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock x:Name="LlmStatusText"
+                                       Text="Not tested"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <Button x:Name="TestConnectionButton"
+                                Grid.Column="1"
+                                Content="Test connection"
+                                Style="{StaticResource SecondaryButton}"
+                                Click="TestConnectionButton_Click"
+                                VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Restart notice -->
+                    <TextBlock Text="Endpoint and model changes take effect the next time the app starts."
+                               Style="{StaticResource CaptionTextStyle}"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+
+                </StackPanel>
+            </Border>
+
             <!-- About -->
             <TextBlock Text="About"
                        Style="{StaticResource SectionTitleStyle}" />

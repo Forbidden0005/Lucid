@@ -8,7 +8,11 @@ using System.Text.Json.Serialization;
 namespace Lucid.Services.LlmChat;
 
 /// <summary>
-/// Thin HTTP client for the Ollama local inference server (localhost:11434).
+/// Thin HTTP client for the Ollama local inference server.
+///
+/// Endpoint and model are injected at construction time so they can be
+/// read from <see cref="AppSettings"/> without hardcoding.  The defaults
+/// match the standard Ollama install so the app works out-of-the-box.
 ///
 /// Two HttpClient instances are used intentionally:
 ///   _ping   — 5s timeout for availability checks that must fail fast.
@@ -16,8 +20,13 @@ namespace Lucid.Services.LlmChat;
 /// </summary>
 public sealed class OllamaClient : IDisposable
 {
-    private const string BaseUrl   = "http://localhost:11434";
-    public  const string ModelName = "llama3.2:3b";
+    /// <summary>Default Ollama base URL (standard installation).</summary>
+    public const string DefaultBaseUrl   = "http://localhost:11434";
+    /// <summary>Default model name — small, fast, good quality for local use.</summary>
+    public const string DefaultModelName = "llama3.2:3b";
+
+    private readonly string _baseUrl;
+    private readonly string _modelName;
 
     private static readonly JsonSerializerOptions _json = new()
     {
@@ -28,6 +37,22 @@ public sealed class OllamaClient : IDisposable
     private readonly HttpClient _ping   = new() { Timeout = TimeSpan.FromSeconds(5) };
     private readonly HttpClient _stream = new() { Timeout = Timeout.InfiniteTimeSpan };
 
+    /// <summary>
+    /// Constructs an OllamaClient.
+    /// </summary>
+    /// <param name="baseUrl">Ollama server URL — defaults to <c>http://localhost:11434</c>.</param>
+    /// <param name="modelName">Ollama model — defaults to <c>llama3.2:3b</c>.</param>
+    public OllamaClient(
+        string baseUrl   = DefaultBaseUrl,
+        string modelName = DefaultModelName)
+    {
+        _baseUrl   = string.IsNullOrWhiteSpace(baseUrl)   ? DefaultBaseUrl   : baseUrl.TrimEnd('/');
+        _modelName = string.IsNullOrWhiteSpace(modelName) ? DefaultModelName : modelName.Trim();
+    }
+
+    /// <summary>The model name this client is configured to use.</summary>
+    public string ModelName => _modelName;
+
     // ── Availability ───────────────────────────────────────────────────────────
 
     /// <summary>Returns true if Ollama is running and reachable at localhost:11434.</summary>
@@ -35,26 +60,28 @@ public sealed class OllamaClient : IDisposable
     {
         try
         {
-            var r = await _ping.GetAsync($"{BaseUrl}/api/tags", ct).ConfigureAwait(false);
+            var r = await _ping.GetAsync($"{_baseUrl}/api/tags", ct).ConfigureAwait(false);
             return r.IsSuccessStatusCode;
         }
         catch { return false; }
     }
 
     /// <summary>
-    /// Returns true if the llama3.2:3b model (or any 3b variant) is already pulled.
+    /// Returns true if the configured model is already pulled in Ollama.
+    /// Uses an exact, case-insensitive match against the model name supplied
+    /// at construction time (see <see cref="ModelName"/>).
     /// </summary>
     public async Task<bool> IsModelReadyAsync(CancellationToken ct = default)
     {
         try
         {
             var tags = await _ping
-                .GetFromJsonAsync<OllamaTagsResponse>($"{BaseUrl}/api/tags", ct)
+                .GetFromJsonAsync<OllamaTagsResponse>($"{_baseUrl}/api/tags", ct)
                 .ConfigureAwait(false);
 
             return tags?.models?.Any(m =>
                 m.name is not null &&
-                m.name.Contains("llama3.2", StringComparison.OrdinalIgnoreCase)) == true;
+                m.name.Equals(_modelName, StringComparison.OrdinalIgnoreCase)) == true;
         }
         catch { return false; }
     }
@@ -89,7 +116,7 @@ public sealed class OllamaClient : IDisposable
         var body = JsonSerializer.Serialize(request, _json);
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/api/chat")
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/chat")
             { Content = content };
 
         using var response = await _stream

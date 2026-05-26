@@ -10,7 +10,8 @@ namespace Lucid.ViewModels;
 /// <summary>
 /// ViewModel for the Companion Overlay Window conversation area.
 ///
-/// Powered by a local Ollama LLM (llama3.2:3b) — no cloud, no API keys, free.
+/// Powered by a local Ollama LLM — no cloud, no API keys, free forever.
+/// The model and endpoint are configured in Settings → AI Assistant.
 /// Each message injects live system data (telemetry, insights, processes, timeline)
 /// into the LLM context so responses are grounded in this machine's actual state.
 ///
@@ -117,7 +118,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         LlmStatus.OllamaNotAvailable =>
             "Ollama not running — run setup.bat to install it.",
         LlmStatus.ModelNotPulled =>
-            "Model not downloaded — run: ollama pull llama3.2:3b",
+            $"Model not downloaded — run: ollama pull {_llm.ModelName}",
         LlmStatus.Unknown =>
             "Checking AI…",
         _ => string.Empty,

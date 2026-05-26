@@ -18,12 +18,25 @@ public sealed class LlmChatService : ILlmChatService
 {
     private const int MaxTurns = 20;  // 10 user + 10 assistant pairs
 
-    private readonly OllamaClient             _client = new();
+    private readonly OllamaClient             _client;
     private readonly List<OllamaMessage>      _history = [];
     private readonly SemaphoreSlim            _lock    = new(1, 1);
 
-    public LlmStatus Status  { get; private set; } = LlmStatus.Unknown;
-    public bool      IsReady => Status == LlmStatus.Ready;
+    /// <summary>
+    /// Constructs the chat service.  Endpoint and model are passed from
+    /// <see cref="AppServices.Initialize"/> so the service never reads
+    /// back into the static locator — avoiding circular dependencies.
+    /// </summary>
+    public LlmChatService(
+        string baseUrl   = OllamaClient.DefaultBaseUrl,
+        string modelName = OllamaClient.DefaultModelName)
+    {
+        _client = new OllamaClient(baseUrl, modelName);
+    }
+
+    public string    ModelName => _client.ModelName;
+    public LlmStatus Status    { get; private set; } = LlmStatus.Unknown;
+    public bool      IsReady   => Status == LlmStatus.Ready;
 
     // ── Status check ───────────────────────────────────────────────────────────
 

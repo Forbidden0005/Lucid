@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Narrative;
+using Lucid.Services.Session;
 using Lucid.Services.Timeline;
 
 namespace Lucid.Services.LlmChat;
@@ -30,20 +31,52 @@ public static class LlmSystemContextBuilder
         sb.AppendLine("All analysis runs locally — nothing ever leaves this machine.");
         sb.AppendLine();
 
+        // ── Session context — read early so it can annotate multiple sections ──
+        SessionContext? ctx = null;
+        try { ctx = AppServices.Session.Current; } catch { }
+
         // ── Live telemetry ─────────────────────────────────────────────────────
         var snap = AppServices.Telemetry.LastReading;
         if (snap is not null)
         {
             sb.AppendLine("=== CURRENT SYSTEM STATE ===");
-            sb.AppendLine($"CPU usage     : {snap.CpuPercent:F1}%");
-            sb.AppendLine($"RAM usage     : {snap.RamPercent:F1}%");
-            sb.AppendLine($"Disk I/O      : {snap.DiskPercent:F1}%");
 
+            // CPU — include core count and frequency when available
+            var cpuDetail = new System.Text.StringBuilder();
+            if (snap.CpuCoreCount > 0)   cpuDetail.Append($" ({snap.CpuCoreCount} cores");
+            if (snap.CpuFrequencyGhz > 0.5) cpuDetail.Append($"{(snap.CpuCoreCount > 0 ? " @ " : " (")}{snap.CpuFrequencyGhz:F1} GHz");
+            if (cpuDetail.Length > 0)    cpuDetail.Append(')');
+            sb.AppendLine($"CPU           : {snap.CpuPercent:F1}%{cpuDetail}");
+
+            // RAM — percentage + absolute capacity
+            if (snap.RamTotalGb > 0)
+                sb.AppendLine($"RAM           : {snap.RamPercent:F1}% — {snap.RamUsedGb:F1} GB used of {snap.RamTotalGb:F1} GB");
+            else
+                sb.AppendLine($"RAM           : {snap.RamPercent:F1}%");
+
+            // Disk I/O — percentage + throughput when available
+            if (snap.DiskReadMbps > 0 || snap.DiskWriteMbps > 0)
+                sb.AppendLine($"Disk I/O      : {snap.DiskPercent:F1}% — {snap.DiskReadMbps:F0} MB/s read, {snap.DiskWriteMbps:F0} MB/s write");
+            else
+                sb.AppendLine($"Disk I/O      : {snap.DiskPercent:F1}%");
+
+            // Disk space — gives context for storage-related findings
+            if (snap.DiskTotalGb > 0)
+            {
+                var freeGb = snap.DiskTotalGb - snap.DiskUsedGb;
+                sb.AppendLine($"Disk space    : {snap.DiskUsedGb:F1} GB used of {snap.DiskTotalGb:F1} GB ({freeGb:F1} GB free)");
+            }
+
+            // GPU — usage + VRAM capacity
             if (snap.GpuAvailable)
-                sb.AppendLine($"GPU usage     : {snap.GpuPercent:F1}%");
+            {
+                sb.AppendLine($"GPU           : {snap.GpuPercent:F1}%");
+                if (snap.GpuVramTotalGb > 0)
+                    sb.AppendLine($"GPU VRAM      : {snap.GpuVramUsedGb:F1} GB / {snap.GpuVramTotalGb:F1} GB");
+            }
 
             if (snap.CpuTemperatureAvailable)
-                sb.AppendLine($"CPU temp      : {snap.CpuTemperatureCelsius:F0} C");
+                sb.AppendLine($"CPU temp      : {snap.CpuTemperatureCelsius:F0} °C");
 
             // Baseline comparison
             try
@@ -57,6 +90,19 @@ public static class LlmSystemContextBuilder
             }
             catch { /* baseline may not be ready yet */ }
 
+            // Session phase — helps the LLM interpret whether current readings are expected
+            if (ctx is not null)
+            {
+                if (ctx.IsPostWake && ctx.TimeSinceWake is { } sinceWake)
+                    sb.AppendLine($"Session phase : recovering from sleep ({(int)sinceWake.TotalMinutes}m ago — post-wake resource spikes are normal)");
+                else if (ctx.IsStartupSettling)
+                    sb.AppendLine($"Session phase : startup settling ({(int)ctx.SessionAge.TotalMinutes}m since launch — startup apps still competing for resources)");
+                else if (ctx.IsPostBoot)
+                    sb.AppendLine($"Session phase : post-boot period ({(int)ctx.SystemUptime.TotalMinutes}m since boot — OS still initializing)");
+                else if (ctx.IsIdle && ctx.IdleDuration is { } idleDur)
+                    sb.AppendLine($"Session phase : idle ({(int)idleDur.TotalMinutes}m with low CPU load)");
+            }
+
             sb.AppendLine();
         }
 
@@ -69,7 +115,11 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine($"=== ACTIVE FINDINGS ({insights.Count}) ===");
                 foreach (var i in insights.Take(10))
                 {
-                    sb.AppendLine($"[{i.Severity}] {i.Title} ({i.ConfidencePercent}% confidence)");
+                    // Show how long this finding has been active when we have onset data
+                    var ageStr = ctx?.InsightAge(i.Id) is { } age
+                        ? $", active {(int)age.TotalMinutes}m"
+                        : "";
+                    sb.AppendLine($"[{i.Severity}] {i.Title} ({i.ConfidencePercent}% confidence{ageStr})");
                     sb.AppendLine($"  Detail: {i.Detail}");
                     if (i.ActionHint is not null)
                         sb.AppendLine($"  Suggested action: {i.ActionHint}");
@@ -100,26 +150,19 @@ public static class LlmSystemContextBuilder
         }
         catch { }
 
-        // ── Top processes by CPU ───────────────────────────────────────────────
+        // ── Top processes by current CPU usage ────────────────────────────────
+        // Use ProcessIntelligenceService snapshot so the LLM sees actual real-time
+        // CPU% per process, not historical cumulative processor time.
         try
         {
-            var procs = Process.GetProcesses()
-                .Where(p => { try { return p.TotalProcessorTime.TotalSeconds > 0; } catch { return false; } })
-                .OrderByDescending(p => { try { return p.TotalProcessorTime.TotalMilliseconds; } catch { return 0; } })
-                .Take(8)
-                .ToList();
-
-            if (procs.Count > 0)
+            var procSnap = AppServices.ProcessIntelligence.LastSnapshot;
+            if (procSnap is { TopByCpu.Count: > 0 })
             {
-                sb.AppendLine("=== TOP PROCESSES (by CPU time) ===");
-                foreach (var p in procs)
+                sb.AppendLine($"=== TOP PROCESSES (current CPU%, {procSnap.SnapshotAt.LocalDateTime:h:mm:ss tt}) ===");
+                foreach (var p in procSnap.TopByCpu.Take(8))
                 {
-                    try
-                    {
-                        var ramMb = p.WorkingSet64 / (1024 * 1024);
-                        sb.AppendLine($"  {p.ProcessName,-30} RAM: {ramMb,6} MB");
-                    }
-                    catch { /* process may have exited */ }
+                    var anomaly = p.HasAnomalies ? $" ⚠ {p.AnomalySummary}" : "";
+                    sb.AppendLine($"  {p.DisplayName,-30} CPU: {p.CpuFormatted,6}  RAM: {p.RamFormatted,9}{anomaly}");
                 }
                 sb.AppendLine();
             }
@@ -152,11 +195,43 @@ public static class LlmSystemContextBuilder
         // ── Session context ────────────────────────────────────────────────────
         try
         {
-            var session = AppServices.Session;
-            var uptime  = DateTime.Now - Process.GetCurrentProcess().StartTime;
+            var appUptime     = DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime;
+            var windowsUptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
+
             sb.AppendLine("=== SESSION CONTEXT ===");
-            sb.AppendLine($"Lucid has been running for: {FormatDuration(uptime)}");
-            sb.AppendLine($"Windows uptime: {FormatDuration(TimeSpan.FromMilliseconds(Environment.TickCount64))}");
+            sb.AppendLine($"Lucid running  : {FormatDuration(appUptime)}");
+            sb.AppendLine($"Windows uptime : {FormatDuration(windowsUptime)}");
+
+            // Recent session events (last hour) — newest-first from service.
+            // ctx was captured at the top of Build() and may be null if Session
+            // threw on startup; fall back gracefully.
+            var recentEvents = ctx?.RecentEvents ?? [];
+            var recent = recentEvents
+                .Where(ev => ev.Age.TotalHours < 1)
+                .Take(5)
+                .ToList();
+
+            if (recent.Count > 0)
+            {
+                var summaries = recent.Select(ev =>
+                {
+                    var ageMin = (int)ev.Age.TotalMinutes;
+                    var label  = ev.Kind switch
+                    {
+                        SessionEventKind.SystemBoot      => "system boot",
+                        SessionEventKind.AppSessionStart => "Lucid started",
+                        SessionEventKind.WakeFromSleep   => "wake from sleep",
+                        SessionEventKind.IdleBegin       => "idle began",
+                        SessionEventKind.IdleEnd         => "idle ended",
+                        SessionEventKind.InsightOnset    => $"insight onset ({ev.AssociatedId})",
+                        SessionEventKind.InsightCleared  => $"insight cleared ({ev.AssociatedId})",
+                        _                                => ev.Kind.ToString(),
+                    };
+                    return $"{label} ({ageMin}m ago)";
+                });
+                sb.AppendLine($"Recent session events: {string.Join(", ", summaries)}");
+            }
+
             sb.AppendLine();
         }
         catch { }

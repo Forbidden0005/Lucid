@@ -27,6 +27,7 @@ using Lucid.Services.Security;
 using Lucid.Services.Session;
 using Lucid.Services.Settings;
 using Lucid.Services.Startup;
+using Lucid.Services.ProcessIntel;
 using Lucid.Services.Storage;
 using Lucid.Services.Timeline;
 using Lucid.Services.Remediation;
@@ -67,7 +68,8 @@ public static class AppServices
     private static IOperationHistoryService?    _operationHistory;
     private static ITimelineAggregationService? _timeline;
     private static IStartupManagementService?   _startupManagement;
-    private static IExplainMyPcEngine?          _explainEngine;
+    private static IExplainMyPcEngine?           _explainEngine;
+    private static ProcessIntelligenceService?   _processIntelligence;
     private static IOperationalReplayService?    _replayService;
     private static IRemediationLearningService?  _learningService;
 
@@ -296,6 +298,17 @@ public static class AppServices
     /// </summary>
     public static IExplainMyPcEngine ExplainEngine =>
         _explainEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Per-process intelligence: live CPU/RAM, anomaly detection, and behavioral
+    /// classification. Publishes a new snapshot each telemetry tick.
+    /// Use <see cref="ProcessIntelligenceService.LastSnapshot"/> for the latest data,
+    /// or subscribe to <see cref="ProcessIntelligenceService.SnapshotUpdated"/> for live updates.
+    /// </summary>
+    public static ProcessIntelligenceService ProcessIntelligence =>
+        _processIntelligence ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -659,8 +672,9 @@ public static class AppServices
 
     /// <summary>
     /// LLM-powered conversational chat service.
-    /// Backed by Ollama (localhost:11434) with llama3.2:3b.
-    /// Free, local, no cloud. Injects live system data on every message.
+    /// Backed by local Ollama inference — endpoint and model are user-configurable
+    /// via Settings → AI Assistant. Free, local, no cloud.
+    /// Injects live system data into every message via <see cref="LlmSystemContextBuilder"/>.
     /// </summary>
     public static ILlmChatService LlmChat =>
         _llmChat ?? throw new InvalidOperationException(
@@ -1025,6 +1039,17 @@ public static class AppServices
 
         _timeline.Start(); // must start after narrative (subscribes to NarrativeUpdated)
 
+        // ── Process intelligence layer ────────────────────────────────────────
+        // Enriches raw ProcessSamples with per-process behavioral analysis,
+        // anomaly detection, and timeline event emission.
+        // Created after _timeline.Start() so anomaly events are persisted.
+        // The concrete cast is safe — _timeline is always TimelineAggregationService.
+        _processIntelligence = new ProcessIntelligenceService(
+            _telemetry,
+            uiDispatcher,
+            (TimelineAggregationService?)_timeline);
+        _processIntelligence.Start();
+
         // ── Distributed intelligence layer ────────────────────────────────────
         // Created after _timeline.Start() so DistributedTimelineAggregator holds
         // a valid, started ITimelineAggregationService reference.
@@ -1156,7 +1181,9 @@ public static class AppServices
         _desktopContext.Start();
 
         _companionSession = new CompanionSessionManager();
-        _llmChat          = new LlmChatService();
+        _llmChat          = new LlmChatService(
+            baseUrl:   _settings!.Current.LlmEndpointUrl,
+            modelName: _settings!.Current.LlmModel);
 
         var conversationSvc = new OperationalConversationService(
             _intelligence!,
@@ -1411,6 +1438,11 @@ public static class AppServices
         // it holds subscriptions to both.
         _explainEngine?.Stop();
         _explainEngine = null;
+
+        // ProcessIntelligence must stop before timeline and telemetry —
+        // it holds subscriptions to both.
+        _processIntelligence?.Stop();
+        _processIntelligence = null;
 
         // Timeline must stop before narrative/session/intelligence —
         // it holds subscriptions to all three.
