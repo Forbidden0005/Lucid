@@ -144,32 +144,40 @@ public sealed partial class ProcessesViewModel : ObservableObject
     {
         if (row is null || row.IsCritical) return;
 
-        var log     = new ActionExecutionLog();
-        var context = new ActionExecutionContext
+        try
         {
-            IsElevated          = false,
-            ConfirmationGranted = true,
-            Log                 = log,
-            Parameters = new Dictionary<string, string>
+            var log     = new ActionExecutionLog();
+            var context = new ActionExecutionContext
             {
-                [Services.Execution.Executors.TerminateProcessExecutor.ParamProcessId]
-                    = row.Pid.ToString(),
-                [Services.Execution.Executors.TerminateProcessExecutor.ParamProcessName]
-                    = row.ProcessName,
-            },
-        };
+                IsElevated          = false,
+                ConfirmationGranted = true,
+                Log                 = log,
+                Parameters = new Dictionary<string, string>
+                {
+                    [Services.Execution.Executors.TerminateProcessExecutor.ParamProcessId]
+                        = row.Pid.ToString(),
+                    [Services.Execution.Executors.TerminateProcessExecutor.ParamProcessName]
+                        = row.ProcessName,
+                },
+            };
 
-        var result = await AppServices.ExecutionEngine
-            .ExecuteAsync("action.process.terminate", context)
-            .ConfigureAwait(true);
+            var result = await AppServices.ExecutionEngine
+                .ExecuteAsync("action.process.terminate", context)
+                .ConfigureAwait(true);
 
-        StatusText = result.Message;
+            StatusText = result.Message;
 
-        if (result.IsSuccess)
+            if (result.IsSuccess)
+            {
+                RemoveFromAllLists(row.Pid);
+                _cache.Remove(row.Pid);
+                await RecordHistoryAsync(result, $"Terminate {row.Name}");
+            }
+        }
+        catch (Exception ex)
         {
-            RemoveFromAllLists(row.Pid);
-            _cache.Remove(row.Pid);
-            await RecordHistoryAsync(result, $"Terminate {row.Name}");
+            StatusText = $"Terminate failed: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[ProcessesVM] TerminateProcessAsync failed: {ex}");
         }
     }
 
@@ -178,24 +186,31 @@ public sealed partial class ProcessesViewModel : ObservableObject
     {
         if (row is null) return;
 
-        var log     = new ActionExecutionLog();
-        var context = new ActionExecutionContext
+        try
         {
-            IsElevated          = false,
-            ConfirmationGranted = true,
-            Log                 = log,
-            Parameters = new Dictionary<string, string>
+            var log     = new ActionExecutionLog();
+            var context = new ActionExecutionContext
             {
-                [Services.Execution.Executors.OpenProcessLocationExecutor.ParamExecutablePath]
-                    = row.ExecutablePath,
-                [Services.Execution.Executors.OpenProcessLocationExecutor.ParamProcessName]
-                    = row.ProcessName,
-            },
-        };
+                IsElevated          = false,
+                ConfirmationGranted = true,
+                Log                 = log,
+                Parameters = new Dictionary<string, string>
+                {
+                    [Services.Execution.Executors.OpenProcessLocationExecutor.ParamExecutablePath]
+                        = row.ExecutablePath,
+                    [Services.Execution.Executors.OpenProcessLocationExecutor.ParamProcessName]
+                        = row.ProcessName,
+                },
+            };
 
-        await AppServices.ExecutionEngine
-            .ExecuteAsync("action.process.open-location", context)
-            .ConfigureAwait(true);
+            await AppServices.ExecutionEngine
+                .ExecuteAsync("action.process.open-location", context)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ProcessesVM] OpenLocationAsync failed: {ex}");
+        }
     }
 
     // ── Snapshot handler ──────────────────────────────────────────────────────
@@ -267,22 +282,29 @@ public sealed partial class ProcessesViewModel : ObservableObject
 
     private static async Task RecordHistoryAsync(ActionExecutionResult result, string title)
     {
-        await AppServices.HistoryService.RecordAsync(new OperationRecord
+        try
         {
-            ActionId        = result.ActionId,
-            ActionTitle     = title,
-            ExecutedAt      = result.ExecutedAt,
-            DurationMs      = (long)result.Duration.TotalMilliseconds,
-            Status          = result.Status.ToString(),
-            IsSuccess       = result.IsSuccess,
-            IsDryRun        = false,
-            IsRollback      = false,
-            Message         = result.Message,
-            TotalLogEntries = result.Log.Count,
-            Warnings        = result.Log.Where(e => e.Level == ActionLogLevel.Warning)
-                .Select(e => e.Message).ToList(),
-            Errors          = result.Log.Where(e => e.Level == ActionLogLevel.Error)
-                .Select(e => e.Message).ToList(),
-        });
+            await AppServices.HistoryService.RecordAsync(new OperationRecord
+            {
+                ActionId        = result.ActionId,
+                ActionTitle     = title,
+                ExecutedAt      = result.ExecutedAt,
+                DurationMs      = (long)result.Duration.TotalMilliseconds,
+                Status          = result.Status.ToString(),
+                IsSuccess       = result.IsSuccess,
+                IsDryRun        = false,
+                IsRollback      = false,
+                Message         = result.Message,
+                TotalLogEntries = result.Log.Count,
+                Warnings        = result.Log.Where(e => e.Level == ActionLogLevel.Warning)
+                    .Select(e => e.Message).ToList(),
+                Errors          = result.Log.Where(e => e.Level == ActionLogLevel.Error)
+                    .Select(e => e.Message).ToList(),
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ProcessesVM] RecordHistoryAsync failed: {ex}");
+        }
     }
 }
