@@ -412,7 +412,18 @@ public sealed partial class RepairCardViewModel : ObservableObject
                 Errors          = errors,
             };
 
-            _ = AppServices.HistoryService.RecordAsync(record);
+            // History persistence is best-effort: a write failure (disk full,
+            // SQLite locked) must not surface as an unhandled exception or block
+            // the UI feedback path.  The operation outcome is already visible to
+            // the user; only the audit trail is affected.
+            try
+            {
+                await AppServices.HistoryService.RecordAsync(record);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RepairHistory] RecordAsync failed: {ex}");
+            }
 
             // ── Notify narrative engine ───────────────────────────────────────
             if (result.Status is ActionExecutionStatus.Success

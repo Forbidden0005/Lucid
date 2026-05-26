@@ -480,8 +480,12 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
     /// For successful rollbacks, the original execution record is also updated
     /// via <see cref="IOperationHistoryService.MarkRolledBackAsync"/> so the
     /// history reflects the full forward-and-back lifecycle.
+    ///
+    /// Declared <c>async void</c> (intentionally fire-and-forget from the call
+    /// site) with an explicit try/catch so I/O failures in the history store are
+    /// logged rather than becoming unobserved task exceptions.
     /// </summary>
-    private void RecordToHistory(ActionExecutionResult result, bool isRollback)
+    private async void RecordToHistory(ActionExecutionResult result, bool isRollback)
     {
         // Skip pre-flight failures — no executor was invoked, nothing happened.
         if (result.Status is ActionExecutionStatus.ExecutorNotFound
@@ -524,14 +528,25 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
             _lastHistoryRecordId = record.Id;
 
         var svc = AppServices.HistoryService;
-        _ = svc.RecordAsync(record);
 
-        // When a rollback succeeds, mark the original forward-execution record.
-        if (isRollback && result.IsSuccess && _lastHistoryRecordId is not null)
+        try
         {
-            var originalId       = _lastHistoryRecordId;
-            _lastHistoryRecordId = null;
-            _ = svc.MarkRolledBackAsync(originalId, DateTimeOffset.Now);
+            await svc.RecordAsync(record);
+
+            // When a rollback succeeds, mark the original forward-execution record.
+            if (isRollback && result.IsSuccess && _lastHistoryRecordId is not null)
+            {
+                var originalId       = _lastHistoryRecordId;
+                _lastHistoryRecordId = null;
+                await svc.MarkRolledBackAsync(originalId, DateTimeOffset.Now);
+            }
+        }
+        catch (Exception ex)
+        {
+            // History write failed (e.g. SQLite locked, disk full).
+            // The operation itself completed successfully — this only affects
+            // the audit trail and replay view, not the user-visible outcome.
+            System.Diagnostics.Debug.WriteLine($"[ActionHistory] Persist failed: {ex}");
         }
     }
 }
