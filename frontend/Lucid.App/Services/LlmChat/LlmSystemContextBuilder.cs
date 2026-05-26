@@ -2,9 +2,11 @@ using System.Diagnostics;
 using System.Text;
 using Lucid.Services.Behavior;
 using Lucid.Services.DesktopContext;
+using Lucid.Services.Governance;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Narrative;
 using Lucid.Services.Session;
+using Lucid.Services.Startup;
 using Lucid.Services.Timeline;
 
 namespace Lucid.Services.LlmChat;
@@ -136,6 +138,42 @@ public static class LlmSystemContextBuilder
             }
             catch { }
 
+            // Startup apps — helps contextualise slow boots and persistent background load
+            try
+            {
+                var entries    = AppServices.StartupManagement.GetAllEntries();
+                var enabled    = entries.Where(e => e.IsEnabled).ToList();
+                var highImpact = enabled.Where(e => e.Impact == StartupImpact.High).ToList();
+                if (enabled.Count > 0)
+                {
+                    var label = highImpact.Count > 0
+                        ? $"{enabled.Count} enabled, {highImpact.Count} high-impact " +
+                          $"({string.Join(", ", highImpact.Take(4).Select(e => e.Name))})"
+                        : $"{enabled.Count} enabled, none high-impact";
+                    sb.AppendLine($"Startup apps  : {label}");
+                }
+            }
+            catch { }
+
+            // Runtime governance mode — if non-normal, the system is actively throttled
+            try
+            {
+                var govMode = AppServices.Governance.CurrentMode;
+                if (govMode != RuntimeMode.Normal)
+                {
+                    var govLabel = govMode switch
+                    {
+                        RuntimeMode.HighLoad          => "throttling active (high CPU load detected)",
+                        RuntimeMode.LowPower          => "power-saving mode (battery)",
+                        RuntimeMode.Gaming            => "gaming mode (reduced telemetry)",
+                        RuntimeMode.ThermalProtection => "thermal protection (CPU throttled by heat)",
+                        _                             => govMode.ToString(),
+                    };
+                    sb.AppendLine($"System mode   : {govLabel}");
+                }
+            }
+            catch { }
+
             sb.AppendLine();
         }
 
@@ -161,6 +199,26 @@ public static class LlmSystemContextBuilder
         }
         catch { }
 
+        // ── Long-term metric drift (7d vs 30d trends) ────────────────────────
+        // Drift tells the LLM whether performance has been gradually worsening
+        // over days/weeks, independent of today's snapshot. Only injected when present.
+        try
+        {
+            var drifts = AppServices.DriftDetection.CurrentDrifts;
+            if (drifts is { Count: > 0 })
+            {
+                sb.AppendLine($"=== LONG-TERM DRIFT ({drifts.Count} metric{(drifts.Count == 1 ? "" : "s")}) ===");
+                foreach (var d in drifts.Take(4))
+                {
+                    sb.AppendLine($"[{d.Severity}] {d.MetricName}: {d.DirectionGlyph} {d.DriftLabel} — {d.AvgComparisonLabel}");
+                    if (!string.IsNullOrWhiteSpace(d.Summary))
+                        sb.AppendLine($"  {d.Summary}");
+                }
+                sb.AppendLine();
+            }
+        }
+        catch { }
+
         // ── Active anomalies (z-score short-term deviations) ──────────────────
         // These are separate from the rule-based insights — they fire when a
         // metric deviates significantly from this machine's learned baseline,
@@ -176,6 +234,27 @@ public static class LlmSystemContextBuilder
                     sb.AppendLine($"[{a.Severity}] {a.Metric}: {a.ActualValue:F1}% " +
                                   $"(expected ~{a.ExpectedMean:F1}% ± {a.ExpectedStdDev:F1}%) " +
                                   $"— {a.Description}");
+                }
+                sb.AppendLine();
+            }
+        }
+        catch { }
+
+        // ── Early warnings (synthesized from anomalies + findings) ───────────────
+        // These are higher-level synthesized alerts, distinct from raw anomalies.
+        // Only injected when warnings are active.
+        try
+        {
+            var warnings = AppServices.EarlyWarning.CurrentWarnings;
+            if (warnings is { Count: > 0 })
+            {
+                sb.AppendLine($"=== EARLY WARNINGS ({warnings.Count}) ===");
+                foreach (var w in warnings.Take(4))
+                {
+                    sb.AppendLine($"[{w.Severity}] {w.Title} ({w.ConfidencePercent}% confidence)");
+                    sb.AppendLine($"  {w.Explanation}");
+                    if (w.ActionHint is not null)
+                        sb.AppendLine($"  Suggested: {w.ActionHint}");
                 }
                 sb.AppendLine();
             }

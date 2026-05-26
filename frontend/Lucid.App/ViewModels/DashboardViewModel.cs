@@ -3,6 +3,8 @@ using Lucid.Helpers;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Learning;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 
 namespace Lucid.ViewModels;
 
@@ -52,31 +54,67 @@ public partial class DashboardViewModel : ObservableObject
 
     public string TrendLabel => TrendDelta >= 0 ? $"+{TrendDelta}" : $"{TrendDelta}";
 
-    // ── Sub-scores (Phase 3: mock) ────────────────────────────────────────────
+    // ── Sub-score brush palette (shared instances — allocated once) ───────────
+
+    // Colors match the app design system: #57D68D / #FFB347 / #FF6B6B
+    private static readonly SolidColorBrush s_scoreBrushGood     = new(Color.FromArgb(255, 0x57, 0xD6, 0x8D));
+    private static readonly SolidColorBrush s_scoreBrushModerate = new(Color.FromArgb(255, 0xFF, 0xB3, 0x47));
+    private static readonly SolidColorBrush s_scoreBrushCritical = new(Color.FromArgb(255, 0xFF, 0x6B, 0x6B));
+    // Neutral grey for "no data yet" state (semi-transparent)
+    private static readonly SolidColorBrush s_scoreBrushNeutral  = new(Color.FromArgb(0x80, 0xA0, 0xA0, 0xA0));
+
+    private static SolidColorBrush ScoreToBrush(int score) => score switch
+    {
+        0     => s_scoreBrushNeutral,
+        >= 75 => s_scoreBrushGood,
+        >= 50 => s_scoreBrushModerate,
+        _     => s_scoreBrushCritical,
+    };
+
+    // ── Sub-scores ────────────────────────────────────────────────────────────
+    //
+    // PerformanceScore — populated in LoadAnalyticsAsync from HealthTrajectory
+    //                    (7-day health score). Shows "—" until analytics complete.
+    // StorageScore     — populated in OnReadingAvailable from live DiskPercent.
+    //                    Shows "—" until first telemetry tick with disk data.
+    // SecurityScore    — Phase 3: no security-specific scoring yet; shows "—".
+    // PrivacyScore     — Phase 3+: no privacy-scoring data yet; shows "—".
+    //
+    // Text: "Performance 87" when populated, "Performance —" when score == 0.
+    // Dot:  green/amber/red based on score; neutral grey when no data.
+    //
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PerformanceScoreText))]
-    private int _performanceScore = 92;
+    [NotifyPropertyChangedFor(nameof(PerformanceScoreBrush))]
+    private int _performanceScore;  // 0 = no data yet
 
-    public string PerformanceScoreText => $"Performance {PerformanceScore}";
+    public string         PerformanceScoreText  => PerformanceScore > 0 ? $"Performance {PerformanceScore}" : "Performance —";
+    public SolidColorBrush PerformanceScoreBrush => ScoreToBrush(PerformanceScore);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SecurityScoreText))]
-    private int _securityScore = 95;
+    [NotifyPropertyChangedFor(nameof(SecurityScoreBrush))]
+    private int _securityScore;  // 0 = Phase 3, not yet available
 
-    public string SecurityScoreText => $"Security {SecurityScore}";
+    public string         SecurityScoreText  => SecurityScore > 0 ? $"Security {SecurityScore}" : "Security —";
+    public SolidColorBrush SecurityScoreBrush => ScoreToBrush(SecurityScore);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StorageScoreText))]
-    private int _storageScore = 71;
+    [NotifyPropertyChangedFor(nameof(StorageScoreBrush))]
+    private int _storageScore;  // 0 = no telemetry data yet
 
-    public string StorageScoreText => $"Storage {StorageScore}";
+    public string         StorageScoreText  => StorageScore > 0 ? $"Storage {StorageScore}" : "Storage —";
+    public SolidColorBrush StorageScoreBrush => ScoreToBrush(StorageScore);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PrivacyScoreText))]
-    private int _privacyScore = 88;
+    [NotifyPropertyChangedFor(nameof(PrivacyScoreBrush))]
+    private int _privacyScore;  // 0 = Phase 3+, not yet available
 
-    public string PrivacyScoreText => $"Privacy {PrivacyScore}";
+    public string         PrivacyScoreText  => PrivacyScore > 0 ? $"Privacy {PrivacyScore}" : "Privacy —";
+    public SolidColorBrush PrivacyScoreBrush => ScoreToBrush(PrivacyScore);
 
     // ── CPU — real data ───────────────────────────────────────────────────────
 
@@ -202,13 +240,34 @@ public partial class DashboardViewModel : ObservableObject
     //  DiskFreeDelta — requires disk-space history (Phase 1 persistence); stays mock until then.
     //
 
-    [ObservableProperty] private string _bootTimeValue = "18s";
-    [ObservableProperty] private string _bootTimeDelta = "↓ 2s faster";
+    // Boot time — requires Windows Event Log (Event ID 100, Diagnostics-Performance/Operational).
+    // Not yet implemented; shows "—" until that reader exists (planned Phase 2).
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BootTimeDeltaVisibility))]
+    private string _bootTimeValue = "—";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BootTimeDeltaVisibility))]
+    private string _bootTimeDelta = "—";
+
+    /// <summary>Hides the delta badge when no boot-time history data exists.</summary>
+    public Visibility BootTimeDeltaVisibility =>
+        BootTimeValue == "—" ? Visibility.Collapsed : Visibility.Visible;
+
     [ObservableProperty] private string _cpuAvgValue   = "—";
     [ObservableProperty] private string _cpuAvgDelta   = "Gathering data…";
     [ObservableProperty] private string _ramAvgValue   = "—";
     [ObservableProperty] private string _ramAvgDelta   = "Gathering data…";
-    [ObservableProperty] private string _diskFreeDelta = "↓ 12 GB lost";
+
+    // Disk free delta — requires disk-space history in SQLite (Phase 2 persistence).
+    // Live disk free (DiskFreeValue) is real; the delta comparison is not yet available.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DiskFreeDeltaVisibility))]
+    private string _diskFreeDelta = "—";
+
+    /// <summary>Hides the delta badge when no disk-space history exists.</summary>
+    public Visibility DiskFreeDeltaVisibility =>
+        DiskFreeDelta == "—" ? Visibility.Collapsed : Visibility.Visible;
 
     /// <summary>
     /// Live free-space label derived from the latest telemetry snapshot.
@@ -397,6 +456,11 @@ public partial class DashboardViewModel : ObservableObject
         DiskTotalGb   = s.DiskTotalGb;
         DiskReadMbps  = s.DiskReadMbps;
         DiskWriteMbps = s.DiskWriteMbps;
+
+        // Storage sub-score: derived from live disk fullness.
+        // Only set when disk data is present to avoid showing misleading 0.
+        if (s.DiskTotalGb > 0)
+            StorageScore = ComputeStorageScore(s.DiskPercent);
     }
 
     // ── Intelligence intake ───────────────────────────────────────────────────
@@ -527,10 +591,13 @@ public partial class DashboardViewModel : ObservableObject
             var report = await AppServices.HealthTrajectory.ComputeReportAsync()
                 .ConfigureAwait(true); // must return to UI thread to set properties
 
-            if (!report.HasSufficientData) return; // keep mock defaults for new installs
+            if (!report.HasSufficientData) return; // sub-scores stay "—" on new installs
 
             // Health score and label
-            HealthScore  = (int)report.HealthScore;
+            HealthScore      = (int)report.HealthScore;
+            // Performance sub-score: the health trajectory score IS the overall
+            // performance score — 7-day average of CPU, RAM, and insight load.
+            PerformanceScore = (int)report.HealthScore;
             HealthLabel  = report.HealthLabel;
             TrendDelta   = report.MomentumPoints;
             HealthDescription = report.HealthDescription;
@@ -627,6 +694,28 @@ public partial class DashboardViewModel : ObservableObject
         {
             // Best-effort — personality card stays hidden if classification fails.
         }
+    }
+
+    // ── Storage score helper ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Maps disk fullness percentage to a health score in [0, 100].
+    ///
+    /// Scoring curve (deliberately generous below 50%):
+    ///   0–50 % full  → 100  (plenty of space)
+    ///  50–70 % full  → 100 → 80  (filling but manageable)
+    ///  70–85 % full  → 80  → 50  (starting to constrain)
+    ///  85–95 % full  → 50  → 20  (disk pressure, action needed)
+    ///  95–100% full  → 20  → 0   (critically low)
+    /// </summary>
+    private static int ComputeStorageScore(double diskPercent)
+    {
+        if (diskPercent is <= 0 or > 100) return 0; // no data / invalid
+        if (diskPercent < 50)  return 100;
+        if (diskPercent < 70)  return (int)(100 - (diskPercent - 50) * 1.0);
+        if (diskPercent < 85)  return (int)( 80 - (diskPercent - 70) * 2.0);
+        if (diskPercent < 95)  return (int)( 50 - (diskPercent - 85) * 3.0);
+        return Math.Max(0,     (int)( 20 - (diskPercent - 95) * 4.0));
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────────

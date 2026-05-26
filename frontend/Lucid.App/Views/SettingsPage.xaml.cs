@@ -235,16 +235,33 @@ public sealed partial class SettingsPage : Page
     {
         var url = LlmEndpointBox.Text.Trim();
         if (string.IsNullOrEmpty(url)) url = OllamaClient.DefaultBaseUrl;
+
+        var model = LlmModelBox.Text.Trim();
+        if (string.IsNullOrEmpty(model)) model = OllamaClient.DefaultModelName;
+
         _ = AppServices.Settings.SaveAsync(
-            AppServices.Settings.Current with { LlmEndpointUrl = url });
+            AppServices.Settings.Current with { LlmEndpointUrl = url, LlmModel = model });
+
+        // Reconfigure the live service — changes take effect on the next message,
+        // no restart required. ReconfigureAsync waits for any in-flight stream to
+        // finish cleanly before swapping the client.
+        _ = AppServices.LlmChat.ReconfigureAsync(url, model);
     }
 
     private void LlmModelBox_LostFocus(object sender, RoutedEventArgs e)
     {
         var model = LlmModelBox.Text.Trim();
         if (string.IsNullOrEmpty(model)) model = OllamaClient.DefaultModelName;
+
+        var url = LlmEndpointBox.Text.Trim();
+        if (string.IsNullOrEmpty(url)) url = OllamaClient.DefaultBaseUrl;
+
         _ = AppServices.Settings.SaveAsync(
-            AppServices.Settings.Current with { LlmModel = model });
+            AppServices.Settings.Current with { LlmEndpointUrl = url, LlmModel = model });
+
+        // Reconfigure the live service — changes take effect on the next message,
+        // no restart required.
+        _ = AppServices.LlmChat.ReconfigureAsync(url, model);
     }
 
     private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)

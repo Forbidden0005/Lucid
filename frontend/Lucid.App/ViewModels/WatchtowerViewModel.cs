@@ -105,6 +105,7 @@ public sealed partial class WatchtowerViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NoDataVisibility))]
     [NotifyPropertyChangedFor(nameof(ContentVisibility))]
+    [NotifyPropertyChangedFor(nameof(SufficientHistoryVisibility))] // SufficientHistoryVisibility = !ShowInsufficientHistory && HasData
     private bool _hasData;
 
     [ObservableProperty]

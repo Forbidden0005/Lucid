@@ -68,8 +68,12 @@ public sealed partial class TimelinePageViewModel : ObservableObject
 
     // ── Status ────────────────────────────────────────────────────────────────
 
-    [ObservableProperty] private int  _totalEventCount;
-    [ObservableProperty] private bool _isEmpty = true;
+    [ObservableProperty] private int _totalEventCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyStateVisibility))]
+    [NotifyPropertyChangedFor(nameof(ListVisibility))]
+    private bool _isEmpty = true;
 
     public Visibility EmptyStateVisibility =>
         IsEmpty ? Visibility.Visible : Visibility.Collapsed;
@@ -242,9 +246,8 @@ public sealed partial class TimelinePageViewModel : ObservableObject
 
         TotalEventCount = filtered.Count;
         IsEmpty         = filtered.Count == 0;
-
-        OnPropertyChanged(nameof(EmptyStateVisibility));
-        OnPropertyChanged(nameof(ListVisibility));
+        // EmptyStateVisibility and ListVisibility are notified automatically
+        // by [NotifyPropertyChangedFor] on _isEmpty.
     }
 
     private void AppendSection(string label, List<TimelineEventViewModel> events)

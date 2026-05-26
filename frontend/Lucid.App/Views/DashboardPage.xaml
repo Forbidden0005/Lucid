@@ -817,32 +817,33 @@
                                    Style="{StaticResource BodyTextStyle}"
                                    Foreground="{StaticResource TextSecondaryBrush}" />
 
-                        <!-- Sub-scores -->
+                        <!-- Sub-scores — real data: Performance (7-day analytics), Storage (live disk %). -->
+                        <!-- Security and Privacy show "—" until Phase 3 scoring is implemented.        -->
                         <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Ellipse Width="6" Height="6"
-                                         Fill="{StaticResource StatusGoodBrush}"
+                                         Fill="{x:Bind ViewModel.PerformanceScoreBrush, Mode=OneWay}"
                                          VerticalAlignment="Center" />
                                 <TextBlock Text="{x:Bind ViewModel.PerformanceScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Ellipse Width="6" Height="6"
-                                         Fill="{StaticResource StatusGoodBrush}"
+                                         Fill="{x:Bind ViewModel.SecurityScoreBrush, Mode=OneWay}"
                                          VerticalAlignment="Center" />
                                 <TextBlock Text="{x:Bind ViewModel.SecurityScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Ellipse Width="6" Height="6"
-                                         Fill="{StaticResource StatusModerateBrush}"
+                                         Fill="{x:Bind ViewModel.StorageScoreBrush, Mode=OneWay}"
                                          VerticalAlignment="Center" />
                                 <TextBlock Text="{x:Bind ViewModel.StorageScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="4">
                                 <Ellipse Width="6" Height="6"
-                                         Fill="{StaticResource StatusGoodBrush}"
+                                         Fill="{x:Bind ViewModel.PrivacyScoreBrush, Mode=OneWay}"
                                          VerticalAlignment="Center" />
                                 <TextBlock Text="{x:Bind ViewModel.PrivacyScoreText, Mode=OneWay}"
                                            Style="{StaticResource CaptionTextStyle}" />
@@ -1102,7 +1103,8 @@
                                        Style="{StaticResource MetricMediumStyle}" />
                             <Border Background="{StaticResource StatusGoodSubtleBrush}"
                                     CornerRadius="4" Padding="6,2"
-                                    VerticalAlignment="Center">
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.BootTimeDeltaVisibility, Mode=OneWay}">
                                 <TextBlock Text="{x:Bind ViewModel.BootTimeDelta, Mode=OneWay}"
                                            FontSize="11"
                                            Foreground="{StaticResource StatusGoodBrush}" />
@@ -1201,7 +1203,8 @@
                                        Style="{StaticResource MetricMediumStyle}" />
                             <Border Background="{StaticResource StatusCriticalSubtleBrush}"
                                     CornerRadius="4" Padding="6,2"
-                                    VerticalAlignment="Center">
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.DiskFreeDeltaVisibility, Mode=OneWay}">
                                 <TextBlock Text="{x:Bind ViewModel.DiskFreeDelta, Mode=OneWay}"
                                            FontSize="11"
                                            Foreground="{StaticResource StatusCriticalBrush}" />
