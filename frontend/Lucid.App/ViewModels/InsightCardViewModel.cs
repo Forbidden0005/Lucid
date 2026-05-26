@@ -208,17 +208,63 @@ public sealed partial class InsightCardViewModel : ObservableObject
     public Visibility TrendTagVisibility =>
         IsTrend ? Visibility.Visible : Visibility.Collapsed;
 
-    /// <summary>Segoe MDL2 glyph matched to the rule category.</summary>
+    /// <summary>
+    /// Segoe MDL2 glyph matched to the rule category.
+    ///
+    /// Grouping logic:
+    ///   CPU rules (point-in-time, trend, escalation, spikes): processor icon
+    ///   Temperature rules (static threshold, worsening trend):  thermometer icon
+    ///   RAM rules (pressure, rising trend, forecast):           memory icon
+    ///   GPU rules (utilisation, VRAM pressure):                 display-adapter icon
+    ///   Disk rules (space, throughput, long-run, forecast):     storage/transfer icon
+    ///   Startup rules (item count, impact, correlation):        power/start icon
+    ///   Forecast rules: same glyph as the resource being forecast
+    ///   Baseline anomaly rules: same glyph as the primary resource
+    ///   Synthesis rules: glyph of the primary contributing resource
+    ///   system.healthy: checkmark
+    /// </summary>
     public string IconGlyph => _insight.Id switch
     {
-        "cpu.sustained-high"   => "", // Processor
-        "cpu.high-temperature" => "", // Temperature / thermometer
-        "ram.high-pressure"    => "", // Memory
-        "gpu.unexpected-load"  => "", // GPU / display adapter
-        "disk.low-space"       => "", // Storage disk
-        "disk.sustained-io"    => "", // Data transfer / activity
-        "system.healthy"       => "", // Checkmark
-        _                      => "", // Info
+        // ── CPU (point-in-time + trend + escalation + spikes + baseline) ──────
+        "cpu.sustained-high"      => "",  // Processor
+        "cpu.escalating"          => "",  // Processor
+        "cpu.periodic-spikes"     => "",  // Processor
+        "baseline.cpu-above-norm" => "",  // Processor
+
+        // ── Temperature (static + trend + forecast + synthesis) ───────────────
+        "cpu.high-temperature"               => "",  // Thermometer
+        "cpu.thermal-trend"                  => "",  // Thermometer
+        "forecast.thermal-runaway"           => "",  // Thermometer
+        "baseline.thermal-above-norm"        => "",  // Thermometer
+        "synthesis.thermal-throttle-cascade" => "",  // Thermometer
+
+        // ── RAM (pressure + trend + forecast + baseline) ──────────────────────
+        "ram.high-pressure"       => "",  // Memory
+        "ram.rising-trend"        => "",  // Memory
+        "forecast.ram-pressure"   => "",  // Memory
+        "baseline.ram-above-norm" => "",  // Memory
+
+        // ── GPU / VRAM ────────────────────────────────────────────────────────
+        "gpu.unexpected-load" => "",  // Display adapter
+        "gpu.vram-pressure"   => "",  // Display adapter
+
+        // ── Disk (space + throughput + long-run + forecast) ───────────────────
+        "disk.low-space"             => "",  // Storage
+        "disk.sustained-io"          => "",    // Data transfer
+        "disk.long-running-pressure" => "",    // Data transfer
+        "forecast.disk-exhaustion"   => "",  // Storage
+
+        // ── Startup ───────────────────────────────────────────────────────────
+        "startup.many-items"            => "",  // Power/start (reuse processor glyph)
+        "startup.high-impact-apps"      => "",  // Power/start
+        "startup.resource-pressure"     => "",  // Power/start
+        "forecast.startup-degradation"  => "",  // Power/start
+
+        // ── All-clear ─────────────────────────────────────────────────────────
+        "system.healthy" => "",  // Checkmark
+
+        // ── Fallback (synthesis.* cross-process correlations + unknowns) ──────
+        _ => "",  // Info
     };
 
     /// <summary>Short severity label for the badge pill.</summary>
