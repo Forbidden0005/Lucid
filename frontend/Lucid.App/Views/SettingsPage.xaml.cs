@@ -126,15 +126,13 @@ public sealed partial class SettingsPage : Page
     private void AutoScanToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (_initializing) return;
-        _ = AppServices.Settings.SaveAsync(
-            AppServices.Settings.Current with { AutoScanEnabled = AutoScanToggle.IsOn });
+        SaveSettings(AppServices.Settings.Current with { AutoScanEnabled = AutoScanToggle.IsOn });
     }
 
     private void UsageTelemetryToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (_initializing) return;
-        _ = AppServices.Settings.SaveAsync(
-            AppServices.Settings.Current with { UsageTelemetryEnabled = UsageTelemetryToggle.IsOn });
+        SaveSettings(AppServices.Settings.Current with { UsageTelemetryEnabled = UsageTelemetryToggle.IsOn });
     }
 
     // ── Auto-start helpers ────────────────────────────────────────────────────
@@ -224,8 +222,7 @@ public sealed partial class SettingsPage : Page
             AppServices.AutomationConsent.SetMode(mode);
 
             // Persist inline — the tag string is the enum name, exactly what AppSettings stores.
-            _ = AppServices.Settings.SaveAsync(
-                AppServices.Settings.Current with { ConsentMode = tag });
+            SaveSettings(AppServices.Settings.Current with { ConsentMode = tag });
         }
     }
 
@@ -239,13 +236,12 @@ public sealed partial class SettingsPage : Page
         var model = LlmModelBox.Text.Trim();
         if (string.IsNullOrEmpty(model)) model = OllamaClient.DefaultModelName;
 
-        _ = AppServices.Settings.SaveAsync(
-            AppServices.Settings.Current with { LlmEndpointUrl = url, LlmModel = model });
+        SaveSettings(AppServices.Settings.Current with { LlmEndpointUrl = url, LlmModel = model });
 
         // Reconfigure the live service — changes take effect on the next message,
         // no restart required. ReconfigureAsync waits for any in-flight stream to
         // finish cleanly before swapping the client.
-        _ = AppServices.LlmChat.ReconfigureAsync(url, model);
+        ReconfigureLlm(url, model);
     }
 
     private void LlmModelBox_LostFocus(object sender, RoutedEventArgs e)
@@ -256,12 +252,11 @@ public sealed partial class SettingsPage : Page
         var url = LlmEndpointBox.Text.Trim();
         if (string.IsNullOrEmpty(url)) url = OllamaClient.DefaultBaseUrl;
 
-        _ = AppServices.Settings.SaveAsync(
-            AppServices.Settings.Current with { LlmEndpointUrl = url, LlmModel = model });
+        SaveSettings(AppServices.Settings.Current with { LlmEndpointUrl = url, LlmModel = model });
 
         // Reconfigure the live service — changes take effect on the next message,
         // no restart required.
-        _ = AppServices.LlmChat.ReconfigureAsync(url, model);
+        ReconfigureLlm(url, model);
     }
 
     private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
@@ -297,6 +292,54 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    // ── Settings persistence helpers ─────────────────────────────────────────
+
+    /// <summary>
+    /// Fire-and-forget wrapper for <see cref="ISettingsService.SaveAsync"/> that
+    /// catches and logs write failures instead of letting them become unobserved
+    /// task exceptions.
+    ///
+    /// Failure semantics: the new value is already applied in-memory via the
+    /// <c>Current</c> record, so it takes effect for this session even when the
+    /// disk write fails.  On next launch the previous persisted value is loaded,
+    /// making the failure transient rather than data-corrupting.
+    /// </summary>
+    private static async void SaveSettings(AppSettings settings)
+    {
+        try
+        {
+            await AppServices.Settings.SaveAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            // Settings persist failed (e.g. disk full, permissions denied).
+            // In-memory state is still current for this session; the value will
+            // revert to the previous persisted state on the next launch.
+            System.Diagnostics.Debug.WriteLine($"[Settings] SaveAsync failed: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// Fire-and-forget wrapper for <see cref="ILlmChatService.ReconfigureAsync"/>
+    /// that catches failures so a transient Ollama connection error does not
+    /// become an unobserved task exception.
+    ///
+    /// Any error here is surfaced separately by the Test Connection button;
+    /// silent failure only means the endpoint swap is deferred to the next
+    /// user message rather than applied immediately.
+    /// </summary>
+    private static async void ReconfigureLlm(string url, string model)
+    {
+        try
+        {
+            await AppServices.LlmChat.ReconfigureAsync(url, model);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Settings] LlmChat.ReconfigureAsync failed: {ex}");
+        }
+    }
+
     // ── Automation mode ───────────────────────────────────────────────────────
 
     private void AutomationModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -314,8 +357,7 @@ public sealed partial class SettingsPage : Page
             AppServices.AutomationOrchestrator.SetMode(mode);
 
             // Persist inline — the tag string is the enum name, exactly what AppSettings stores.
-            _ = AppServices.Settings.SaveAsync(
-                AppServices.Settings.Current with { AutomationMode = tag });
+            SaveSettings(AppServices.Settings.Current with { AutomationMode = tag });
         }
     }
 }
