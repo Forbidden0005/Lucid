@@ -49,6 +49,13 @@ public sealed partial class TimelinePageViewModel : ObservableObject
     /// <summary>All known events in newest-first order. Never exceeds MaxDisplayEvents.</summary>
     private readonly List<TimelineEventViewModel> _allEvents = new(MaxDisplayEvents);
 
+    /// <summary>
+    /// 30-second timer that calls <see cref="TimelineEventViewModel.RefreshTimestamp"/>
+    /// on every visible event so relative-time labels age naturally in the UI
+    /// ("just now" → "45s ago" → "3 min ago") without requiring a new event.
+    /// </summary>
+    private readonly DispatcherTimer _timestampTimer;
+
     // ── Filter state ──────────────────────────────────────────────────────────
 
     [ObservableProperty] private bool _isWarningFilterActive;
@@ -134,6 +141,16 @@ public sealed partial class TimelinePageViewModel : ObservableObject
 
         // Subscribe to live additions. All fire on UI thread — no dispatching needed.
         AppServices.Timeline.NewEventAdded += OnNewEventAdded;
+
+        // Tick every 30 s to age relative-time labels on existing cards.
+        // Mirrors the same pattern used in InsightsPageViewModel / DashboardViewModel.
+        _timestampTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _timestampTimer.Tick += (_, _) =>
+        {
+            foreach (var ev in _allEvents)
+                ev.RefreshTimestamp();
+        };
+        _timestampTimer.Start();
     }
 
     // ── Filter commands ───────────────────────────────────────────────────────
@@ -304,6 +321,7 @@ public sealed partial class TimelinePageViewModel : ObservableObject
     /// </summary>
     public void Cleanup()
     {
+        _timestampTimer.Stop();
         AppServices.Timeline.NewEventAdded -= OnNewEventAdded;
     }
 }
