@@ -18,6 +18,10 @@ public sealed partial class MainWindow : Window
 
     private CompanionOverlayWindow? _companionWindow;
 
+    // ── Guided interaction overlay (Phase 18B) ─────────────────────────────────
+
+    private GuidedInteractionOverlay? _guidedOverlay;
+
     // ── Constructor ────────────────────────────────────────────────────────────
 
     public MainWindow()
@@ -59,6 +63,36 @@ public sealed partial class MainWindow : Window
         _companionWindow.NavigationRequested += (_, tag) => NavigateToPage(tag);
 
         _companionWindow.Activate();
+    }
+
+    // ── Guided overlay lifecycle ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Creates the GuidedInteractionOverlay on first use and registers it.
+    /// Safe to call multiple times — no-ops if the window already exists.
+    /// </summary>
+    private void EnsureGuidedOverlay()
+    {
+        if (_guidedOverlay is not null) return;
+
+        _guidedOverlay = new GuidedInteractionOverlay();
+
+        // Clear the cached reference when the OS destroys the window so the
+        // next StartWorkflow() call re-creates it cleanly.
+        _guidedOverlay.Closed += (_, _) => _guidedOverlay = null;
+    }
+
+    /// <summary>
+    /// Starts a guided visual workflow in the floating overlay.
+    /// Called by automation and companion code that produces GuidedVisualStep sequences.
+    /// Idempotent — creates the overlay window if it does not yet exist.
+    /// </summary>
+    public void StartGuidedWorkflow(
+        IReadOnlyList<Services.VisualContext.GuidedVisualStep> steps,
+        string workflowTitle)
+    {
+        EnsureGuidedOverlay();
+        _guidedOverlay!.StartWorkflow(steps, workflowTitle);
     }
 
     // ── Sidebar navigation ─────────────────────────────────────────────────────
