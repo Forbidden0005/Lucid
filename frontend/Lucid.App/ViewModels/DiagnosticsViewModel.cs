@@ -230,44 +230,62 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     public async Task InitializeAsync()
     {
         IsLoading = true;
-        await RefreshAsync().ConfigureAwait(true);
-        IsLoading = false;
+        try
+        {
+            await RefreshAsync().ConfigureAwait(true);
+        }
+        finally
+        {
+            // Always clear the loading spinner — even if RefreshAsync throws,
+            // leaving IsLoading = true would permanently hide the page content.
+            IsLoading = false;
+        }
     }
 
     // ── Refresh ────────────────────────────────────────────────────────────────
 
     private async Task RefreshAsync()
     {
-        var (snapshot, health, samplers, executors, events) = await Task.Run(() =>
+        try
         {
-            var s  = _diagnostics.GetSnapshot();
-            var h  = _diagnostics.GetServiceHealth();
-            var sa = _diagnostics.GetSamplerHealth();
-            var ex = _diagnostics.GetExecutorSummaries();
-            var ev = _diagnostics.GetRecentEvents(50);
-            return (s, h, sa, ex, ev);
-        }).ConfigureAwait(true);
+            var (snapshot, health, samplers, executors, events) = await Task.Run(() =>
+            {
+                var s  = _diagnostics.GetSnapshot();
+                var h  = _diagnostics.GetServiceHealth();
+                var sa = _diagnostics.GetSamplerHealth();
+                var ex = _diagnostics.GetExecutorSummaries();
+                var ev = _diagnostics.GetRecentEvents(50);
+                return (s, h, sa, ex, ev);
+            }).ConfigureAwait(true);
 
-        ApplySnapshot(snapshot);
+            ApplySnapshot(snapshot);
 
-        ServiceCards.Clear();
-        foreach (var kvp in health.OrderBy(k => k.Key))
-            ServiceCards.Add(new ServiceHealthCardViewModel(kvp.Value));
+            ServiceCards.Clear();
+            foreach (var kvp in health.OrderBy(k => k.Key))
+                ServiceCards.Add(new ServiceHealthCardViewModel(kvp.Value));
 
-        SamplerHealth.Clear();
-        foreach (var s in samplers)
-            SamplerHealth.Add(s);
+            SamplerHealth.Clear();
+            foreach (var s in samplers)
+                SamplerHealth.Add(s);
 
-        ExecutorIssues.Clear();
-        var concerning = executors.Where(e => e.TotalFailures > 0).ToList();
-        foreach (var e in concerning)
-            ExecutorIssues.Add(e);
-        HasExecutorIssues = ExecutorIssues.Count > 0;
+            ExecutorIssues.Clear();
+            var concerning = executors.Where(e => e.TotalFailures > 0).ToList();
+            foreach (var e in concerning)
+                ExecutorIssues.Add(e);
+            HasExecutorIssues = ExecutorIssues.Count > 0;
 
-        RecentEvents.Clear();
-        foreach (var ev in events)
-            RecentEvents.Add(new DiagnosticsEventViewModel(ev));
-        HasEvents = RecentEvents.Count > 0;
+            RecentEvents.Clear();
+            foreach (var ev in events)
+                RecentEvents.Add(new DiagnosticsEventViewModel(ev));
+            HasEvents = RecentEvents.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            // Diagnostics read failure — leave whatever state was previously
+            // rendered rather than crashing. SnapshotTimeText signals staleness.
+            System.Diagnostics.Debug.WriteLine($"[DiagnosticsVM] RefreshAsync failed: {ex}");
+            SnapshotTimeText = "Update failed";
+        }
     }
 
     // ── Snapshot application ───────────────────────────────────────────────────
