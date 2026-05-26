@@ -203,15 +203,26 @@ public sealed partial class WatchtowerViewModel : ObservableObject
         IsLoading = true;
         HasData   = false;
 
-        await _service.Coordinator.RefreshAsync().ConfigureAwait(true);
-
-        // If still no snapshot after refresh, show cold-start state
-        if (_service.LastSnapshot is null)
+        try
         {
+            await _service.Coordinator.RefreshAsync().ConfigureAwait(true);
+
+            // If still no snapshot after refresh, show cold-start state
+            if (_service.LastSnapshot is null)
+            {
+                IsLoading = false;
+                HasData   = false;
+            }
+            // When a snapshot arrives the SnapshotUpdated event sets IsLoading = false
+        }
+        catch (Exception ex)
+        {
+            // Coordinator refresh failed — reset state so the page is not stuck
+            // in a permanent loading spinner, and log the cause for diagnostics.
+            System.Diagnostics.Debug.WriteLine($"[WatchtowerVM] RefreshAsync failed: {ex.Message}");
             IsLoading = false;
             HasData   = false;
         }
-        // snapshot event will have fired already and set IsLoading = false
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────────
