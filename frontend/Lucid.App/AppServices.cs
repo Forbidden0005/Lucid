@@ -870,15 +870,20 @@ public static class AppServices
             var newIds = new HashSet<string>(
                 insights.Select(i => i.Id), StringComparer.Ordinal);
 
+            // Null-guard: _intelligence.Stop() prevents new InsightsUpdated
+            // events from telemetry, but guard defensively in case the engine
+            // fires a final event during the teardown sequence.
+            if (_insightHistoryRepo is null) return;
+
             foreach (var insight in insights)
             {
                 if (!_lastInsightIds.Contains(insight.Id))
-                    _ = _insightHistoryRepo!.RecordOnsetAsync(insight);
+                    _ = _insightHistoryRepo.RecordOnsetAsync(insight);
             }
             foreach (var oldId in _lastInsightIds)
             {
                 if (!newIds.Contains(oldId))
-                    _ = _insightHistoryRepo!.RecordResolutionAsync(oldId);
+                    _ = _insightHistoryRepo.RecordResolutionAsync(oldId);
             }
             _lastInsightIds = newIds;
         };
@@ -887,11 +892,14 @@ public static class AppServices
         // ReadingAvailable fires on the UI thread, so Record() is always
         // called from a single thread — the write lock is still held for
         // correctness when background analysis threads read concurrently.
-        _telemetry.ReadingAvailable += (_, snapshot) => _history.Record(snapshot);
+        // Null-guard: if a DispatcherQueue-enqueued event fires after Shutdown()
+        // nulls _history, skip the record rather than throwing NRE.
+        _telemetry.ReadingAvailable += (_, snapshot) => _history?.Record(snapshot);
 
         // Persist one sample every 30 seconds to the SQLite telemetry table.
         // EnqueueSample() is throttled internally; extra calls are no-ops.
-        _telemetry.ReadingAvailable += (_, snapshot) => _telHistoryRepo!.EnqueueSample(
+        // Null-guard: same shutdown-window protection as above.
+        _telemetry.ReadingAvailable += (_, snapshot) => _telHistoryRepo?.EnqueueSample(
             snapshot.CpuPercent,
             snapshot.RamPercent,
             snapshot.GpuAvailable ? snapshot.GpuPercent : null,
@@ -1040,7 +1048,8 @@ public static class AppServices
 
         // Persist each new timeline event to SQLite before the page sees it.
         // EnqueueEvent() is non-blocking (ConcurrentQueue enqueue).
-        _timeline.NewEventAdded += (_, ev) => _timelineEventRepo!.EnqueueEvent(ev);
+        // Null-guard: _timeline.Stop() prevents new events, but guard defensively.
+        _timeline.NewEventAdded += (_, ev) => _timelineEventRepo?.EnqueueEvent(ev);
 
         _timeline.Start(); // must start after narrative (subscribes to NarrativeUpdated)
 
