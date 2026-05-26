@@ -117,6 +117,8 @@
     <Compile Include="Services\Execution\ActionExecutionEngine.cs" />
     <Compile Include="Services\Execution\Executors\OpenApplicationExecutorBase.cs" />
     <Compile Include="Services\Execution\Executors\OpenTaskManagerExecutor.cs" />
+    <Compile Include="Services\Execution\Executors\OpenTaskManagerGpuExecutor.cs" />
+    <Compile Include="Services\Execution\Executors\OpenTaskSchedulerExecutor.cs" />
     <Compile Include="Services\Execution\Executors\OpenStorageSenseExecutor.cs" />
     <Compile Include="Services\Execution\Executors\OpenStartupAppsExecutor.cs" />
     <Compile Include="Services\Execution\Executors\OpenWindowsSecurityExecutor.cs" />

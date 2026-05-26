@@ -982,6 +982,8 @@ public static class AppServices
             // ── Guided navigation (Phase 1) ───────────────────────────────────
             // Open the relevant system tool — completely safe, no modification.
             new OpenTaskManagerExecutor(),      // action.cpu.open-task-manager
+            new OpenTaskManagerGpuExecutor(),   // action.gpu.inspect-processes (GPU tab)
+            new OpenTaskSchedulerExecutor(),    // action.cpu.open-task-scheduler
             new OpenStorageSenseExecutor(),     // action.disk.run-storage-sense
             new OpenStartupAppsExecutor(),      // action.startup.open-startup-apps
             new OpenWindowsSecurityExecutor(),  // action.security.open-windows-security
