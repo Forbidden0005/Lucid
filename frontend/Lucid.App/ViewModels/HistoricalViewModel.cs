@@ -63,6 +63,7 @@ public sealed partial class HistoricalViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LoadingVisibility))]
+    [NotifyPropertyChangedFor(nameof(NoDataVisibility))]   // NoDataVisibility = !HasData && !IsLoading
     private bool _isLoading;
 
     [ObservableProperty]
@@ -161,7 +162,6 @@ public sealed partial class HistoricalViewModel : ObservableObject
     private async Task RefreshAsync()
     {
         IsLoading = true;
-        OnPropertyChanged(nameof(NoDataVisibility));
 
         try
         {
@@ -175,7 +175,6 @@ public sealed partial class HistoricalViewModel : ObservableObject
         finally
         {
             IsLoading = false;
-            OnPropertyChanged(nameof(NoDataVisibility));
         }
     }
 

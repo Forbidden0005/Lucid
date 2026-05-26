@@ -55,8 +55,15 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private ObservableCollection<CompanionMessage> _messages  = [];
     [ObservableProperty] private string                                  _inputText = string.Empty;
-    [ObservableProperty] private bool                                    _isProcessing;
-    [ObservableProperty] private bool                                    _hasMessages;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NoMessagesVisibility))] // NoMessagesVisibility = !HasMessages && !IsProcessing
+    [NotifyPropertyChangedFor(nameof(ProcessingVisibility))]
+    private bool _isProcessing;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NoMessagesVisibility))] // NoMessagesVisibility = !HasMessages && !IsProcessing
+    private bool _hasMessages;
 
     // ── Status line ───────────────────────────────────────────────────────────
 
@@ -151,7 +158,6 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
         _session.AddUserMessage(query);
 
         IsProcessing = true;
-        OnPropertyChanged(nameof(ProcessingVisibility));
 
         try
         {
@@ -161,7 +167,6 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
         finally
         {
             IsProcessing = false;
-            OnPropertyChanged(nameof(ProcessingVisibility));
         }
     }
 
@@ -176,7 +181,6 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
 
         _session.AddUserMessage(action.Query);
         IsProcessing = true;
-        OnPropertyChanged(nameof(ProcessingVisibility));
 
         try
         {
@@ -186,7 +190,6 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
         finally
         {
             IsProcessing = false;
-            OnPropertyChanged(nameof(ProcessingVisibility));
         }
     }
 
@@ -233,7 +236,6 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
     {
         Messages.Add(msg);
         HasMessages = Messages.Count > 0;
-        OnPropertyChanged(nameof(NoMessagesVisibility));
     }
 
     private void OnNarrativeUpdated(object? sender, OperationalNarrative narrative)
@@ -259,7 +261,6 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
         foreach (var msg in _session.Messages)
             Messages.Add(msg);
         HasMessages = Messages.Count > 0;
-        OnPropertyChanged(nameof(NoMessagesVisibility));
     }
 
     // ── Dispose ────────────────────────────────────────────────────────────────

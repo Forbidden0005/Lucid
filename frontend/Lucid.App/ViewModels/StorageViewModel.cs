@@ -76,6 +76,7 @@ public sealed partial class StorageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ScanButtonVisibility))]
     [NotifyPropertyChangedFor(nameof(CancelButtonVisibility))]
     [NotifyPropertyChangedFor(nameof(ProgressVisibility))]
+    [NotifyPropertyChangedFor(nameof(EmptyStateVisibility))] // EmptyStateVisibility = !HasResults && !IsScanning
     private bool _isScanning;
 
     [ObservableProperty] private int    _scanPercent;
@@ -87,6 +88,9 @@ public sealed partial class StorageViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ResultsVisibility))]
     [NotifyPropertyChangedFor(nameof(EmptyStateVisibility))]
+    [NotifyPropertyChangedFor(nameof(OverviewPanelVisibility))]   // OverviewPanelVisibility = IsOverviewTab && HasResults
+    [NotifyPropertyChangedFor(nameof(LargeFilesPanelVisibility))] // LargeFilesPanelVisibility = IsLargeFilesTab && HasResults
+    [NotifyPropertyChangedFor(nameof(DuplicatesPanelVisibility))] // DuplicatesPanelVisibility = IsDuplicatesTab && HasResults
     private bool _hasResults;
 
     [ObservableProperty] private string _totalScanned      = string.Empty;

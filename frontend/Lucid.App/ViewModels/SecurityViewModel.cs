@@ -87,6 +87,8 @@ public sealed partial class SecurityViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ScanButtonVisibility))]
     [NotifyPropertyChangedFor(nameof(CancelButtonVisibility))]
     [NotifyPropertyChangedFor(nameof(ProgressVisibility))]
+    [NotifyPropertyChangedFor(nameof(ResultsVisibility))]    // ResultsVisibility = HasResults && !IsScanning
+    [NotifyPropertyChangedFor(nameof(EmptyStateVisibility))] // EmptyStateVisibility = !HasResults && !IsScanning
     private bool _isScanning;
 
     [ObservableProperty] private int    _scanProgress;

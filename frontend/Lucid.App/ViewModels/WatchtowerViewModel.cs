@@ -99,6 +99,7 @@ public sealed partial class WatchtowerViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LoadingVisibility))]
     [NotifyPropertyChangedFor(nameof(ContentVisibility))]
+    [NotifyPropertyChangedFor(nameof(NoDataVisibility))]   // NoDataVisibility = !IsLoading && !HasData
     private bool _isLoading;
 
     [ObservableProperty]
