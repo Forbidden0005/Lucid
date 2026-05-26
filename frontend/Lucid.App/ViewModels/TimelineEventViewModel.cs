@@ -156,6 +156,14 @@ public sealed partial class TimelineEventViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Notifies the UI that RelativeTime has changed.
+    /// Called by <see cref="TimelinePageViewModel"/>'s periodic 30-second timer
+    /// so cards age correctly ("just now" → "45s ago" → "3 min ago") without
+    /// requiring a new event from the intelligence engine.
+    /// </summary>
+    public void RefreshTimestamp() => OnPropertyChanged(nameof(RelativeTime));
+
     /// <summary>Precise local clock time — shown in the expanded detail.</summary>
     public string TimestampText =>
         Source.OccurredAt.LocalDateTime.ToString("h:mm:ss tt");
