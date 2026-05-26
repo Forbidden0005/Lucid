@@ -398,6 +398,15 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     /// </summary>
     private readonly Dictionary<string, InsightCardViewModel> _cardCache = new();
 
+    // ── Timestamp refresh timer ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fires every 30 s so insight card timestamps age correctly on screen
+    /// ("just now" → "45s ago" → "3 min ago") without waiting for the engine
+    /// to republish a finding.  Stopped in <see cref="Cleanup"/>.
+    /// </summary>
+    private readonly DispatcherTimer _timestampTimer;
+
     // ── Navigation callback ───────────────────────────────────────────────────
 
     private Action<string>? _navigateToDetail;
@@ -453,6 +462,17 @@ public sealed partial class InsightsPageViewModel : ObservableObject
         ApplyWarnings(AppServices.EarlyWarning.CurrentWarnings);
         ApplyAnomalies(AppServices.AnomalyDetection.CurrentAnomalies);
         ApplyDrifts(AppServices.DriftDetection.CurrentDrifts);
+
+        // 30-second timer keeps insight card "RelativeTime" labels current.
+        // Without this, a card that shows "just now" at detection time never
+        // ages to "2 min ago" unless the engine republishes the same finding.
+        _timestampTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _timestampTimer.Tick += (_, _) =>
+        {
+            foreach (var card in _cardCache.Values)
+                card.RefreshTimestamp();
+        };
+        _timestampTimer.Start();
     }
 
     // ── CommunityToolkit partial hooks ────────────────────────────────────────
@@ -779,6 +799,7 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     /// </summary>
     public void Cleanup()
     {
+        _timestampTimer.Stop();
         AppServices.Intelligence.InsightsUpdated      -= OnInsightsUpdated;
         AppServices.EarlyWarning.WarningsUpdated      -= OnWarningsUpdated;
         AppServices.AnomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;

@@ -302,6 +302,9 @@ public partial class DashboardViewModel : ObservableObject
     // Card cache: preserves IsExpanded state across engine re-evaluations.
     private readonly Dictionary<string, InsightCardViewModel> _cardCache = new();
 
+    // 30-second timer keeps insight card "RelativeTime" labels current.
+    private readonly DispatcherTimer _timestampTimer;
+
     // ── Smart Actions — top 3 ranked from GlobalRecommendationPrioritizer ────
 
     /// <summary>
@@ -427,6 +430,17 @@ public partial class DashboardViewModel : ObservableObject
         // Load real analytics data asynchronously — updates health score, trend,
         // CPU averages, and machine personality once queries complete.
         _ = LoadAnalyticsAsync();
+
+        // 30-second timer keeps insight card "RelativeTime" labels current
+        // so cards age from "just now" → "45s ago" → "3 min ago" on screen
+        // without waiting for the engine to republish the same finding.
+        _timestampTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _timestampTimer.Tick += (_, _) =>
+        {
+            foreach (var card in _cardCache.Values)
+                card.RefreshTimestamp();
+        };
+        _timestampTimer.Start();
     }
 
     // ── Telemetry intake ──────────────────────────────────────────────────────
@@ -738,6 +752,7 @@ public partial class DashboardViewModel : ObservableObject
     /// </summary>
     public void Cleanup()
     {
+        _timestampTimer.Stop();
         AppServices.Telemetry.ReadingAvailable      -= OnReadingAvailable;
         AppServices.Intelligence.InsightsUpdated    -= OnInsightsUpdated;
         AppServices.EarlyWarning.WarningsUpdated    -= OnWarningsUpdated;

@@ -322,6 +322,14 @@ public sealed partial class InsightCardViewModel : ObservableObject
     [RelayCommand]
     private void ToggleExpanded() => IsExpanded = !IsExpanded;
 
+    /// <summary>
+    /// Notifies the UI that <see cref="RelativeTime"/> has changed.
+    /// Called by the owning ViewModel's periodic timestamp timer so that
+    /// cards age correctly ("just now" → "45s ago" → "3 min ago") without
+    /// waiting for the intelligence engine to republish the finding.
+    /// </summary>
+    public void RefreshTimestamp() => OnPropertyChanged(nameof(RelativeTime));
+
     // ── Sparkline ─────────────────────────────────────────────────────────────
 
     /// <summary>
