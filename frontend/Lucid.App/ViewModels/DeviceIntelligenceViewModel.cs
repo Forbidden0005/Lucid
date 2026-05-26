@@ -292,10 +292,20 @@ public sealed partial class DeviceIntelligenceViewModel : ObservableObject
     private async Task RefreshAsync()
     {
         IsLoading = true;
-        await Task.Delay(300).ConfigureAwait(true); // brief visual feedback
-        RefreshFromRegistry();
-        RefreshEcosystemData();
-        IsLoading = false;
+        try
+        {
+            await Task.Delay(300).ConfigureAwait(true); // brief visual feedback
+            RefreshFromRegistry();
+            RefreshEcosystemData();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DeviceIntelVM] RefreshAsync failed: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     [RelayCommand]
