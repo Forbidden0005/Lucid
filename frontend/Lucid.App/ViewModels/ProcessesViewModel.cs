@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Execution;
 using Lucid.Services.History;
 using Lucid.Services.ProcessIntel;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
 namespace Lucid.ViewModels;
@@ -63,9 +62,6 @@ public sealed partial class ProcessRowViewModel : ObservableObject
 
 public sealed partial class ProcessesViewModel : ObservableObject
 {
-    private readonly DispatcherQueue _dispatcher;
-    private ProcessIntelligenceService? _service;
-
     // ── Tab state ─────────────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -113,29 +109,27 @@ public sealed partial class ProcessesViewModel : ObservableObject
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public ProcessesViewModel()
-    {
-        _dispatcher = DispatcherQueue.GetForCurrentThread()
-                   ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-    }
+    public ProcessesViewModel() { }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     public void Start()
     {
-        var timeline = AppServices.Timeline as Services.Timeline.TimelineAggregationService;
-        _service = new ProcessIntelligenceService(
-            AppServices.Telemetry, _dispatcher, timeline);
-        _service.SnapshotUpdated += OnSnapshotUpdated;
-        _service.Start();
+        // Subscribe to the shared ProcessIntelligenceService from AppServices rather
+        // than creating a second instance. Two instances polling the same process list
+        // on every telemetry tick doubles the CPU overhead for zero benefit.
+        AppServices.ProcessIntelligence.SnapshotUpdated += OnSnapshotUpdated;
+
+        // Seed the UI immediately from the last available snapshot (may be null on
+        // very first navigation before the first tick arrives).
+        var snap = AppServices.ProcessIntelligence.LastSnapshot;
+        if (snap is not null)
+            OnSnapshotUpdated(this, snap);
     }
 
     public void Stop()
     {
-        if (_service is null) return;
-        _service.SnapshotUpdated -= OnSnapshotUpdated;
-        _service.Stop();
-        _service = null;
+        AppServices.ProcessIntelligence.SnapshotUpdated -= OnSnapshotUpdated;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
