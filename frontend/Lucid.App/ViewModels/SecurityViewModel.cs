@@ -197,51 +197,74 @@ public sealed partial class SecurityViewModel : ObservableObject
     private async Task OpenVirusTotalAsync(SecurityFindingViewModel vm)
     {
         if (vm is null) return;
-        var log = new ActionExecutionLog();
-        var context = new ActionExecutionContext
+        try
         {
-            IsElevated          = false,
-            ConfirmationGranted = true,
-            Log                 = log,
-            Parameters = new Dictionary<string, string>
+            var log = new ActionExecutionLog();
+            var context = new ActionExecutionContext
             {
-                [Services.Execution.Executors.OpenVirusTotalExecutor.ParamFilePath] = vm.FilePath,
-                [Services.Execution.Executors.OpenVirusTotalExecutor.ParamFileName] = vm.Title,
-            },
-        };
-        await AppServices.ExecutionEngine
-            .ExecuteAsync("action.security.open-virustotal", context)
-            .ConfigureAwait(true);
+                IsElevated          = false,
+                ConfirmationGranted = true,
+                Log                 = log,
+                Parameters = new Dictionary<string, string>
+                {
+                    [Services.Execution.Executors.OpenVirusTotalExecutor.ParamFilePath] = vm.FilePath,
+                    [Services.Execution.Executors.OpenVirusTotalExecutor.ParamFileName] = vm.Title,
+                },
+            };
+            await AppServices.ExecutionEngine
+                .ExecuteAsync("action.security.open-virustotal", context)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Could not open VirusTotal: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[SecurityVM] OpenVirusTotalAsync failed: {ex}");
+        }
     }
 
     [RelayCommand]
     private async Task OpenFileLocationAsync(SecurityFindingViewModel vm)
     {
         if (vm is null || !vm.HasFilePath) return;
-        var log = new ActionExecutionLog();
-        var context = new ActionExecutionContext
+        try
         {
-            IsElevated          = false,
-            ConfirmationGranted = true,
-            Log                 = log,
-            Parameters = new Dictionary<string, string>
+            var log = new ActionExecutionLog();
+            var context = new ActionExecutionContext
             {
-                [Services.Execution.Executors.OpenProcessLocationExecutor.ParamExecutablePath] = vm.FilePath,
-            },
-        };
-        await AppServices.ExecutionEngine
-            .ExecuteAsync("action.process.open-location", context)
-            .ConfigureAwait(true);
+                IsElevated          = false,
+                ConfirmationGranted = true,
+                Log                 = log,
+                Parameters = new Dictionary<string, string>
+                {
+                    [Services.Execution.Executors.OpenProcessLocationExecutor.ParamExecutablePath] = vm.FilePath,
+                },
+            };
+            await AppServices.ExecutionEngine
+                .ExecuteAsync("action.process.open-location", context)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Could not open file location: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[SecurityVM] OpenFileLocationAsync failed: {ex}");
+        }
     }
 
     [RelayCommand]
     private async Task OpenWindowsSecurityAsync()
     {
-        var log = new ActionExecutionLog();
-        var context = new ActionExecutionContext { IsElevated = false, ConfirmationGranted = true, Log = log };
-        await AppServices.ExecutionEngine
-            .ExecuteAsync("action.security.open-windows-security", context)
-            .ConfigureAwait(true);
+        try
+        {
+            var log = new ActionExecutionLog();
+            var context = new ActionExecutionContext { IsElevated = false, ConfirmationGranted = true, Log = log };
+            await AppServices.ExecutionEngine
+                .ExecuteAsync("action.security.open-windows-security", context)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SecurityVM] OpenWindowsSecurityAsync failed: {ex}");
+        }
     }
 
     // ── Scan completion ───────────────────────────────────────────────────────
