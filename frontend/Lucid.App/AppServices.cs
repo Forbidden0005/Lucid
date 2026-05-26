@@ -1306,6 +1306,17 @@ public static class AppServices
             state:        null,
             dueTime:      TimeSpan.FromHours(1),
             period:       TimeSpan.FromHours(1));
+
+        // ── Health analytics pre-warm ─────────────────────────────────────────
+        // Compute and cache the machine health report in the background at startup
+        // so LlmSystemContextBuilder can inject 7-day averages from the first
+        // chat message — no Dashboard navigation required.
+        // Fire-and-forget; returns an empty report on a new install, which is fine.
+        _ = Task.Run(async () =>
+        {
+            try { await _healthTrajectory!.ComputeReportAsync().ConfigureAwait(false); }
+            catch { /* best-effort pre-warm — analytics failure is non-critical */ }
+        });
     }
 
     /// <summary>
