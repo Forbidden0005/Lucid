@@ -1,4 +1,6 @@
 using Lucid.Services.Automation;
+using Lucid.Services.Governance;
+using Lucid.Services.LlmChat;
 using Lucid.Services.Settings;
 using Lucid.Services.Trust;
 using Microsoft.UI.Xaml;
@@ -65,12 +67,52 @@ public sealed partial class SettingsPage : Page
             _                                  => 0,
         };
 
+        // ── AI Assistant fields ────────────────────────────────────────────────
+        LlmEndpointBox.Text = s.LlmEndpointUrl;
+        LlmModelBox.Text    = s.LlmModel;
+
         _initializing = false;
 
+        // ── Live telemetry rate ────────────────────────────────────────────────
+        // Seed from current governance state, then subscribe for mode changes.
+        RefreshTelemetryRateText();
+        AppServices.Governance.ModeChanged += OnGovernanceModeChanged;
+
         AppServices.TrustManager.PostureChanged += OnTrustPostureChanged;
-        Unloaded += (_, _) => AppServices.TrustManager.PostureChanged -= OnTrustPostureChanged;
+
+        Unloaded += (_, _) =>
+        {
+            AppServices.Governance.ModeChanged    -= OnGovernanceModeChanged;
+            AppServices.TrustManager.PostureChanged -= OnTrustPostureChanged;
+        };
 
         RefreshTrustPostureCaption();
+    }
+
+    // ── Telemetry rate ────────────────────────────────────────────────────────
+
+    private void OnGovernanceModeChanged(object? sender, RuntimeModeChangedEventArgs e)
+    {
+        // ModeChanged is already raised on the UI thread by RuntimeGovernanceService.
+        RefreshTelemetryRateText();
+    }
+
+    private void RefreshTelemetryRateText()
+    {
+        var interval = AppServices.Governance.GetSnapshot().TelemetryInterval;
+        var mode     = AppServices.Governance.CurrentMode;
+
+        var rateText = $"~{interval.TotalSeconds:0.#} s";
+        var modeTag  = mode switch
+        {
+            RuntimeMode.HighLoad          => " · reducing (high CPU load)",
+            RuntimeMode.LowPower          => " · reducing (battery mode)",
+            RuntimeMode.Gaming            => " · reducing (game detected)",
+            RuntimeMode.ThermalProtection => " · thermal protection active",
+            _                             => "",
+        };
+
+        TelemetryRateText.Text = rateText + modeTag;
     }
 
     // ── General toggles ───────────────────────────────────────────────────────
@@ -184,6 +226,57 @@ public sealed partial class SettingsPage : Page
             // Persist inline — the tag string is the enum name, exactly what AppSettings stores.
             _ = AppServices.Settings.SaveAsync(
                 AppServices.Settings.Current with { ConsentMode = tag });
+        }
+    }
+
+    // ── AI Assistant ─────────────────────────────────────────────────────────
+
+    private void LlmEndpointBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var url = LlmEndpointBox.Text.Trim();
+        if (string.IsNullOrEmpty(url)) url = OllamaClient.DefaultBaseUrl;
+        _ = AppServices.Settings.SaveAsync(
+            AppServices.Settings.Current with { LlmEndpointUrl = url });
+    }
+
+    private void LlmModelBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var model = LlmModelBox.Text.Trim();
+        if (string.IsNullOrEmpty(model)) model = OllamaClient.DefaultModelName;
+        _ = AppServices.Settings.SaveAsync(
+            AppServices.Settings.Current with { LlmModel = model });
+    }
+
+    private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
+    {
+        TestConnectionButton.IsEnabled = false;
+        LlmStatusText.Text = "Testing…";
+
+        var url   = LlmEndpointBox.Text.Trim();
+        var model = LlmModelBox.Text.Trim();
+
+        try
+        {
+            using var client = new OllamaClient(url, model);
+
+            if (!await client.IsAvailableAsync())
+            {
+                LlmStatusText.Text = "Ollama not reachable at this address";
+                return;
+            }
+
+            var modelReady = await client.IsModelReadyAsync();
+            LlmStatusText.Text = modelReady
+                ? $"Connected — {model} is ready"
+                : $"Ollama reachable, but '{model}' is not pulled";
+        }
+        catch (Exception ex)
+        {
+            LlmStatusText.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            TestConnectionButton.IsEnabled = true;
         }
     }
 

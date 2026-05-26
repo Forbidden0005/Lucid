@@ -6,10 +6,13 @@ namespace Lucid.Services.LlmChat;
 /// </summary>
 public interface ILlmChatService
 {
+    /// <summary>The Ollama model name this service is configured to use.</summary>
+    string ModelName { get; }
+
     /// <summary>Current availability status of Ollama and the required model.</summary>
     LlmStatus Status { get; }
 
-    /// <summary>True when Ollama is running and llama3.2:3b is ready.</summary>
+    /// <summary>True when Ollama is running and the configured model is ready.</summary>
     bool IsReady { get; }
 
     /// <summary>

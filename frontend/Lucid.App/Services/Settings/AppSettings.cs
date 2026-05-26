@@ -41,6 +41,21 @@ public sealed record AppSettings
     /// </summary>
     public bool UsageTelemetryEnabled { get; init; } = false;
 
+    // ── AI / LLM ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Base URL of the Ollama inference server.
+    /// Default: <c>"http://localhost:11434"</c> (standard Ollama install).
+    /// </summary>
+    public string LlmEndpointUrl { get; init; } = "http://localhost:11434";
+
+    /// <summary>
+    /// Ollama model name to use for the AI companion.
+    /// Must be already pulled in Ollama (e.g. <c>ollama pull llama3.2:3b</c>).
+    /// Default: <c>"llama3.2:3b"</c>.
+    /// </summary>
+    public string LlmModel { get; init; } = "llama3.2:3b";
+
     // ── Operational Trust ─────────────────────────────────────────────────────
 
     /// <summary>
