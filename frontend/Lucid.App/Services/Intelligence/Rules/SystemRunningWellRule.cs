@@ -23,6 +23,11 @@ namespace Lucid.Services.Intelligence.Rules;
 ///   Disk   current  &lt; 85 %
 ///   CPU temp        &lt; 75 °C  (skipped if sensor unavailable)
 ///   GPU    current  &lt; 85 %  (skipped if GPU unavailable)
+///   VRAM   current  &lt; 85 %  (skipped if GPU unavailable or VRAM counter not populated)
+///
+/// The VRAM guard ensures "System Running Well" does not fire when a GPU is
+/// paging to system RAM due to high VRAM utilisation, even if GPU core usage
+/// appears low (typical of AI inference tools and media players).
 /// </summary>
 public sealed class SystemRunningWellRule : IInsightRule
 {
@@ -69,6 +74,17 @@ public sealed class SystemRunningWellRule : IInsightRule
         // GPU must not be under unexpected load (GPU presence is optional).
         if (current.GpuAvailable && current.GpuPercent >= GpuOkThreshold)
             return null;
+
+        // VRAM must not be under pressure — a high VRAM percentage means the GPU
+        // is paging to system RAM even if core utilization looks low (common with
+        // AI inference tools and media players that hold large texture buffers).
+        // This guard uses the same 85% threshold as GpuVramPressureRule.
+        if (current.GpuAvailable && current.GpuVramTotalGb > 0)
+        {
+            double vramPct = current.GpuVramUsedGb / current.GpuVramTotalGb * 100.0;
+            if (vramPct >= GpuOkThreshold)
+                return null;
+        }
 
         // Baseline anomaly check — if any metric is anomalous for THIS machine,
         // suppress the "all clear" even when absolute thresholds are not exceeded.
