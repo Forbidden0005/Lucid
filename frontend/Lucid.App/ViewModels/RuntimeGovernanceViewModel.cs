@@ -177,8 +177,14 @@ public sealed partial class RuntimeGovernanceViewModel : ObservableObject
     public async Task InitializeAsync()
     {
         IsLoading = true;
-        await RefreshAsync().ConfigureAwait(true); // stay on UI thread after await
-        IsLoading = false;
+        try
+        {
+            await RefreshAsync().ConfigureAwait(true); // stay on UI thread after await
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     // ── Refresh ────────────────────────────────────────────────────────────────

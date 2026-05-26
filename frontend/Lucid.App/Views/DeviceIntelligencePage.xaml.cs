@@ -30,7 +30,14 @@ public sealed partial class DeviceIntelligencePage : Page
 
         DataContext = _viewModel;
 
-        await _viewModel.InitializeAsync().ConfigureAwait(true);
+        try
+        {
+            await _viewModel.InitializeAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DeviceIntelligencePage] OnNavigatedTo failed: {ex.Message}");
+        }
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)

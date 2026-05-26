@@ -26,7 +26,14 @@ public sealed partial class MachineBehaviorPage : Page
             AppServices.WorkloadProfiling);
         DataContext = _viewModel;
 
-        await _viewModel.InitializeAsync().ConfigureAwait(true);
+        try
+        {
+            await _viewModel.InitializeAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MachineBehaviorPage] OnNavigatedTo failed: {ex.Message}");
+        }
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
