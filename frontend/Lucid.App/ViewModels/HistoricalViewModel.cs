@@ -154,7 +154,7 @@ public sealed partial class HistoricalViewModel : ObservableObject
         if (_engine.LastSummary is { } cached)
             ApplySummary(cached);
 
-        await RefreshAsync().ConfigureAwait(false);
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     // ── Refresh ───────────────────────────────────────────────────────────────
@@ -165,7 +165,10 @@ public sealed partial class HistoricalViewModel : ObservableObject
 
         try
         {
-            var summary = await _engine.ComputeAsync().ConfigureAwait(false);
+            // ConfigureAwait(true): ApplySummary writes to many [ObservableProperty]
+            // fields and clears/repopulates an ObservableCollection. WinUI x:Bind
+            // bindings crash when PropertyChanged fires from a thread-pool thread.
+            var summary = await _engine.ComputeAsync().ConfigureAwait(true);
             ApplySummary(summary);
         }
         catch

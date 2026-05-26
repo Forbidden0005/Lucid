@@ -173,6 +173,8 @@ public sealed partial class RepairCardViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ResultBannerVisibility))]
+    [NotifyPropertyChangedFor(nameof(LogVisibility))]                // LogVisibility = IsRunning || HasResult — notify on both fields
+    [NotifyPropertyChangedFor(nameof(ResultRestartWarningVisibility))] // ResultRestartWarningVisibility = HasResult && ResultRequiresRestart — notify on both fields
     private bool _hasResult;
 
     [ObservableProperty] private string _resultMessage     = string.Empty;

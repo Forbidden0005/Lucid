@@ -316,14 +316,10 @@ public sealed partial class StorageViewModel : ObservableObject
         var cutoff = DateTime.UtcNow.AddDays(-90);
         var dlPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                      + @"\Downloads";
-        foreach (var f in result.LargeFiles.Concat(
-                     result.CategoryBreakdown
-                         .Where(c => c.Category == StorageCategory.Downloads)
-                         .SelectMany(_ => result.LargeFiles)) // use large files as proxy
+        foreach (var f in result.LargeFiles
                      .Where(f => f.LastModifiedUtc < cutoff &&
                                  f.FullPath.StartsWith(dlPath,
                                      StringComparison.OrdinalIgnoreCase))
-                     .DistinctBy(f => f.FullPath)
                      .Take(50))
         {
             OldDownloads.Add(new LargeFileViewModel(f));

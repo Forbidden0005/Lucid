@@ -137,6 +137,7 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ConfirmationVisibility))]
     [NotifyPropertyChangedFor(nameof(ProgressVisibility))]
     [NotifyPropertyChangedFor(nameof(ResultVisibility))]
+    [NotifyPropertyChangedFor(nameof(RollbackVisibility))]   // RollbackVisibility = CanRollback && State==Succeeded — CanRollback is set before State, so State must also notify
     [NotifyPropertyChangedFor(nameof(IsRunning))]
     [NotifyPropertyChangedFor(nameof(StateGlyph))]
     [NotifyPropertyChangedFor(nameof(StateBrush))]
