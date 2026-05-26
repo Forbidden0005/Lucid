@@ -78,33 +78,53 @@ public sealed class LlmChatService : ILlmChatService
                 : _history;
             messages.AddRange(historySlice);
 
-            // Add the new user message
+            // Add the new user message to the request (but NOT to history yet —
+            // we defer the write until we have a response so cancellation or
+            // network errors don't leave an orphaned user message with no reply).
             messages.Add(new OllamaMessage { role = "user", content = userMessage });
-
-            // Record user message in history
-            _history.Add(new OllamaMessage { role = "user", content = userMessage });
 
             // Stream the response
             var responseBuilder = new System.Text.StringBuilder();
-            await foreach (var chunk in _client.ChatStreamAsync(messages, ct).ConfigureAwait(false))
+            try
             {
-                responseBuilder.Append(chunk);
-                onChunk(chunk);
+                await foreach (var chunk in _client.ChatStreamAsync(messages, ct).ConfigureAwait(false))
+                {
+                    responseBuilder.Append(chunk);
+                    onChunk(chunk);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // User cancelled mid-stream. If any text arrived, persist both the
+                // user turn and the partial assistant turn so follow-up messages have
+                // coherent context. Re-throw so the caller can handle the cancellation.
+                CommitTurn(userMessage, responseBuilder.ToString());
+                throw;
             }
 
-            // Record assistant response in history
-            var fullResponse = responseBuilder.ToString();
-            if (!string.IsNullOrEmpty(fullResponse))
-                _history.Add(new OllamaMessage { role = "assistant", content = fullResponse });
-
-            // Trim history if too long
-            while (_history.Count > MaxTurns)
-                _history.RemoveAt(0);
+            // Full response received — commit both turns to history.
+            CommitTurn(userMessage, responseBuilder.ToString());
         }
         finally
         {
             _lock.Release();
         }
+    }
+
+    /// <summary>
+    /// Appends a user + assistant message pair to history and trims to MaxTurns.
+    /// Only records the assistant side when the response is non-empty.
+    /// </summary>
+    private void CommitTurn(string userMessage, string assistantResponse)
+    {
+        _history.Add(new OllamaMessage { role = "user", content = userMessage });
+
+        if (!string.IsNullOrEmpty(assistantResponse))
+            _history.Add(new OllamaMessage { role = "assistant", content = assistantResponse });
+
+        // Use RemoveRange for O(1) front-removal instead of O(n) per-element loop
+        if (_history.Count > MaxTurns)
+            _history.RemoveRange(0, _history.Count - MaxTurns);
     }
 
     // ── History ────────────────────────────────────────────────────────────────

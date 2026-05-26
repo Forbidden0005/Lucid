@@ -207,7 +207,6 @@ public sealed partial class CompanionChatViewModel : ObservableObject
 
         InputText    = string.Empty;
         IsProcessing = true;
-        OnPropertyChanged(nameof(NoMessagesVisibility));
 
         // Check LLM availability first
         if (!_llm.IsReady)
@@ -280,7 +279,6 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             _streamCts?.Dispose();
             _streamCts   = null;
             IsProcessing = false;
-            OnPropertyChanged(nameof(NoMessagesVisibility));
         }
     }
 
@@ -312,7 +310,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         Messages.Clear();
         _llm.ClearHistory();
         AddWelcomeMessages();
-        OnPropertyChanged(nameof(NoMessagesVisibility));
+        // NoMessagesVisibility is notified by AddWelcomeMessages() → AddMessage()
     }
 
     // ── Automation narration (called from CompanionOverlayWindow) ─────────────
