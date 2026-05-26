@@ -24,7 +24,14 @@ public sealed partial class DiagnosticsPage : Page
         _viewModel = new DiagnosticsViewModel(AppServices.Diagnostics);
         DataContext  = _viewModel;
 
-        await _viewModel.InitializeAsync().ConfigureAwait(true);
+        try
+        {
+            await _viewModel.InitializeAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DiagnosticsPage] OnNavigatedTo failed: {ex.Message}");
+        }
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)

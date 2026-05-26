@@ -22,7 +22,14 @@ public sealed partial class RuntimeGovernancePage : Page
     protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        await ViewModel.InitializeAsync();
+        try
+        {
+            await ViewModel.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RuntimeGovernancePage] OnNavigatedTo failed: {ex.Message}");
+        }
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)

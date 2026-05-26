@@ -29,9 +29,16 @@ public sealed partial class WatchtowerPage : Page
         DataContext = _viewModel;
 
         // Trigger initial refresh if no snapshot exists yet
-        if (AppServices.Watchtower.LastSnapshot is null)
+        try
         {
-            await _viewModel.RefreshCommand.ExecuteAsync(null).ConfigureAwait(true);
+            if (AppServices.Watchtower.LastSnapshot is null)
+            {
+                await _viewModel.RefreshCommand.ExecuteAsync(null).ConfigureAwait(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WatchtowerPage] OnNavigatedTo failed: {ex.Message}");
         }
     }
 
