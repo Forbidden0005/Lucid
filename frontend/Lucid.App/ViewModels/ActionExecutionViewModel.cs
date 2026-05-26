@@ -358,9 +358,22 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
             Log                 = log,
         };
 
-        var result = await _engine
-            .RollbackAsync(_actionId, _rollbackToken, context)
-            .ConfigureAwait(true);
+        ActionExecutionResult result;
+        try
+        {
+            result = await _engine
+                .RollbackAsync(_actionId, _rollbackToken, context)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            // Unexpected engine throw during rollback — surface a Failed state
+            // so the UI doesn't stay stuck in the RollingBack spinner.
+            StatusMessage = $"Rollback failed: {ex.Message}";
+            State         = ActionExecutionState.Failed;
+            System.Diagnostics.Debug.WriteLine($"[ActionExecution] RollbackAsync threw: {ex}");
+            return;
+        }
 
         ApplyResult(result, isRollback: true);
     }
@@ -407,9 +420,34 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
             Log                 = log,
         };
 
-        var result = await _engine
-            .ExecuteAsync(_actionId, context, _cts.Token)
-            .ConfigureAwait(true);  // stay on UI thread so property updates are safe
+        ActionExecutionResult result;
+        try
+        {
+            result = await _engine
+                .ExecuteAsync(_actionId, context, _cts.Token)
+                .ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            // User cancelled — return to idle with no error message.
+            State         = ActionExecutionState.Idle;
+            StatusMessage = string.Empty;
+            return;
+        }
+        catch (Exception ex)
+        {
+            // Unexpected engine throw (e.g. executor constructor fault).
+            // Surface a Failed state with a readable message so the spinner clears.
+            StatusMessage = $"Unexpected error: {ex.Message}";
+            State         = ActionExecutionState.Failed;
+            System.Diagnostics.Debug.WriteLine($"[ActionExecution] ExecuteCoreAsync threw: {ex}");
+            return;
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+        }
 
         ApplyResult(result, isRollback: false);
     }
