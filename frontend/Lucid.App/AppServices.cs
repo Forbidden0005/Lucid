@@ -941,14 +941,19 @@ public static class AppServices
             _executionQueue);
 
         // Wire telemetry heartbeat + overrun detection.
-        _telemetry.ReadingAvailable += (_, snapshot) =>
-            _diagnostics.OnTelemetryReceived(
+        // Use null-conditional to guard the shutdown window: AppServices.Shutdown()
+        // nulls _diagnostics and _pollingCoordinator before calling _telemetry.Stop(),
+        // so a ReadingAvailable event that fires during the teardown sequence would
+        // otherwise cause a NullReferenceException.
+        _telemetry.ReadingAvailable += (_, _) =>
+            _diagnostics?.OnTelemetryReceived(
                 DateTimeOffset.Now,
-                _pollingCoordinator!.CurrentTelemetryInterval);
+                _pollingCoordinator?.CurrentTelemetryInterval ?? TimeSpan.FromSeconds(1.5));
 
         // Wire governance mode-change notifications to diagnostics.
+        // Same null-guard rationale: _diagnostics is nulled before _governance.Stop().
         _governance.ModeChanged += (_, args) =>
-            _diagnostics.OnGovernanceModeChanged(args.PreviousMode, args.NewMode, args.Reasons);
+            _diagnostics?.OnGovernanceModeChanged(args.PreviousMode, args.NewMode, args.Reasons);
 
         _diagnostics.Start();
 
