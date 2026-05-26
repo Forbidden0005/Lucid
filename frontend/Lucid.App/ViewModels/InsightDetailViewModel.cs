@@ -470,6 +470,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
     {
         _historyLoading = true;
         OnPropertyChanged(nameof(HistoryLoadingVisibility));
+        OnPropertyChanged(nameof(HistoryListVisibility));  // HistoryListVisibility = !loading && Count>0 — notify on loading change
         OnPropertyChanged(nameof(HistoryEmptyVisibility));
 
         try

@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Lucid.Services.Explain;
 using Lucid.Services.Intelligence;
@@ -26,7 +26,7 @@ public sealed class CausalFactorViewModel
     public string  Title             { get; init; } = "";
     public string  Explanation       { get; init; } = "";
     public string  DomainLabel       { get; init; } = "";
-    public string  DomainGlyph       { get; init; } = ""; // default: Insights
+    public string  DomainGlyph       { get; init; } = ""; // default: Insights
     public int     ConfidencePercent { get; init; }
     public string  ConfidenceText    { get; init; } = "";
     public string  AttributionText   { get; init; } = "";
@@ -40,7 +40,7 @@ public sealed class RecentChangeViewModel
     public string         Title       { get; init; } = "";
     public string         Detail      { get; init; } = "";
     public string         TimeText    { get; init; } = "";
-    public string         TypeGlyph   { get; init; } = "";
+    public string         TypeGlyph   { get; init; } = "";
     public Brush          DotBrush    { get; init; } = new SolidColorBrush(Colors.Gray);
     public bool           HasDetail           { get; init; }
     public Visibility     HasDetailVisibility { get; init; }
@@ -53,7 +53,7 @@ public sealed class ForecastOutlookViewModel
     public string  MitigationHint    { get; init; } = "";
     public bool       HasMitigation           { get; init; }
     public Visibility HasMitigationVisibility { get; init; }
-    public string  SeverityGlyph     { get; init; } = "";
+    public string  SeverityGlyph     { get; init; } = "";
     public Brush   SeverityBrush     { get; init; } = new SolidColorBrush(Colors.Gray);
     public int     ConfidencePercent { get; init; }
     public string  ConfidenceText    { get; init; } = "";
@@ -107,6 +107,28 @@ public partial class ExplainViewModel : ObservableObject
 {
     private readonly IExplainMyPcEngine _engine;
 
+    // ── Brush palette ── allocated once at class init, zero per Apply() call ─────
+    //
+    //   Green  #4CAF50 — healthy / good / resolved
+    //   Blue   #6CA3F8 — info / monitoring / CPU / memory / security
+    //   Amber  #FFA726 — warning / degraded / disk / startup / attribution
+    //   Red    #EF5350 — critical / urgent / thermal
+    //   Slate  #646E82 — neutral evidence kind (subtle, not quite gray)
+    //   Subtle #3C465A — non-primary recommendation rank background
+    //
+    // Using static fields means:
+    //   • Zero heap allocations per Apply() call for all factory methods
+    //   • ObservableProperty setters receive the same reference when state is
+    //     unchanged → equality check short-circuits → no spurious UI updates
+
+    private static readonly SolidColorBrush s_brushGreen  = new(Color.FromArgb(255,  76, 175,  80));
+    private static readonly SolidColorBrush s_brushBlue   = new(Color.FromArgb(255, 108, 163, 248));
+    private static readonly SolidColorBrush s_brushAmber  = new(Color.FromArgb(255, 255, 167,  38));
+    private static readonly SolidColorBrush s_brushRed    = new(Color.FromArgb(255, 239,  83,  80));
+    private static readonly SolidColorBrush s_brushGray   = new(Colors.Gray);
+    private static readonly SolidColorBrush s_brushSlate  = new(Color.FromArgb(255, 100, 110, 130));
+    private static readonly SolidColorBrush s_brushSubtle = new(Color.FromArgb(255,  60,  70,  90));
+
     // ── Section 1: System Summary ─────────────────────────────────────────────
 
     [ObservableProperty] private string _headline      = "Analyzing your system…";
@@ -116,9 +138,9 @@ public partial class ExplainViewModel : ObservableObject
     [ObservableProperty] private string _confidenceText    = "";
     [ObservableProperty] private string _dataPointsText    = "";
     [ObservableProperty] private string _lastUpdatedText   = "";
-    [ObservableProperty] private Brush  _healthStateBrush  = new SolidColorBrush(Colors.Gray);
-    [ObservableProperty] private Brush  _heroAccentBrush   = new SolidColorBrush(Colors.Gray);
-    [ObservableProperty] private string _heroGlyph         = "";
+    [ObservableProperty] private Brush  _healthStateBrush  = s_brushGray;
+    [ObservableProperty] private Brush  _heroAccentBrush   = s_brushGray;
+    [ObservableProperty] private string _heroGlyph         = "";
     [ObservableProperty] private Visibility _dominantCausesVisibility = Visibility.Collapsed;
 
     public ObservableCollection<string> DominantCauses { get; } = [];
@@ -333,9 +355,7 @@ public partial class ExplainViewModel : ObservableObject
             CanRollback          = rec.CanRollback,
             RollbackLabel        = rec.CanRollback ? "Reversible" : "Not reversible",
             RiskLabel            = RiskLabel(rec.Action.Risk),
-            RankBrush            = rank == 1
-                ? new SolidColorBrush(Color.FromArgb(255, 108, 163, 248))   // accent blue
-                : new SolidColorBrush(Color.FromArgb(255, 60, 70, 90)),      // subtle
+            RankBrush            = rank == 1 ? s_brushBlue : s_brushSubtle,
             EffectivenessLabel    = effLabel,
             EffectivenessText     = effText,
             EffectivenessVisible  = effVisible,
@@ -351,81 +371,66 @@ public partial class ExplainViewModel : ObservableObject
         KindBrush = EvidenceKindBrush(item.Kind),
     };
 
-    // ── Visual helpers ────────────────────────────────────────────────────────
+    // ── Visual helpers ── return static brush refs, zero allocation per call ─────
 
     private static (Brush health, Brush hero, string glyph) StateVisuals(NarrativeHealthState state) =>
         state switch
         {
-            NarrativeHealthState.Healthy    => (
-                new SolidColorBrush(Color.FromArgb(255, 76,  175, 80)),   // green
-                new SolidColorBrush(Color.FromArgb(255, 76,  175, 80)),
-                ""),   // checkmark
-            NarrativeHealthState.Monitoring => (
-                new SolidColorBrush(Color.FromArgb(255, 108, 163, 248)),  // blue
-                new SolidColorBrush(Color.FromArgb(255, 108, 163, 248)),
-                ""),   // insights
-            NarrativeHealthState.Degraded   => (
-                new SolidColorBrush(Color.FromArgb(255, 255, 167, 38)),   // amber
-                new SolidColorBrush(Color.FromArgb(255, 255, 167, 38)),
-                ""),   // warning
-            NarrativeHealthState.Critical   => (
-                new SolidColorBrush(Color.FromArgb(255, 239, 83,  80)),   // red
-                new SolidColorBrush(Color.FromArgb(255, 239, 83,  80)),
-                ""),   // error badge
-            _ => (
-                new SolidColorBrush(Colors.Gray),
-                new SolidColorBrush(Colors.Gray),
-                ""),
+            NarrativeHealthState.Healthy    => (s_brushGreen, s_brushGreen, ""),   // checkmark
+            NarrativeHealthState.Monitoring => (s_brushBlue,  s_brushBlue,  ""),   // insights
+            NarrativeHealthState.Degraded   => (s_brushAmber, s_brushAmber, ""),   // warning
+            NarrativeHealthState.Critical   => (s_brushRed,   s_brushRed,   ""),   // error badge
+            _                               => (s_brushGray,  s_brushGray,  ""),
         };
 
     private static (string label, string glyph, Brush brush) DomainVisuals(CausalDomain domain) =>
         domain switch
         {
-            CausalDomain.Cpu      => ("CPU",     "", new SolidColorBrush(Color.FromArgb(255, 108, 163, 248))),
-            CausalDomain.Memory   => ("Memory",  "", new SolidColorBrush(Color.FromArgb(255, 108, 163, 248))),
-            CausalDomain.Disk     => ("Disk",    "", new SolidColorBrush(Color.FromArgb(255, 255, 167, 38))),
-            CausalDomain.Startup  => ("Startup", "", new SolidColorBrush(Color.FromArgb(255, 255, 167, 38))),
-            CausalDomain.Thermal  => ("Thermal", "", new SolidColorBrush(Color.FromArgb(255, 239, 83,  80))),
-            CausalDomain.Security => ("Security","", new SolidColorBrush(Color.FromArgb(255, 108, 163, 248))),
-            CausalDomain.Process  => ("Process", "", new SolidColorBrush(Color.FromArgb(255, 108, 163, 248))),
-            _                     => ("System",  "", new SolidColorBrush(Colors.Gray)),
+            CausalDomain.Cpu      => ("CPU",      "", s_brushBlue),
+            CausalDomain.Memory   => ("Memory",   "", s_brushBlue),
+            CausalDomain.Disk     => ("Disk",     "", s_brushAmber),
+            CausalDomain.Startup  => ("Startup",  "", s_brushAmber),
+            CausalDomain.Thermal  => ("Thermal",  "", s_brushRed),
+            CausalDomain.Security => ("Security", "", s_brushBlue),
+            CausalDomain.Process  => ("Process",  "", s_brushBlue),
+            _                     => ("System",   "", s_brushGray),
         };
 
     private static Brush SeverityBrush(TimelineEventSeverity severity) => severity switch
     {
-        TimelineEventSeverity.Good     => new SolidColorBrush(Color.FromArgb(255, 76,  175, 80)),
-        TimelineEventSeverity.Warning  => new SolidColorBrush(Color.FromArgb(255, 255, 167, 38)),
-        TimelineEventSeverity.Critical => new SolidColorBrush(Color.FromArgb(255, 239, 83,  80)),
-        _                              => new SolidColorBrush(Color.FromArgb(255, 108, 163, 248)),
+        TimelineEventSeverity.Good     => s_brushGreen,
+        TimelineEventSeverity.Warning  => s_brushAmber,
+        TimelineEventSeverity.Critical => s_brushRed,
+        _                              => s_brushBlue,  // Info
     };
 
     private static string TimelineGlyph(TimelineEventType type) => type switch
     {
-        TimelineEventType.InsightOnset       => "",
-        TimelineEventType.InsightResolved    => "",
-        TimelineEventType.ForecastAlert      => "",
-        TimelineEventType.ActionExecuted     => "",
-        TimelineEventType.ActionRollback     => "",
-        TimelineEventType.ActionFailed       => "",
-        TimelineEventType.SynthesisCorrelated=> "",
-        TimelineEventType.NarrativeCheckpoint=> "",
-        _                                    => "",
+        TimelineEventType.InsightOnset       => "",
+        TimelineEventType.InsightResolved    => "",
+        TimelineEventType.ForecastAlert      => "",
+        TimelineEventType.ActionExecuted     => "",
+        TimelineEventType.ActionRollback     => "",
+        TimelineEventType.ActionFailed       => "",
+        TimelineEventType.SynthesisCorrelated=> "",
+        TimelineEventType.NarrativeCheckpoint=> "",
+        _                                    => "",
     };
 
     private static string ForecastGlyph(ForecastSeverity severity) => severity switch
     {
-        ForecastSeverity.Urgent  => "",
-        ForecastSeverity.Warning => "",
-        ForecastSeverity.Watch   => "",
-        _                        => "",
+        ForecastSeverity.Urgent  => "",
+        ForecastSeverity.Warning => "",
+        ForecastSeverity.Watch   => "",
+        _                        => "",
     };
 
     private static Brush ForecastBrush(ForecastSeverity severity) => severity switch
     {
-        ForecastSeverity.Urgent  => new SolidColorBrush(Color.FromArgb(255, 239, 83,  80)),
-        ForecastSeverity.Warning => new SolidColorBrush(Color.FromArgb(255, 255, 167, 38)),
-        ForecastSeverity.Watch   => new SolidColorBrush(Color.FromArgb(255, 108, 163, 248)),
-        _                        => new SolidColorBrush(Color.FromArgb(255, 76,  175, 80)),
+        ForecastSeverity.Urgent  => s_brushRed,
+        ForecastSeverity.Warning => s_brushAmber,
+        ForecastSeverity.Watch   => s_brushBlue,
+        _                        => s_brushGreen,
     };
 
     private static string RiskLabel(ActionRisk risk) => risk switch
@@ -449,11 +454,11 @@ public partial class ExplainViewModel : ObservableObject
 
     private static Brush EvidenceKindBrush(EvidenceKind kind) => kind switch
     {
-        EvidenceKind.BaselineComparison => new SolidColorBrush(Color.FromArgb(255, 108, 163, 248)),
-        EvidenceKind.ProcessAttribution => new SolidColorBrush(Color.FromArgb(255, 255, 167, 38)),
-        EvidenceKind.TrendObservation   => new SolidColorBrush(Color.FromArgb(255, 76,  175, 80)),
-        EvidenceKind.TimelineCorrelation=> new SolidColorBrush(Color.FromArgb(255, 108, 163, 248)),
-        _                               => new SolidColorBrush(Color.FromArgb(255, 100, 110, 130)),
+        EvidenceKind.BaselineComparison => s_brushBlue,
+        EvidenceKind.ProcessAttribution => s_brushAmber,
+        EvidenceKind.TrendObservation   => s_brushGreen,
+        EvidenceKind.TimelineCorrelation=> s_brushBlue,
+        _                               => s_brushSlate,
     };
 
     private static string FormatRelativeTime(DateTimeOffset t)

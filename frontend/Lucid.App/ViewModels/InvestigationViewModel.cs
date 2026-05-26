@@ -128,8 +128,13 @@ public sealed partial class InvestigationViewModel : ObservableObject
 
         try
         {
-            // Step 1: Build evidence graph
-            var graph = await _evidenceGraph.BuildGraphAsync().ConfigureAwait(false);
+            // Step 1: Build evidence graph asynchronously.
+            // ConfigureAwait(true): all subsequent steps (LoadingMessage updates,
+            // AnalyzeRootCauses, ApplyResults) write to [ObservableProperty] fields and
+            // ObservableCollections. WinUI x:Bind bindings crash when PropertyChanged
+            // fires from a non-UI thread. AnalyzeRootCauses / GetSuggestedWorkflows
+            // are fast in-memory operations — running them on the UI thread is safe.
+            var graph = await _evidenceGraph.BuildGraphAsync().ConfigureAwait(true);
 
             LoadingMessage = "Analyzing root causes…";
 
@@ -141,8 +146,7 @@ public sealed partial class InvestigationViewModel : ObservableObject
             // Step 3: Build workflows
             var workflows = _workflowEngine.GetSuggestedWorkflows(candidates, maxWorkflows: 3);
 
-            // Step 4: Apply to ViewModel on UI thread
-            // (DispatcherQueue marshalling handled by the page's caller)
+            // Step 4: Apply results to ViewModel (already on UI thread)
             ApplyResults(graph, candidates, workflows);
         }
         catch (OperationCanceledException)

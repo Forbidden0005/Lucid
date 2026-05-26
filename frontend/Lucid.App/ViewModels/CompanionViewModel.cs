@@ -161,7 +161,11 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
 
         try
         {
-            var response = await _engine.ProcessQueryAsync(query).ConfigureAwait(false);
+            // ConfigureAwait(true): continuation must run on the UI thread because
+            // _session.AddSystemMessage fires MessageAdded → Messages.Add() on an
+            // ObservableCollection, and IsProcessing writes an [ObservableProperty].
+            // WinUI x:Bind bindings crash when PropertyChanged fires off-thread.
+            var response = await _engine.ProcessQueryAsync(query).ConfigureAwait(true);
             _session.AddSystemMessage(response.Text, response.Category, response.ActionId);
         }
         finally
@@ -184,7 +188,8 @@ public sealed partial class CompanionViewModel : ObservableObject, IDisposable
 
         try
         {
-            var response = await _engine.ProcessQueryAsync(action.Query).ConfigureAwait(false);
+            // ConfigureAwait(true): same reason as SendMessageAsync above.
+            var response = await _engine.ProcessQueryAsync(action.Query).ConfigureAwait(true);
             _session.AddSystemMessage(response.Text, response.Category, response.ActionId);
         }
         finally
