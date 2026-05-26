@@ -185,12 +185,19 @@ public sealed partial class RuntimeGovernanceViewModel : ObservableObject
 
     private async Task RefreshAsync()
     {
-        // Read governance data on a thread-pool thread (lock acquisition inside
-        // ConcurrencyBudget is cheap but caller may be on the UI thread).
-        var result = await Task.Run(ReadGovernanceData).ConfigureAwait(true);
+        try
+        {
+            // Read governance data on a thread-pool thread (lock acquisition inside
+            // ConcurrencyBudget is cheap but caller may be on the UI thread).
+            var result = await Task.Run(ReadGovernanceData).ConfigureAwait(true);
 
-        // ConfigureAwait(true) ensures we're back on the UI thread here.
-        ApplyResult(result);
+            // ConfigureAwait(true) ensures we're back on the UI thread here.
+            ApplyResult(result);
+        }
+        catch
+        {
+            // Best-effort — stale governance data remains visible on error.
+        }
     }
 
     /// <summary>
