@@ -160,8 +160,18 @@ public sealed partial class CompanionChatViewModel : ObservableObject
 
     private async Task CheckLlmStatusAsync()
     {
-        var status = await _llm.CheckStatusAsync().ConfigureAwait(false);
-        _dispatcher.TryEnqueue(() => LlmStatus = status);
+        try
+        {
+            var status = await _llm.CheckStatusAsync().ConfigureAwait(false);
+            _dispatcher.TryEnqueue(() => LlmStatus = status);
+        }
+        catch (Exception ex)
+        {
+            // Startup LLM status probe failed (Ollama not running, network error, etc.).
+            // LlmStatus stays at its default Unknown value — the companion chat panel
+            // shows the "not connected" banner. Not an unobserved exception.
+            System.Diagnostics.Debug.WriteLine($"[Companion] Initial LLM status check failed: {ex.Message}");
+        }
     }
 
     [RelayCommand]
@@ -208,11 +218,24 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         InputText    = string.Empty;
         IsProcessing = true;
 
-        // Check LLM availability first
+        // Check LLM availability first.
+        // The status probe is a network call — guard it so a connection error
+        // resets IsProcessing and shows feedback rather than becoming an
+        // unobserved exception (this code runs before the streaming try/finally).
         if (!_llm.IsReady)
         {
-            var status = await _llm.CheckStatusAsync().ConfigureAwait(true);
-            LlmStatus = status;
+            LlmStatus newStatus;
+            try
+            {
+                newStatus = await _llm.CheckStatusAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                AddMessage(MakeMessage(BuildErrorMessage(ex), CompanionMessageCategory.Error));
+                IsProcessing = false;
+                return;
+            }
+            LlmStatus = newStatus;
 
             if (!_llm.IsReady)
             {

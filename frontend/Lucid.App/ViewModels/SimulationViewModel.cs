@@ -812,14 +812,14 @@ public sealed partial class SimulationViewModel : ObservableObject
     /// </summary>
     private async Task AutoSaveSnapshotAsync(SimulationScenario result, SimulationDecision decision)
     {
-        // Capture telemetry BEFORE any awaits — this is the "before" reading for
-        // outcome verification (measuring whether the prediction came true later).
-        var lastReading = AppServices.Telemetry.LastReading;
-        double ramBefore = lastReading?.RamPercent ?? 50;
-        double cpuBefore = lastReading?.CpuPercent ?? 50;
-
         try
         {
+            // Capture telemetry BEFORE any awaits — this is the "before" reading for
+            // outcome verification (measuring whether the prediction came true later).
+            var lastReading = AppServices.Telemetry.LastReading;
+            double ramBefore = lastReading?.RamPercent ?? 50;
+            double cpuBefore = lastReading?.CpuPercent ?? 50;
+
             var scenarioLabel = ScenarioChips
                 .FirstOrDefault(c => c.ScenarioType == result.ScenarioType)?.Label
                 ?? result.ScenarioType.ToString();
