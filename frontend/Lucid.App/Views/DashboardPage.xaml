@@ -1077,6 +1077,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Boot time -->
@@ -1126,7 +1127,7 @@
                             <FontIcon Glyph="&#xE9D2;" FontFamily="Segoe MDL2 Assets"
                                       FontSize="14"
                                       Foreground="{StaticResource AccentCyanBrush}" />
-                            <TextBlock Text="Avg CPU (24h)"
+                            <TextBlock Text="Avg CPU (7d)"
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -1145,8 +1146,41 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Disk free -->
+                <!-- Avg RAM (7d) -->
                 <Border Grid.Column="2"
+                        Style="{StaticResource CardSurface}"
+                        Padding="20"
+                        PointerEntered="Card_PointerEntered"
+                        PointerExited="Card_PointerExited">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE964;" FontFamily="Segoe MDL2 Assets"
+                                      FontSize="14"
+                                      Foreground="{StaticResource AccentCyanBrush}" />
+                            <TextBlock Text="Avg RAM (7d)"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{x:Bind ViewModel.RamAvgValue, Mode=OneWay}"
+                                       Style="{StaticResource MetricMediumStyle}" />
+                            <Border Background="{StaticResource StatusModerateSubtleBrush}"
+                                    CornerRadius="4" Padding="6,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind ViewModel.RamAvgDelta, Mode=OneWay}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource StatusModerateBrush}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="vs. last week average"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Disk free -->
+                <Border Grid.Column="3"
                         Style="{StaticResource CardSurface}"
                         Padding="20"
                         PointerEntered="Card_PointerEntered"
@@ -1173,7 +1207,7 @@
                                            Foreground="{StaticResource StatusCriticalBrush}" />
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="in the last 7 days"
+                        <TextBlock Text="live from telemetry"
                                    Style="{StaticResource CaptionTextStyle}" />
                     </StackPanel>
                 </Border>

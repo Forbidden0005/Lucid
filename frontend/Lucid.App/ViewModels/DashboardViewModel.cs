@@ -204,8 +204,10 @@ public partial class DashboardViewModel : ObservableObject
 
     [ObservableProperty] private string _bootTimeValue = "18s";
     [ObservableProperty] private string _bootTimeDelta = "↓ 2s faster";
-    [ObservableProperty] private string _cpuAvgValue   = "31%";
-    [ObservableProperty] private string _cpuAvgDelta   = "↑ 4% higher";
+    [ObservableProperty] private string _cpuAvgValue   = "—";
+    [ObservableProperty] private string _cpuAvgDelta   = "Gathering data…";
+    [ObservableProperty] private string _ramAvgValue   = "—";
+    [ObservableProperty] private string _ramAvgDelta   = "Gathering data…";
     [ObservableProperty] private string _diskFreeDelta = "↓ 12 GB lost";
 
     /// <summary>
@@ -539,6 +541,13 @@ public partial class DashboardViewModel : ObservableObject
             {
                 CpuAvgValue = cpuAvg;
                 CpuAvgDelta = report.CpuTrendLabel;
+            }
+
+            // RAM average (only when data exists)
+            if (report.RamAvgLabel is { } ramAvg)
+            {
+                RamAvgValue = ramAvg;
+                RamAvgDelta = report.RamTrendLabel;
             }
 
             // Machine personality — compute from historical summary + current live signals.
