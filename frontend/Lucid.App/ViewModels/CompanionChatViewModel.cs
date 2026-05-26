@@ -178,8 +178,18 @@ public sealed partial class CompanionChatViewModel : ObservableObject
     private async Task RetryLlmCheckAsync()
     {
         LlmStatus = LlmStatus.Unknown;   // show spinner while checking
-        var status = await _llm.CheckStatusAsync().ConfigureAwait(true);
-        LlmStatus = status;
+        try
+        {
+            var status = await _llm.CheckStatusAsync().ConfigureAwait(true);
+            LlmStatus = status;
+        }
+        catch (Exception ex)
+        {
+            // Treat any connection error as "Ollama not available" so the banner
+            // transitions away from the infinite spinner state.
+            LlmStatus = LlmStatus.OllamaNotAvailable;
+            System.Diagnostics.Debug.WriteLine($"[Companion] RetryLlmCheckAsync failed: {ex.Message}");
+        }
     }
 
     // ── Welcome messages ───────────────────────────────────────────────────────

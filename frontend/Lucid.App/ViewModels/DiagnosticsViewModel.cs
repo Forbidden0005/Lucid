@@ -326,15 +326,24 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         HasRecoveryResult  = false;
         RecoveryResultText = "";
 
-        var result = await _diagnostics.Recovery.ExecuteAsync(actionId).ConfigureAwait(true);
+        try
+        {
+            var result = await _diagnostics.Recovery.ExecuteAsync(actionId).ConfigureAwait(true);
 
-        RecoveryResultText = result.Succeeded
-            ? $"✓ {result.Message}"
-            : $"✗ {result.Message}";
-        HasRecoveryResult  = true;
+            RecoveryResultText = result.Succeeded
+                ? $"✓ {result.Message}"
+                : $"✗ {result.Message}";
+            HasRecoveryResult = true;
 
-        // Refresh the page to reflect any changes the recovery action made.
-        await RefreshAsync().ConfigureAwait(true);
+            // Refresh the page to reflect any changes the recovery action made.
+            await RefreshAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            RecoveryResultText = $"✗ Recovery action failed: {ex.Message}";
+            HasRecoveryResult  = true;
+            System.Diagnostics.Debug.WriteLine($"[DiagnosticsVM] ExecuteRecoveryActionAsync failed: {ex}");
+        }
     }
 
     // ── Event handlers ─────────────────────────────────────────────────────────
