@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Lucid.Helpers;
+using Lucid.Services.Analytics;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Learning;
 using Microsoft.UI.Xaml;
@@ -21,8 +22,8 @@ namespace Lucid.ViewModels;
 ///   the UI shows the most recent values the moment the page appears, rather
 ///   than waiting up to 1.5 s for the next poll tick.
 ///
-/// Health scores, weekly trends, and insight cards remain mock data until
-/// Phase 4 introduces the intelligence engine and scan history.
+/// Health scores, weekly trends, CPU averages, machine personality, and anomaly
+/// intelligence are all real — populated from live services and SQLite history.
 /// </summary>
 public partial class DashboardViewModel : ObservableObject
 {
@@ -587,7 +588,10 @@ public partial class DashboardViewModel : ObservableObject
     {
         try
         {
-            // Use the cached HealthTrajectory service which wraps HistoricalAnalytics.
+            // ComputeReportAsync calls HistoricalAnalytics.ComputeAsync() internally,
+            // which sets AppServices.HistoricalAnalytics.LastSummary as a side effect.
+            // We reuse that summary for personality classification below — no second
+            // round-trip to SQLite needed.
             var report = await AppServices.HealthTrajectory.ComputeReportAsync()
                 .ConfigureAwait(true); // must return to UI thread to set properties
 
@@ -617,8 +621,11 @@ public partial class DashboardViewModel : ObservableObject
                 RamAvgDelta = report.RamTrendLabel;
             }
 
-            // Machine personality — compute from historical summary + current live signals.
-            await ComputePersonalityAsync().ConfigureAwait(true);
+            // Machine personality — reuse the summary already computed above.
+            // LastSummary is guaranteed non-null here: ComputeReportAsync() succeeded
+            // and HasSufficientData is true, so the engine definitely set it.
+            if (AppServices.HistoricalAnalytics.LastSummary is { } personalitySummary)
+                ApplyPersonality(personalitySummary);
 
             // Adaptive personalization — compute from intervention memory.
             ComputePersonalizationProfile();
@@ -662,15 +669,19 @@ public partial class DashboardViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Computes the machine personality classification from historical and live signals.
-    /// Called from LoadAnalyticsAsync after the historical summary is available.
+    /// Applies the machine personality classification using a pre-computed historical
+    /// summary and the current live signals.
+    ///
+    /// The caller (LoadAnalyticsAsync) passes the <see cref="HistoricalSummary"/> that
+    /// was already computed by <see cref="ComputeReportAsync"/> — this avoids issuing
+    /// a second round of 11 concurrent SQLite queries on every Dashboard load.
+    ///
+    /// Always called on the UI thread (ConfigureAwait(true) in LoadAnalyticsAsync).
     /// </summary>
-    private async Task ComputePersonalityAsync()
+    private void ApplyPersonality(HistoricalSummary summary)
     {
         try
         {
-            var summary  = await AppServices.HistoricalAnalytics.ComputeAsync()
-                               .ConfigureAwait(true);
             var snapshot = AppServices.Watchtower.LastSnapshot;
 
             var report = AppServices.PersonalityClassifier.Classify(
