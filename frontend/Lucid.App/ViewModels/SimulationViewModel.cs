@@ -30,7 +30,7 @@ public sealed partial class ScenarioTypeChipViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SelectedBorderBrush))]
     private bool _isSelected;
 
-    public string SelectedBorderBrush => _isSelected ? "#60A5FA" : "Transparent";
+    public string SelectedBorderBrush => IsSelected ? "#60A5FA" : "Transparent";
 }
 
 /// <summary>ViewModel for a single projected metric row in the outcome card.</summary>
@@ -55,7 +55,7 @@ public sealed partial class ProjectedMetricViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DeltaVisibility))]
     private bool _hasDelta;
 
-    public Visibility DeltaVisibility => _hasDelta ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility DeltaVisibility => HasDelta ? Visibility.Visible : Visibility.Collapsed;
 }
 
 /// <summary>ViewModel for a single branch outcome (WithAction / WithoutAction).</summary>
@@ -90,8 +90,8 @@ public sealed partial class BranchOutcomeViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(StartupImpactVisibility))]
     private bool _hasStartupImpact;
 
-    public Visibility ReliefDaysVisibility   => _hasReliefDays    ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility StartupImpactVisibility => _hasStartupImpact ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ReliefDaysVisibility   => HasReliefDays    ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility StartupImpactVisibility => HasStartupImpact ? Visibility.Visible : Visibility.Collapsed;
 
     public ObservableCollection<ProjectedMetricViewModel> Metrics { get; } = [];
     public ObservableCollection<string>                   KeyInsights { get; } = [];
@@ -115,8 +115,8 @@ public sealed partial class TrajectoryPointViewModel : ObservableObject
     [ObservableProperty]
     private string _withoutActionColor = "#6B7280";
 
-    public string WithActionLabel    => $"{_withActionValue:F0}%";
-    public string WithoutActionLabel => $"{_withoutActionValue:F0}%";
+    public string WithActionLabel    => $"{WithActionValue:F0}%";
+    public string WithoutActionLabel => $"{WithoutActionValue:F0}%";
 }
 
 /// <summary>ViewModel for a single risk factor row.</summary>
@@ -234,7 +234,6 @@ public sealed partial class SimulationViewModel : ObservableObject
     public ObservableCollection<ScenarioTypeChipViewModel> ScenarioChips { get; } = [];
 
     private SimulationScenarioType _selectedScenario = SimulationScenarioType.RestartSystem;
-    private SimulationHorizon      _selectedHorizon  = SimulationHorizon.FourHours;
 
     // ── State ─────────────────────────────────────────────────────────────────
     [ObservableProperty]
@@ -249,16 +248,16 @@ public sealed partial class SimulationViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(InsufficientDataVisibility))]
     private bool _insufficientData;
 
-    public Visibility SimulatingVisibility        => _isSimulating     ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility ResultVisibility            => _hasResult        ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility InsufficientDataVisibility  => _insufficientData ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility SimulatingVisibility        => IsSimulating     ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ResultVisibility            => HasResult        ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility InsufficientDataVisibility  => InsufficientData ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Horizon display ───────────────────────────────────────────────────────
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HorizonLabel))]
     private int _horizonIndex = 2; // default: 4 hours
 
-    public string HorizonLabel => _horizonIndex switch
+    public string HorizonLabel => HorizonIndex switch
     {
         0 => "15 minutes",
         1 => "1 hour",
@@ -321,7 +320,7 @@ public sealed partial class SimulationViewModel : ObservableObject
     private string _rollbackPercent = "";
 
     public Visibility ReversibleBadgeVisibility =>
-        _isReversible ? Visibility.Visible : Visibility.Collapsed;
+        IsReversible ? Visibility.Visible : Visibility.Collapsed;
 
     public ObservableCollection<RiskFactorViewModel>       RiskFactors    { get; } = [];
     public ObservableCollection<string>                    Mitigations    { get; } = [];
@@ -349,7 +348,7 @@ public sealed partial class SimulationViewModel : ObservableObject
     private bool _hasHistory;
 
     public Visibility HistoryVisibility =>
-        _hasHistory ? Visibility.Visible : Visibility.Collapsed;
+        HasHistory ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Scenario comparison ───────────────────────────────────────────────────
     public ObservableCollection<ComparisonRowViewModel> ComparisonRows { get; } = [];
@@ -363,10 +362,10 @@ public sealed partial class SimulationViewModel : ObservableObject
     private bool _isComparing;
 
     public Visibility ComparisonVisibility =>
-        _hasComparison ? Visibility.Visible : Visibility.Collapsed;
+        HasComparison ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility ComparingVisibility =>
-        _isComparing ? Visibility.Visible : Visibility.Collapsed;
+        IsComparing ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Decision card ─────────────────────────────────────────────────────────
 
@@ -404,7 +403,7 @@ public sealed partial class SimulationViewModel : ObservableObject
     private string _confidenceTierColor = "#6B7280";
 
     public Visibility DecisionCardVisibility =>
-        _hasDecision ? Visibility.Visible : Visibility.Collapsed;
+        HasDecision ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Anomaly intelligence context (chart overlays + contextual panel) ──────
     //
@@ -434,7 +433,7 @@ public sealed partial class SimulationViewModel : ObservableObject
     public Visibility DriftOverlayVisibility        => HasDriftContext         ? Visibility.Visible : Visibility.Collapsed;
     public Visibility WarningFlagVisibility         => HasWarningContext       ? Visibility.Visible : Visibility.Collapsed;
     public Visibility IntelligenceContextVisibility => HasIntelligenceContext  ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility ConfidenceBandVisibility      => _hasResult              ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ConfidenceBandVisibility      => HasResult              ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>Canvas Y coordinate for the anomaly epoch dot (current RAM level).</summary>
     public double AnomalyDotY { get; private set; } = 65.0;
@@ -499,7 +498,7 @@ public sealed partial class SimulationViewModel : ObservableObject
         {
             var input = new SimulationInput(
                 ScenarioType: _selectedScenario,
-                Horizon:      IndexToHorizon(_horizonIndex));
+                Horizon:      IndexToHorizon(HorizonIndex));
 
             var result = await _engine.SimulateAsync(input, ct).ConfigureAwait(true);
 
@@ -1091,9 +1090,9 @@ public sealed partial class SimulationViewModel : ObservableObject
         // ── Confidence band — uncertainty envelope around the mid-chart line ──
         // At 100% confidence the band collapses to 0 height (perfect certainty).
         // At 0% confidence the band spans ±32.5 px (full uncertainty).
-        if (_hasResult && _confidenceValue > 0)
+        if (HasResult && ConfidenceValue > 0)
         {
-            double margin      = (100.0 - _confidenceValue) / 100.0 * 32.5;
+            double margin      = (100.0 - ConfidenceValue) / 100.0 * 32.5;
             ConfidenceBandTop    = Math.Max(0.0,   65.0 - margin);
             ConfidenceBandHeight = Math.Min(130.0, margin * 2.0);
         }

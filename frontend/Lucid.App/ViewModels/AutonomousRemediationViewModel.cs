@@ -53,7 +53,7 @@ public sealed partial class SuggestedWorkflowViewModel : ObservableObject
     private bool _showReversibleBadge;
 
     public Visibility ReversibleBadgeVisibility =>
-        _showReversibleBadge ? Visibility.Visible : Visibility.Collapsed;
+        ShowReversibleBadge ? Visibility.Visible : Visibility.Collapsed;
 }
 
 /// <summary>ViewModel for a single step in the active execution progress list.</summary>
@@ -88,7 +88,7 @@ public sealed partial class WorkflowStepProgressViewModel : ObservableObject
     private bool _hasDuration;
 
     public Visibility DurationVisibility =>
-        _hasDuration ? Visibility.Visible : Visibility.Collapsed;
+        HasDuration ? Visibility.Visible : Visibility.Collapsed;
 }
 
 /// <summary>ViewModel for the outcome / validation results card.</summary>
@@ -140,10 +140,10 @@ public sealed partial class OutcomeReportViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(InsightsResolvedVisibility))]
     private bool _hasInsightsResolved;
 
-    public Visibility CpuChangeVisibility     => _hasCpuChange         ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility RamChangeVisibility     => _hasRamChange          ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility DiskChangeVisibility    => _hasDiskChange         ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility InsightsResolvedVisibility => _hasInsightsResolved ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility CpuChangeVisibility     => HasCpuChange         ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility RamChangeVisibility     => HasRamChange          ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility DiskChangeVisibility    => HasDiskChange         ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility InsightsResolvedVisibility => HasInsightsResolved ? Visibility.Visible : Visibility.Collapsed;
 }
 
 // ── Main ViewModel ─────────────────────────────────────────────────────────────
@@ -198,13 +198,13 @@ public sealed partial class AutonomousRemediationViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(RollbackButtonVisibility))]
     private bool _canRollback;
 
-    public Visibility LoadingVisibility       => _isLoading          ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility NoSuggestionsVisibility => _hasNoSuggestions   ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility ActiveWorkflowVisibility => _isExecuting        ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility OutcomeVisibility       => _hasOutcome          ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility SafetyWarningVisibility => _hasSafetyWarning    ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility HaltButtonVisibility    => _canHalt             ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility RollbackButtonVisibility => _canRollback        ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility LoadingVisibility        => IsLoading          ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility NoSuggestionsVisibility  => HasNoSuggestions   ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ActiveWorkflowVisibility => IsExecuting        ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility OutcomeVisibility        => HasOutcome         ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility SafetyWarningVisibility  => HasSafetyWarning   ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility HaltButtonVisibility     => CanHalt            ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility RollbackButtonVisibility => CanRollback        ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Active workflow status ─────────────────────────────────────────────────
     [ObservableProperty]
@@ -228,7 +228,7 @@ public sealed partial class AutonomousRemediationViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(TrustLevelDescription))]
     private int _trustLevelIndex;
 
-    public string TrustLevelLabel => _trustLevelIndex switch
+    public string TrustLevelLabel => TrustLevelIndex switch
     {
         0 => "Manual Only",
         1 => "Guided Approval",
@@ -237,7 +237,7 @@ public sealed partial class AutonomousRemediationViewModel : ObservableObject
         _ => "Unknown",
     };
 
-    public string TrustLevelDescription => _trustLevelIndex switch
+    public string TrustLevelDescription => TrustLevelIndex switch
     {
         0 => "Workflows are suggested only. No automated execution. You review and run every step manually.",
         1 => "You approve each workflow before it runs. Steps execute automatically once approved.",
