@@ -176,10 +176,12 @@ public partial class DashboardViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDetail))]
+    [NotifyPropertyChangedFor(nameof(DiskFreeValue))]
     private double _diskUsedGb;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiskDetail))]
+    [NotifyPropertyChangedFor(nameof(DiskFreeValue))]
     private double _diskTotalGb;
 
     /// <summary>
@@ -192,14 +194,27 @@ public partial class DashboardViewModel : ObservableObject
     public string DiskDisplay => DiskPercent > 0 ? $"{DiskPercent:0}%" : "—";
     public string DiskDetail  => DiskTotalGb > 0 ? $"{DiskUsedGb:F0} GB / {DiskTotalGb:F0} GB" : "Loading…";
 
-    // ── Trends (Phase 3: mock) ────────────────────────────────────────────────
+    // ── Trends ────────────────────────────────────────────────────────────────
+    //
+    //  BootTime* — requires SQLite boot-time history (Phase 1 persistence); stays mock until then.
+    //  CpuAvg*   — populated from historical analytics once ≥ 7 days of data exist (LoadAnalyticsAsync).
+    //  DiskFree  — derived live from the running telemetry snapshot (no history needed).
+    //  DiskFreeDelta — requires disk-space history (Phase 1 persistence); stays mock until then.
+    //
 
     [ObservableProperty] private string _bootTimeValue = "18s";
     [ObservableProperty] private string _bootTimeDelta = "↓ 2s faster";
     [ObservableProperty] private string _cpuAvgValue   = "31%";
     [ObservableProperty] private string _cpuAvgDelta   = "↑ 4% higher";
-    [ObservableProperty] private string _diskFreeValue = "275 GB";
     [ObservableProperty] private string _diskFreeDelta = "↓ 12 GB lost";
+
+    /// <summary>
+    /// Live free-space label derived from the latest telemetry snapshot.
+    /// Updated automatically whenever <see cref="DiskTotalGb"/> or
+    /// <see cref="DiskUsedGb"/> receive a new reading (~every 2 s).
+    /// </summary>
+    public string DiskFreeValue =>
+        DiskTotalGb > 0 ? $"{(DiskTotalGb - DiskUsedGb):F0} GB free" : "—";
 
     // ── Insights — live from SystemInsightEngine ──────────────────────────────
 

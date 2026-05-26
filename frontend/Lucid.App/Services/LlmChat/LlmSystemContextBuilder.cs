@@ -106,6 +106,28 @@ public static class LlmSystemContextBuilder
             sb.AppendLine();
         }
 
+        // ── 7-day machine health analytics ────────────────────────────────────
+        // LastReport is a cached result populated whenever DashboardPage is visited.
+        // Null on first launch before Dashboard navigation — skip the section gracefully.
+        try
+        {
+            var report = AppServices.HealthTrajectory.LastReport;
+            if (report is { HasSufficientData: true })
+            {
+                sb.AppendLine("=== MACHINE HEALTH (7-day analytics) ===");
+                sb.AppendLine($"Health score   : {report.HealthScore}/100 — {report.HealthLabel} ({report.MomentumLabel})");
+
+                if (report.CpuAvgLabel is not null)
+                    sb.AppendLine($"CPU 7-day avg  : {report.CpuAvgLabel}  ({report.CpuTrendLabel})");
+
+                if (report.RamAvgLabel is not null)
+                    sb.AppendLine($"RAM 7-day avg  : {report.RamAvgLabel}  ({report.RamTrendLabel})");
+
+                sb.AppendLine();
+            }
+        }
+        catch { }
+
         // ── Active intelligence findings ───────────────────────────────────────
         try
         {
