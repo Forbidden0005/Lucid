@@ -166,26 +166,39 @@ public sealed partial class DeviceIntelligenceViewModel : ObservableObject
     {
         IsLoading = true;
 
-        await Task.Run(() =>
+        try
         {
-            // Identity probe (may call WMI — run off UI thread)
-            var id = _identity.GetOrCreateIdentity();
-
-            _ui.TryEnqueue(() =>
+            await Task.Run(() =>
             {
-                ThisDeviceName  = id.DeviceName;
-                ThisDeviceRole  = DeviceRoleClassifier.RoleLabel(id.InferredRole);
-                ThisDeviceGlyph = DeviceRoleClassifier.RoleGlyph(id.InferredRole);
-                ThisDeviceColor = DeviceRoleClassifier.RoleColor(id.InferredRole);
-                ThisDeviceId    = id.DeviceId;
-                ThisDeviceOs    = id.OsVersion;
-            });
-        }).ConfigureAwait(true);
+                // Identity probe (may call WMI — run off UI thread)
+                var id = _identity.GetOrCreateIdentity();
 
-        RefreshFromRegistry();
-        RefreshEcosystemData();
+                _ui.TryEnqueue(() =>
+                {
+                    ThisDeviceName  = id.DeviceName;
+                    ThisDeviceRole  = DeviceRoleClassifier.RoleLabel(id.InferredRole);
+                    ThisDeviceGlyph = DeviceRoleClassifier.RoleGlyph(id.InferredRole);
+                    ThisDeviceColor = DeviceRoleClassifier.RoleColor(id.InferredRole);
+                    ThisDeviceId    = id.DeviceId;
+                    ThisDeviceOs    = id.OsVersion;
+                });
+            }).ConfigureAwait(true);
 
-        IsLoading = false;
+            RefreshFromRegistry();
+            RefreshEcosystemData();
+        }
+        catch (Exception ex)
+        {
+            // WMI probe or registry read failed. Leave placeholder text in place
+            // and let the page render with whatever data was already populated.
+            System.Diagnostics.Debug.WriteLine($"[DeviceIntelVM] InitializeAsync failed: {ex.Message}");
+        }
+        finally
+        {
+            // Always clear the spinner — a stuck IsLoading = true permanently
+            // hides the page content with no way to recover.
+            IsLoading = false;
+        }
     }
 
     // ── Live snapshot handler ─────────────────────────────────────────────────

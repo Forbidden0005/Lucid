@@ -168,20 +168,37 @@ public sealed partial class MachineBehaviorViewModel : ObservableObject
     public async Task InitializeAsync()
     {
         IsLoading = true;
-        await RefreshAsync().ConfigureAwait(true);
-        IsLoading = false;
+        try
+        {
+            await RefreshAsync().ConfigureAwait(true);
+        }
+        finally
+        {
+            // try/finally ensures the loading spinner always clears regardless of
+            // whether RefreshAsync throws, preventing a permanently hidden page.
+            IsLoading = false;
+        }
     }
 
     // ── Refresh ────────────────────────────────────────────────────────────────
 
     private async Task RefreshAsync()
     {
-        // Fetch context on background thread (in-memory but potentially slow
-        // if pattern detection runs over many sessions)
-        var ctx = await Task.Run(() => _context.GetCurrentContext())
-                            .ConfigureAwait(true);
+        try
+        {
+            // Fetch context on background thread (in-memory but potentially slow
+            // if pattern detection runs over many sessions)
+            var ctx = await Task.Run(() => _context.GetCurrentContext())
+                                .ConfigureAwait(true);
 
-        ApplyContext(ctx);
+            ApplyContext(ctx);
+        }
+        catch (Exception ex)
+        {
+            // Behavioral context read failed — leave whatever state was previously
+            // rendered rather than crashing through async void OnNavigatedTo.
+            System.Diagnostics.Debug.WriteLine($"[MachineBehaviorVM] RefreshAsync failed: {ex.Message}");
+        }
     }
 
     // ── Apply context ──────────────────────────────────────────────────────────
