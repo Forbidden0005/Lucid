@@ -212,29 +212,37 @@ public sealed partial class StorageViewModel : ObservableObject
     {
         if (file is null) return;
 
-        var log     = new ActionExecutionLog();
-        var context = new ActionExecutionContext
+        try
         {
-            IsElevated          = false,
-            ConfirmationGranted = true,  // confirmed by the UI button
-            Log                 = log,
-            Parameters          = new Dictionary<string, string>
+            var log     = new ActionExecutionLog();
+            var context = new ActionExecutionContext
             {
-                [Services.Execution.Executors.DeleteLargeFileExecutor.ParamFilePath]
-                    = file.Record.FullPath,
-            },
-        };
+                IsElevated          = false,
+                ConfirmationGranted = true,  // confirmed by the UI button
+                Log                 = log,
+                Parameters          = new Dictionary<string, string>
+                {
+                    [Services.Execution.Executors.DeleteLargeFileExecutor.ParamFilePath]
+                        = file.Record.FullPath,
+                },
+            };
 
-        var result = await AppServices.ExecutionEngine
-            .ExecuteAsync("action.storage.delete-large-file", context)
-            .ConfigureAwait(true);
+            var result = await AppServices.ExecutionEngine
+                .ExecuteAsync("action.storage.delete-large-file", context)
+                .ConfigureAwait(true);
 
-        StatusText = result.Message;
+            StatusText = result.Message;
 
-        if (result.IsSuccess)
+            if (result.IsSuccess)
+            {
+                LargeFiles.Remove(file);
+                await RecordHistoryAsync(result, "Delete Large File");
+            }
+        }
+        catch (Exception ex)
         {
-            LargeFiles.Remove(file);
-            await RecordHistoryAsync(result, "Delete Large File");
+            StatusText = $"Delete failed: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[StorageVM] DeleteLargeFileAsync failed: {ex}");
         }
     }
 
@@ -244,34 +252,42 @@ public sealed partial class StorageViewModel : ObservableObject
     {
         if (group is null) return;
 
-        var paths = string.Join('|',
-            group.Group.DeleteCandidates.Select(f => f.FullPath));
-
-        var log     = new ActionExecutionLog();
-        var context = new ActionExecutionContext
+        try
         {
-            IsElevated          = false,
-            ConfirmationGranted = true,
-            Log                 = log,
-            Parameters          = new Dictionary<string, string>
+            var paths = string.Join('|',
+                group.Group.DeleteCandidates.Select(f => f.FullPath));
+
+            var log     = new ActionExecutionLog();
+            var context = new ActionExecutionContext
             {
-                [Services.Execution.Executors.DeleteDuplicateGroupExecutor.ParamKeepPath]
-                    = group.Group.KeepCandidate.FullPath,
-                [Services.Execution.Executors.DeleteDuplicateGroupExecutor.ParamDeletePaths]
-                    = paths,
-            },
-        };
+                IsElevated          = false,
+                ConfirmationGranted = true,
+                Log                 = log,
+                Parameters          = new Dictionary<string, string>
+                {
+                    [Services.Execution.Executors.DeleteDuplicateGroupExecutor.ParamKeepPath]
+                        = group.Group.KeepCandidate.FullPath,
+                    [Services.Execution.Executors.DeleteDuplicateGroupExecutor.ParamDeletePaths]
+                        = paths,
+                },
+            };
 
-        var result = await AppServices.ExecutionEngine
-            .ExecuteAsync("action.storage.delete-duplicate-group", context)
-            .ConfigureAwait(true);
+            var result = await AppServices.ExecutionEngine
+                .ExecuteAsync("action.storage.delete-duplicate-group", context)
+                .ConfigureAwait(true);
 
-        StatusText = result.Message;
+            StatusText = result.Message;
 
-        if (result.IsSuccess || result.Status == ActionExecutionStatus.PartialSuccess)
+            if (result.IsSuccess || result.Status == ActionExecutionStatus.PartialSuccess)
+            {
+                DuplicateGroups.Remove(group);
+                await RecordHistoryAsync(result, "Delete Duplicates");
+            }
+        }
+        catch (Exception ex)
         {
-            DuplicateGroups.Remove(group);
-            await RecordHistoryAsync(result, "Delete Duplicates");
+            StatusText = $"Delete failed: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[StorageVM] DeleteDuplicatesAsync failed: {ex}");
         }
     }
 
@@ -348,30 +364,37 @@ public sealed partial class StorageViewModel : ObservableObject
     private static async Task RecordHistoryAsync(
         ActionExecutionResult result, string title)
     {
-        var warnings = result.Log
-            .Where(e => e.Level == ActionLogLevel.Warning)
-            .Select(e => e.Message).ToList();
-        var errors = result.Log
-            .Where(e => e.Level == ActionLogLevel.Error)
-            .Select(e => e.Message).ToList();
-
-        await AppServices.HistoryService.RecordAsync(new OperationRecord
+        try
         {
-            ActionId        = result.ActionId,
-            ActionTitle     = title,
-            ExecutedAt      = result.ExecutedAt,
-            DurationMs      = (long)result.Duration.TotalMilliseconds,
-            Status          = result.Status.ToString(),
-            IsSuccess       = result.IsSuccess,
-            IsDryRun        = false,
-            IsRollback      = false,
-            Message         = result.Message,
-            CanRollback     = result.CanRollback,
-            RollbackToken   = result.RollbackToken,
-            TotalLogEntries = result.Log.Count,
-            Warnings        = warnings,
-            Errors          = errors,
-        });
+            var warnings = result.Log
+                .Where(e => e.Level == ActionLogLevel.Warning)
+                .Select(e => e.Message).ToList();
+            var errors = result.Log
+                .Where(e => e.Level == ActionLogLevel.Error)
+                .Select(e => e.Message).ToList();
+
+            await AppServices.HistoryService.RecordAsync(new OperationRecord
+            {
+                ActionId        = result.ActionId,
+                ActionTitle     = title,
+                ExecutedAt      = result.ExecutedAt,
+                DurationMs      = (long)result.Duration.TotalMilliseconds,
+                Status          = result.Status.ToString(),
+                IsSuccess       = result.IsSuccess,
+                IsDryRun        = false,
+                IsRollback      = false,
+                Message         = result.Message,
+                CanRollback     = result.CanRollback,
+                RollbackToken   = result.RollbackToken,
+                TotalLogEntries = result.Log.Count,
+                Warnings        = warnings,
+                Errors          = errors,
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[StorageVM] RecordHistoryAsync failed: {ex}");
+        }
     }
 
     public void Cleanup() => _cts?.Cancel();
