@@ -377,7 +377,7 @@ public sealed class EvidenceNodeViewModel
     public string ConfidenceLabel{ get; }
     public string NodeGlyph      { get; }
     public string NodeColor      { get; }
-    public string AgeLabe        { get; }
+    public string AgeLabel       { get; }
 
     public EvidenceNodeViewModel(EvidenceNode node)
     {
@@ -388,7 +388,7 @@ public sealed class EvidenceNodeViewModel
         NodeGlyph       = node.NodeGlyph;
         NodeColor       = node.NodeColor;
         var age         = DateTimeOffset.Now - node.CreatedAt;
-        AgeLabe = age.TotalSeconds < 5 ? "just now"
+        AgeLabel = age.TotalSeconds < 5 ? "just now"
                 : age.TotalMinutes < 1 ? $"{(int)age.TotalSeconds}s ago"
                 : age.TotalHours < 1   ? $"{(int)age.TotalMinutes}m ago"
                 : $"{(int)age.TotalHours}h ago";

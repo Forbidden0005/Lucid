@@ -627,7 +627,7 @@
                                                    FontSize="12" FontWeight="SemiBold"
                                                    Foreground="{x:Bind NodeColor}"
                                                    HorizontalAlignment="Right" />
-                                        <TextBlock Text="{x:Bind AgeLabe}"
+                                        <TextBlock Text="{x:Bind AgeLabel}"
                                                    FontSize="10"
                                                    Foreground="{StaticResource TextTertiaryBrush}"
                                                    HorizontalAlignment="Right" />
