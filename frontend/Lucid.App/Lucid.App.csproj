@@ -183,6 +183,8 @@
     <Compile Include="Services\Intelligence\Rules\DiskExhaustionForecastRule.cs" />
     <Compile Include="Services\Intelligence\Rules\ThermalRunawayForecastRule.cs" />
     <Compile Include="Services\Intelligence\Rules\StartupDegradationForecastRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\GpuVramPressureRule.cs" />
+    <Compile Include="Services\Intelligence\Rules\ThermalThrottlingSynthesisRule.cs" />
     <Compile Include="Services\Narrative\OperationalNarrative.cs" />
     <Compile Include="Services\Narrative\IOperationalNarrativeEngine.cs" />
     <Compile Include="Services\Narrative\OperationalNarrativeEngine.cs" />

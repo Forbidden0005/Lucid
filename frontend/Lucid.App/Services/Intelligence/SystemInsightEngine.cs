@@ -108,6 +108,7 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
         new SustainedHighCpuRule(),
         new ElevatedRamPressureRule(),
         new AbnormalGpuUsageRule(),
+        new GpuVramPressureRule(),          // VRAM ≥ 85 % — paging to system RAM
         new LowDiskSpaceRule(),
         new HighDiskThroughputRule(),
         new HighCpuTemperatureRule(),
@@ -163,7 +164,8 @@ public sealed class SystemInsightEngine : ISystemInsightEngine
     /// </summary>
     private static IReadOnlyList<ISynthesisRule> CreateSynthesisRules() =>
     [
-        new SharedProcessSynthesisRule(),   // same process in 2+ distinct insights
+        new SharedProcessSynthesisRule(),       // same process in 2+ distinct insights
+        new ThermalThrottlingSynthesisRule(),   // CPU escalating + thermal trend → throttle cascade
     ];
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
