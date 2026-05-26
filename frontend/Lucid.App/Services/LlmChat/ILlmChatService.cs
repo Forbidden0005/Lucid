@@ -36,4 +36,16 @@ public interface ILlmChatService
 
     /// <summary>Clears the in-memory conversation history.</summary>
     void ClearHistory();
+
+    /// <summary>
+    /// Reconfigures the service to use a new Ollama endpoint and model.
+    ///
+    /// Waits for any in-flight stream to complete, then atomically swaps the
+    /// underlying client and resets the readiness status so the next chat open
+    /// triggers a fresh availability check.
+    ///
+    /// Clears conversation history — history built against one model is not
+    /// meaningful context for a different model or endpoint.
+    /// </summary>
+    Task ReconfigureAsync(string baseUrl, string modelName);
 }

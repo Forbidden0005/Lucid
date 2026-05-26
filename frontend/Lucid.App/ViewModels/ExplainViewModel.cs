@@ -465,4 +465,13 @@ public partial class ExplainViewModel : ObservableObject
         if (age.TotalHours   < 24)  return $"{(int)age.TotalHours}h ago";
         return t.ToString("MMM d");
     }
+
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Unsubscribes from the explanation engine.
+    /// Call from the host page's Unloaded handler to prevent event leaks
+    /// when the page is navigated away from and a new VM is constructed on return.
+    /// </summary>
+    public void Cleanup() => _engine.ExplanationUpdated -= OnExplanationUpdated;
 }

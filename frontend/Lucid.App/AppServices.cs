@@ -1377,11 +1377,12 @@ public static class AppServices
         _consentExplanation     = null;
         _automationTransparency = null;
 
-        // Companion layer — in-memory only, just null references.
+        // Companion layer — dispose LlmChatService (owns HttpClient instances), null the rest.
+        (_llmChat as IDisposable)?.Dispose();
+        _llmChat                = null;
         _companionSession       = null;
         _conversationEngine     = null;
         _conversationService    = null;
-        _llmChat                = null;
         _automationOrchestrator = null;
 
         // Desktop context layer — stop polling and dispose STA thread.

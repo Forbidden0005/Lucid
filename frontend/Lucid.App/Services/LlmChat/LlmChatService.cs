@@ -14,13 +14,14 @@ namespace Lucid.Services.LlmChat;
 /// the streaming loop runs on a thread-pool thread. onChunk is invoked on that
 /// thread-pool thread — callers must dispatch to UI thread if needed.
 /// </summary>
-public sealed class LlmChatService : ILlmChatService
+public sealed class LlmChatService : ILlmChatService, IDisposable
 {
     private const int MaxTurns = 20;  // 10 user + 10 assistant pairs
 
-    private readonly OllamaClient             _client;
-    private readonly List<OllamaMessage>      _history = [];
-    private readonly SemaphoreSlim            _lock    = new(1, 1);
+    private OllamaClient                  _client;   // mutable — swapped by ReconfigureAsync
+    private readonly List<OllamaMessage>  _history = [];
+    private readonly SemaphoreSlim        _lock    = new(1, 1);
+    private bool                          _disposed;
 
     /// <summary>
     /// Constructs the chat service.  Endpoint and model are passed from
@@ -130,4 +131,45 @@ public sealed class LlmChatService : ILlmChatService
     // ── History ────────────────────────────────────────────────────────────────
 
     public void ClearHistory() => _history.Clear();
+
+    // ── Reconfiguration ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Swaps the underlying Ollama client to point at a new endpoint and/or model.
+    ///
+    /// Acquires the stream lock so any in-flight response finishes cleanly before
+    /// the swap occurs — the user never sees a torn stream. After the swap:
+    ///   • <see cref="Status"/> is reset to Unknown so the next chat open triggers
+    ///     a fresh availability check with the new endpoint.
+    ///   • Conversation history is cleared — history built against one model is
+    ///     not coherent context for a different model or server.
+    ///   • The old client is disposed so its HttpClient instances are returned
+    ///     to the connection pool.
+    /// </summary>
+    public async Task ReconfigureAsync(string baseUrl, string modelName)
+    {
+        await _lock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var old = _client;
+            _client = new OllamaClient(baseUrl, modelName);
+            Status  = LlmStatus.Unknown;
+            _history.Clear();
+            old.Dispose();
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    // ── Dispose ────────────────────────────────────────────────────────────────
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _client.Dispose();
+        _lock.Dispose();
+    }
 }

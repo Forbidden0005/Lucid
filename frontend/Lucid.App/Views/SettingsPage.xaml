@@ -84,7 +84,7 @@
 
                     <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
 
-                    <!-- Periodic background scans: stored in settings -->
+                    <!-- Periodic background scans: stored in settings; background scan scheduling planned for a future release -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -92,7 +92,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="Periodic background scans" Style="{StaticResource BodyTextStyle}" />
-                            <TextBlock Text="Lightweight analysis when the system is idle"
+                            <TextBlock Text="Preference saved — background scan scheduling coming in a future release"
                                        Style="{StaticResource CaptionTextStyle}" />
                         </StackPanel>
                         <ToggleSwitch x:Name="AutoScanToggle"
@@ -333,8 +333,8 @@
 
                     <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
 
-                    <!-- Restart notice -->
-                    <TextBlock Text="Endpoint and model changes take effect the next time the app starts."
+                    <!-- Apply notice -->
+                    <TextBlock Text="Changes apply immediately — the AI assistant uses the new settings on the next message."
                                Style="{StaticResource CaptionTextStyle}"
                                Foreground="{StaticResource TextSecondaryBrush}" />
 
