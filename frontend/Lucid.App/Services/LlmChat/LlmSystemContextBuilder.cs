@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Text;
+using Lucid.Services.Behavior;
+using Lucid.Services.DesktopContext;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Narrative;
 using Lucid.Services.Session;
@@ -103,6 +105,37 @@ public static class LlmSystemContextBuilder
                     sb.AppendLine($"Session phase : idle ({(int)idleDur.TotalMinutes}m with low CPU load)");
             }
 
+            // Workload classification — helps contextualise why CPU/RAM are at their current level
+            try
+            {
+                var behavCtx  = AppServices.BehavioralContext.GetCurrentContext();
+                var workload  = behavCtx.CurrentWorkload;
+                if (workload.PrimaryWorkload is not WorkloadType.Unknown)
+                {
+                    var confLabel = workload.Confidence switch
+                    {
+                        BehaviorConfidence.High   => "high confidence",
+                        BehaviorConfidence.Medium => "medium confidence",
+                        _                         => "low confidence",
+                    };
+                    sb.AppendLine($"Workload      : {WorkloadLabel(workload.PrimaryWorkload)} ({confLabel})");
+                }
+            }
+            catch { }
+
+            // Foreground app category — process name only (no window title — privacy-safe)
+            try
+            {
+                var deskCtx = AppServices.DesktopContext.CurrentSnapshot;
+                if (deskCtx?.ActiveWindow is { } win
+                    && !string.IsNullOrEmpty(win.ProcessName)
+                    && win.AppCategory != AppCategory.Unknown)
+                {
+                    sb.AppendLine($"Foreground app: {win.ProcessName} ({win.AppCategory})");
+                }
+            }
+            catch { }
+
             sb.AppendLine();
         }
 
@@ -123,6 +156,27 @@ public static class LlmSystemContextBuilder
                 if (report.RamAvgLabel is not null)
                     sb.AppendLine($"RAM 7-day avg  : {report.RamAvgLabel}  ({report.RamTrendLabel})");
 
+                sb.AppendLine();
+            }
+        }
+        catch { }
+
+        // ── Active anomalies (z-score short-term deviations) ──────────────────
+        // These are separate from the rule-based insights — they fire when a
+        // metric deviates significantly from this machine's learned baseline,
+        // even if no rule has been triggered yet. Only injected when present.
+        try
+        {
+            var anomalies = AppServices.AnomalyDetection.CurrentAnomalies;
+            if (anomalies is { Count: > 0 })
+            {
+                sb.AppendLine($"=== ACTIVE ANOMALIES ({anomalies.Count}) ===");
+                foreach (var a in anomalies.Take(5))
+                {
+                    sb.AppendLine($"[{a.Severity}] {a.Metric}: {a.ActualValue:F1}% " +
+                                  $"(expected ~{a.ExpectedMean:F1}% ± {a.ExpectedStdDev:F1}%) " +
+                                  $"— {a.Description}");
+                }
                 sb.AppendLine();
             }
         }
@@ -270,4 +324,21 @@ public static class LlmSystemContextBuilder
         if (t.TotalHours >= 1)   return $"{(int)t.TotalHours}h {t.Minutes}m";
         return $"{(int)t.TotalMinutes}m";
     }
+
+    private static string WorkloadLabel(WorkloadType t) => t switch
+    {
+        WorkloadType.Gaming               => "gaming",
+        WorkloadType.Development          => "software development",
+        WorkloadType.MediaEditing         => "media editing",
+        WorkloadType.Rendering            => "rendering",
+        WorkloadType.Streaming            => "streaming",
+        WorkloadType.BrowserResearch      => "browser / research",
+        WorkloadType.Productivity         => "productivity",
+        WorkloadType.BackgroundProcessing => "background processing",
+        WorkloadType.StartupHeavy         => "startup-heavy",
+        WorkloadType.ThermalIntensive     => "thermal-intensive",
+        WorkloadType.OvernightProcessing  => "overnight processing",
+        WorkloadType.Idle                 => "idle",
+        _                                 => "general",
+    };
 }
