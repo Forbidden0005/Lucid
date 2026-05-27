@@ -118,6 +118,10 @@ public sealed class LocalSyncCoordinator : IDisposable
     /// <summary>
     /// Completes pairing with a remote device using the matching pairing code.
     /// Derives the shared AES key and persists the pairing record.
+    ///
+    /// Returns false if no pairing session is active, the code does not match,
+    /// or the 5-minute window has expired.  Clears the pending code on every
+    /// exit path so a failed attempt cannot be retried without a new BeginPairing.
     /// </summary>
     public bool ConfirmPairing(
         string remoteDeviceId,
@@ -126,6 +130,20 @@ public sealed class LocalSyncCoordinator : IDisposable
         string remoteIp,
         string pairingCode)
     {
+        // Validate before touching any crypto or registry state.
+        if (_pendingCode is null
+            || pairingCode != _pendingCode
+            || DateTimeOffset.UtcNow > _pendingExpiry)
+        {
+            _pendingCode   = null;          // invalidate expired/used session
+            _pendingExpiry = default;
+            return false;
+        }
+
+        // Consume the code immediately — one-time use even on exception.
+        _pendingCode   = null;
+        _pendingExpiry = default;
+
         try
         {
             var myId   = _identity.GetOrCreateIdentity().DeviceId;
@@ -141,7 +159,6 @@ public sealed class LocalSyncCoordinator : IDisposable
                 LastSync:         DateTimeOffset.MinValue));
 
             _discoveredAddresses[remoteDeviceId] = remoteIp;
-            _pendingCode = null;
             return true;
         }
         catch { return false; }
