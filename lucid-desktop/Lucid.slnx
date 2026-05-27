@@ -1,0 +1,16 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Lucid" />
+    <BuildType Name="Release" />
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="Lucid.App\Lucid.App.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="Debug|Any CPU" Project="x64" />
+    <Platform Solution="Lucid|Any CPU" Project="arm64" />
+    <Deploy Solution="Debug|x64" />
+    <Deploy Solution="Release|x64" />
+  </Project>
+</Solution>

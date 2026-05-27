@@ -444,7 +444,7 @@ The app should make users feel:
 `WindowsAppSDKSelfContained=true` does not support AnyCPU — the build hard-fails without a platform.
 
 ```
-# Debug build (run from frontend/)
+# Debug build (run from lucid-desktop/)
 dotnet build Lucid.slnx -c Debug -p:Platform=x64
 
 # Release build
