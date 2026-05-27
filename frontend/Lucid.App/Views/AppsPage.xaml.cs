@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml.Controls;
+using Lucid.ViewModels;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Lucid.Views;
 
@@ -7,8 +8,11 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class AppsPage : Page
 {
+    public AppsViewModel ViewModel { get; } = new AppsViewModel();
+
     public AppsPage()
     {
         InitializeComponent();
+        Loaded += async (_, _) => await ViewModel.LoadCommand.ExecuteAsync(null);
     }
 }
