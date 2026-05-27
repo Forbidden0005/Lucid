@@ -81,7 +81,7 @@
                 <DataTemplate x:DataType="vm:TimelineEventViewModel">
                     <Border Background="{StaticResource AppSurfaceBrush}"
                             CornerRadius="10"
-                            BorderBrush="{StaticResource AppBorderSubtleBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
                             BorderThickness="1"
                             Margin="0,0,0,6">
 
@@ -251,7 +251,7 @@
             <!-- Live event count badge -->
             <Border Grid.Column="1"
                     Background="{StaticResource AppElevatedSurfaceBrush}"
-                    BorderBrush="{StaticResource AppBorderSubtleBrush}"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
                     BorderThickness="1"
                     CornerRadius="20"
                     Padding="14,6"
