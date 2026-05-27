@@ -69,15 +69,4 @@ public interface IVisualContextService
     /// </summary>
     string DescribeActiveWindow();
 
-    // ── Guided workflow ───────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Starts a guided visual workflow for the given steps.
-    /// Each step is shown in the GuidedInteractionOverlay.
-    /// Returns when all steps complete or the user cancels.
-    /// </summary>
-    Task RunGuidedWorkflowAsync(
-        IReadOnlyList<GuidedVisualStep> steps,
-        string                         workflowTitle,
-        CancellationToken              ct = default);
 }

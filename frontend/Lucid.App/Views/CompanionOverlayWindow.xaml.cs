@@ -78,8 +78,11 @@ public sealed partial class CompanionOverlayWindow : Window
     // ── Guided interaction overlay (Phase 18B) ────────────────────────────────
     //    Lazily created on first visual guide request. Kept as a field so we can
     //    re-use the same window instance across multiple guides in one session.
+    //    _currentGuidedWorkflowTitle is updated on every StartWorkflow call so the
+    //    GuideCompleted handler always narrates the correct (most recent) title.
 
     private GuidedInteractionOverlay? _guidedOverlay;
+    private string _currentGuidedWorkflowTitle = string.Empty;
 
     // ── Win32 P/Invoke for reliable screen-pixel cursor position ──────────────
 
@@ -739,22 +742,29 @@ public sealed partial class CompanionOverlayWindow : Window
     /// </summary>
     private void ShowGuidedOverlay(IReadOnlyList<GuidedVisualStep> steps, string workflowTitle)
     {
+        // Always update the title field before starting — the GuideCompleted handler
+        // reads this field rather than capturing the local so it stays correct when
+        // the same overlay instance is reused for a later workflow.
+        _currentGuidedWorkflowTitle = workflowTitle;
+
         if (_guidedOverlay is null)
         {
             _guidedOverlay = new GuidedInteractionOverlay();
 
+            // Read the field at event-fire time, not at subscription time.
             _guidedOverlay.GuideCompleted += (_, _) =>
                 ViewModel.AddAutomationNarration(
-                    $"Visual guide completed: {workflowTitle}", isWarning: false);
+                    $"Visual guide completed: {_currentGuidedWorkflowTitle}", isWarning: false);
 
-            // GuideCancelled is a no-op — the overlay already manages its own cleanup.
+            // GuideCancelled is a no-op here — the overlay already logs the
+            // cancellation event and manages its own cleanup.
         }
 
+        // GuidedInteractionOverlay is the single owner of guided-workflow timeline
+        // events: it emits VisualWorkflowStarted in StartWorkflow, VisualTargetHighlighted
+        // per step in ApplyStep, GuidedVisualStepCompleted on completion, and
+        // VisualWorkflowCancelled on cancel.  No separate service call needed.
         _guidedOverlay.StartWorkflow(steps, workflowTitle);
-
-        // Drive timeline events via the service (does not show the overlay — we own that).
-        _ = Task.Run(() =>
-            AppServices.VisualContext.RunGuidedWorkflowAsync(steps, workflowTitle));
     }
 
     /// <summary>

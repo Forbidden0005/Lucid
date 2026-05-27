@@ -148,6 +148,8 @@ public enum TimelineEventType
     VisualTargetHighlighted    = 133,
     /// <summary>All steps of a guided visual workflow were completed successfully.</summary>
     GuidedVisualStepCompleted  = 134,
+    /// <summary>The user dismissed a guided visual workflow before completing all steps.</summary>
+    VisualWorkflowCancelled    = 135,
 }
 
 /// <summary>

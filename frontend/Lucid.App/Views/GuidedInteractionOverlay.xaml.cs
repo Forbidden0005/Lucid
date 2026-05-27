@@ -111,6 +111,19 @@ public sealed partial class GuidedInteractionOverlay : Window
         _workflowTitle = workflowTitle;
         _currentIndex  = 0;
 
+        // Record the workflow start now — the overlay is the single owner of
+        // timeline state for guided workflows, so we emit the start event here
+        // rather than in a separate service call.
+        AppServices.Timeline.AddExternalEvent(new TimelineEvent
+        {
+            Id         = TimelineEvent.NewId(),
+            Type       = TimelineEventType.VisualWorkflowStarted,
+            OccurredAt = DateTimeOffset.Now,
+            Title      = $"Visual workflow started: {workflowTitle}",
+            Detail     = $"{steps.Count} guided step{(steps.Count == 1 ? "" : "s")}",
+            Severity   = TimelineEventSeverity.Info,
+        });
+
         ApplyStep(0);
         PositionWindow(steps[0].TargetRect);
         _appWindow.Show();
@@ -222,6 +235,21 @@ public sealed partial class GuidedInteractionOverlay : Window
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         _appWindow.Hide();
+
+        // Record cancellation — only emitted via user-initiated close (✕ button).
+        // The OS Closed event is a separate path handled by the constructor handler.
+        if (!string.IsNullOrEmpty(_workflowTitle))
+        {
+            AppServices.Timeline.AddExternalEvent(new TimelineEvent
+            {
+                Id         = TimelineEvent.NewId(),
+                Type       = TimelineEventType.VisualWorkflowCancelled,
+                OccurredAt = DateTimeOffset.Now,
+                Title      = $"Visual guide cancelled: {_workflowTitle}",
+                Severity   = TimelineEventSeverity.Info,
+            });
+        }
+
         GuideCancelled?.Invoke(this, EventArgs.Empty);
     }
 
