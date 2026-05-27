@@ -414,15 +414,4 @@
     <Page Remove="Controls\**" />
   </ItemGroup>
 
-  <!--
-    Exclude the Phase 17A initial CompanionWindow prototype.
-    CompanionOverlayWindow replaces it.
-    CompanionViewModel is superseded by CompanionChatViewModel.
-  -->
-  <ItemGroup>
-    <Page    Remove="Views\CompanionWindow.xaml" />
-    <Compile Remove="Views\CompanionWindow.xaml.cs" />
-    <Compile Remove="ViewModels\CompanionViewModel.cs" />
-  </ItemGroup>
-
 </Project>
