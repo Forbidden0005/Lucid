@@ -235,7 +235,7 @@ if ($ollamaCmd) {
 # STEP 8: NuGet restore
 # -----------------------------------------------------------------------------
 Write-Step "8/9" "NuGet package restore"
-$slnx = "C:\Users\tyler\ExplainMyPC\frontend\Lucid.slnx"
+$slnx = "C:\Users\tyler\ExplainMyPC\lucid-desktop\Lucid.slnx"
 Refresh-Path
 
 if (-not (Test-Path $slnx)) {
@@ -304,7 +304,7 @@ Write-Host "  ============================================================" -For
 Write-Host "   Setup complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "   To launch Lucid:" -ForegroundColor Green
-Write-Host "   C:\Users\tyler\ExplainMyPC\frontend\Launch.bat" -ForegroundColor Green
+Write-Host "   C:\Users\tyler\ExplainMyPC\lucid-desktop\Launch.bat" -ForegroundColor Green
 Write-Host "  ============================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Press any key to close..." -ForegroundColor Gray

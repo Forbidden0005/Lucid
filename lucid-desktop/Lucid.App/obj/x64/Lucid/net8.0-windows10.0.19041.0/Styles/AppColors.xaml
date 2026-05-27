@@ -1,0 +1,168 @@
+﻿<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Lucid Color Palette
+        Source of truth: docs/ui-guidelines.md
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- Background layers (deepest → most elevated) -->
+    <Color x:Key="AppBackgroundColor">#0F1115</Color>
+    <Color x:Key="AppSurfaceColor">#171A21</Color>
+    <Color x:Key="AppElevatedSurfaceColor">#1E2430</Color>
+
+    <!-- Accent / brand colors -->
+    <Color x:Key="AccentBlueColor">#4EA1FF</Color>
+    <Color x:Key="AccentCyanColor">#55D6FF</Color>
+
+    <!-- Semantic status colors -->
+    <Color x:Key="SuccessColor">#57D68D</Color>
+    <Color x:Key="WarningColor">#FFB347</Color>
+    <Color x:Key="DangerColor">#FF6B6B</Color>
+
+    <!-- Text hierarchy -->
+    <Color x:Key="TextPrimaryColor">#F5F7FA</Color>
+    <Color x:Key="TextSecondaryColor">#AAB2C0</Color>
+
+    <!-- Structural borders / dividers — very subtle -->
+    <Color x:Key="BorderSubtleColor">#252B38</Color>
+    <Color x:Key="BorderDefaultColor">#2E3545</Color>
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Brushes
+        Prefer using brush keys in XAML so color tokens stay central.
+        ════════════════════════════════════════════════════════════════
+    -->
+
+    <!-- Surfaces -->
+    <SolidColorBrush x:Key="AppBackgroundBrush"
+                     Color="{StaticResource AppBackgroundColor}" />
+    <SolidColorBrush x:Key="AppSurfaceBrush"
+                     Color="{StaticResource AppSurfaceColor}" />
+    <SolidColorBrush x:Key="AppElevatedSurfaceBrush"
+                     Color="{StaticResource AppElevatedSurfaceColor}" />
+
+    <!-- Accents -->
+    <SolidColorBrush x:Key="AccentBlueBrush"
+                     Color="{StaticResource AccentBlueColor}" />
+    <SolidColorBrush x:Key="AccentCyanBrush"
+                     Color="{StaticResource AccentCyanColor}" />
+
+    <!-- Status -->
+    <SolidColorBrush x:Key="SuccessBrush"
+                     Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="WarningBrush"
+                     Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="DangerBrush"
+                     Color="{StaticResource DangerColor}" />
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimaryBrush"
+                     Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush"
+                     Color="{StaticResource TextSecondaryColor}" />
+
+    <!-- Borders -->
+    <SolidColorBrush x:Key="BorderSubtleBrush"
+                     Color="{StaticResource BorderSubtleColor}" />
+    <SolidColorBrush x:Key="BorderDefaultBrush"
+                     Color="{StaticResource BorderDefaultColor}" />
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Semantic status aliases
+        Named by purpose, not by hue — prefer these over raw colours
+        so severity meaning is clear at the call site.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <SolidColorBrush x:Key="StatusGoodBrush"
+                     Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="StatusModerateBrush"
+                     Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="StatusCriticalBrush"
+                     Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="StatusInfoBrush"
+                     Color="{StaticResource AccentBlueColor}" />
+
+    <!--
+        Tint brushes — #26 alpha (38%) overlay of the status colour.
+        Use for icon container backgrounds and severity badge backgrounds.
+    -->
+    <SolidColorBrush x:Key="StatusGoodTintBrush"     Color="#2657D68D" />
+    <SolidColorBrush x:Key="StatusModerateTintBrush" Color="#26FFB347" />
+    <SolidColorBrush x:Key="StatusCriticalTintBrush" Color="#26FF6B6B" />
+    <SolidColorBrush x:Key="StatusInfoTintBrush"     Color="#264EA1FF" />
+
+    <!--
+        Subtle tint brushes — #1A alpha (26%) overlay.
+        Use for impact chip / tag backgrounds inside cards.
+    -->
+    <SolidColorBrush x:Key="StatusGoodSubtleBrush"     Color="#1A57D68D" />
+    <SolidColorBrush x:Key="StatusModerateSubtleBrush" Color="#1AFFB347" />
+    <SolidColorBrush x:Key="StatusCriticalSubtleBrush" Color="#1AFF6B6B" />
+    <SolidColorBrush x:Key="StatusInfoSubtleBrush"     Color="#1A4EA1FF" />
+
+    <!-- Cyan tint — RAM / secondary accent -->
+    <SolidColorBrush x:Key="AccentCyanTintBrush" Color="#2655D6FF" />
+
+    <!-- Bar track — very subtle white overlay used as ProgressBar Background -->
+    <SolidColorBrush x:Key="BarTrackBrush" Color="#1AFFFFFF" />
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        Convenience aliases
+        Short-form brush keys used throughout page XAML.  These are
+        identical to the canonical keys above — added so page files can
+        use the shorter names without breaking the source of truth.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <SolidColorBrush x:Key="PrimaryTextBrush"
+                     Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="SecondaryTextBrush"
+                     Color="{StaticResource TextSecondaryColor}" />
+
+    <!-- Accent purple (used by GPU metrics and Historical page) -->
+    <Color x:Key="AccentPurpleColor">#A78BFA</Color>
+    <SolidColorBrush x:Key="AccentPurpleBrush"
+                     Color="{StaticResource AccentPurpleColor}" />
+
+    <!-- Accent green alias (same as SuccessColor) -->
+    <SolidColorBrush x:Key="AccentGreenBrush"
+                     Color="{StaticResource SuccessColor}" />
+
+    <!-- Accent orange alias (same as WarningColor) -->
+    <SolidColorBrush x:Key="AccentOrangeBrush"
+                     Color="{StaticResource WarningColor}" />
+
+    <!-- Status warning alias (same as StatusModerateBrush) -->
+    <SolidColorBrush x:Key="StatusWarningBrush"
+                     Color="{StaticResource WarningColor}" />
+
+    <!-- Divider alias -->
+    <SolidColorBrush x:Key="SubtleDividerBrush"
+                     Color="{StaticResource BorderSubtleColor}" />
+
+    <!--
+        ════════════════════════════════════════════════════════════════
+        NavigationView theme resource overrides
+        These keys are consumed by the WinUI NavigationView control
+        template. Placing them here (merged before XamlControlsResources
+        would conflict, so they are merged after it in App.xaml) allows
+        us to tint the sidebar without rewriting the full control template.
+        ════════════════════════════════════════════════════════════════
+    -->
+    <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground"
+                     Color="{StaticResource AccentBlueColor}" />
+    <SolidColorBrush x:Key="NavigationViewItemForeground"
+                     Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="NavigationViewItemForegroundSelected"
+                     Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="NavigationViewItemForegroundPointerOver"
+                     Color="{StaticResource TextPrimaryColor}" />
+
+</ResourceDictionary>
+

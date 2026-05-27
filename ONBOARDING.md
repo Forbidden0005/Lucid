@@ -44,7 +44,7 @@ The repo was originally named `ExplainMyPC` — the GitHub URL and namespaces st
 **Always build with `-p:Platform=x64`** — the project hard-fails without it.
 
 ```bat
-cd frontend
+cd lucid-desktop
 dotnet build Lucid.slnx -c Debug -p:Platform=x64
 ```
 
@@ -62,10 +62,10 @@ This calls VS MSBuild which regenerates the intermediate DLL. After that, `dotne
 ## Repository Layout
 
 ```
-ExplainMyPC/
+Lucid/
 ├── CLAUDE.md                          ← Project doctrine (read this too)
 ├── ROADMAP.md                         ← Full phase-by-phase roadmap
-├── frontend/
+├── lucid-desktop/
 │   └── Lucid.App/
 │       ├── AppServices.cs             ← Service registry (no DI container)
 │       ├── MainWindow.xaml(.cs)       ← App shell, sidebar nav, companion toggle

@@ -1,0 +1,562 @@
+﻿<Page
+    x:Class="Lucid.Views.AutonomousRemediationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Lucid.Views"
+    xmlns:vm="using:Lucid.ViewModels"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <!--
+        AutonomousRemediationPage.xaml — Safety-Governed Remediation Orchestration
+        ═══════════════════════════════════════════════════════════════════════════
+        Supervised remediation planning and execution with full rollback support.
+
+        Sections (top to bottom):
+          1. Page header
+          2. Loading indicator
+          3. Safety warning banner
+          4. Active Workflow Center (execution status + step progress)
+          5. Validation Results (post-run outcome)
+          6. Workflow Planner (suggested workflows)
+          7. Trust & Safety Controls
+          8. Privacy footer
+
+        Trust philosophy:
+          • Workflows are NEVER executed automatically without user approval.
+          • Every workflow shows its risk level, reversibility, and trust requirement.
+          • Safety pre-checks block execution if conditions are unsafe.
+          • Rollback is offered whenever steps support it.
+
+        No XAML converters — Visibility properties exposed from ViewModel.
+        DataTemplates use {x:Bind} with x:DataType for strong typing.
+    -->
+
+    <ScrollViewer x:ConnectionId='2' x:Name="RootScrollViewer"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="32,32,32,56" Spacing="24">
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 1. PAGE HEADER
+            ═══════════════════════════════════════════════════════════════ -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Remediation Planner"
+                               Style="{StaticResource PageTitleStyle}" />
+                    <TextBlock Text="Review suggested workflows, run with your approval, and validate results — all local, all reversible"
+                               Style="{StaticResource PageSubtitleStyle}" />
+                </StackPanel>
+
+                <!-- Halt button — only visible during active execution -->
+                <Button Grid.Column="1"
+                        Command="{Binding HaltWorkflowCommand}"
+                        Visibility="{Binding HaltButtonVisibility}"
+                        VerticalAlignment="Center"
+                        Padding="14,8"
+                        CornerRadius="8"
+                        Background="#3F1515">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                  Foreground="#EF4444" />
+                        <TextBlock Text="Stop Workflow" FontSize="13" Foreground="#EF4444" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 2. LOADING INDICATOR
+            ═══════════════════════════════════════════════════════════════ -->
+            <Border Visibility="{Binding LoadingVisibility}"
+                    Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12" Padding="20,16">
+                <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
+                    <ProgressRing IsActive="True" Width="20" Height="20" />
+                    <TextBlock Text="Starting workflow…"
+                               VerticalAlignment="Center"
+                               Style="{StaticResource BodyTextStyle}" />
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 3. SAFETY WARNING BANNER
+            ═══════════════════════════════════════════════════════════════ -->
+            <Border Visibility="{Binding SafetyWarningVisibility}"
+                    Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12" Padding="20,16"
+                    BorderBrush="#EF4444"
+                    BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE7BA;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="16"
+                                  Foreground="#EF4444" />
+                        <TextBlock Text="Workflow blocked by safety check"
+                                   FontWeight="SemiBold"
+                                   Foreground="#EF4444"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding SafetyWarningText}"
+                               Style="{StaticResource BodyTextStyle}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 4. ACTIVE WORKFLOW CENTER
+                    Shown only while a workflow is executing
+            ═══════════════════════════════════════════════════════════════ -->
+            <Border Visibility="{Binding ActiveWorkflowVisibility}"
+                    Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12" Padding="24,20"
+                    BorderBrush="{StaticResource AccentBlueBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="16">
+
+                    <!-- Header row -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <ProgressRing IsActive="True" Width="18" Height="18" />
+                                <TextBlock Text="{Binding ActiveWorkflowName}"
+                                           Style="{StaticResource SectionTitleStyle}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding ActiveWorkflowPhase}"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="2">
+                            <TextBlock Text="{Binding ActiveWorkflowStatus}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       HorizontalAlignment="Right" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Progress bar -->
+                    <ProgressBar Value="{Binding ActiveWorkflowProgress}"
+                                 Maximum="100"
+                                 Height="4"
+                                 CornerRadius="2" />
+
+                    <!-- Step list -->
+                    <ItemsRepeater ItemsSource="{Binding StepProgress}">
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate                                              >
+                                <Border x:ConnectionId='17' Padding="0,6" BorderBrush="{StaticResource DividerBrush}"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Step status glyph -->
+                                        <FontIcon x:ConnectionId='18'                       
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="13"
+                                                                                   
+                                                  VerticalAlignment="Center" />
+
+                                        <!-- Step name + status -->
+                                        <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                            <TextBlock x:ConnectionId='20'                         
+                                                       FontSize="13"
+                                                       Foreground="{StaticResource PrimaryTextBrush}" />
+                                            <TextBlock x:ConnectionId='21'                           
+                                                       Style="{StaticResource CaptionTextStyle}" />
+                                        </StackPanel>
+
+                                        <!-- Duration -->
+                                        <TextBlock x:ConnectionId='19' Grid.Column="2"
+                                                                           
+                                                                                           
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 5. VALIDATION RESULTS
+                    Post-remediation outcome card
+            ═══════════════════════════════════════════════════════════════ -->
+            <Border Visibility="{Binding OutcomeVisibility}"
+                    Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12" Padding="24,20">
+                <StackPanel Spacing="16">
+
+                    <!-- Section header -->
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE9D9;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="18"
+                                  Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Text="Validation Results"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Workflow name + stabilization result -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{Binding Outcome.WorkflowName}"
+                                       FontWeight="SemiBold"
+                                       FontSize="14"
+                                       Foreground="{StaticResource PrimaryTextBrush}" />
+                            <TextBlock Text="{Binding Outcome.CompletedAt}"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center">
+                            <FontIcon Glyph="{Binding Outcome.StabilizationGlyph}"
+                                      FontFamily="Segoe MDL2 Assets"
+                                      FontSize="16"
+                                      Foreground="{Binding Outcome.StabilizationColor}" />
+                            <TextBlock Text="{Binding Outcome.StabilizationLabel}"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       Foreground="{Binding Outcome.StabilizationColor}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Narrative summary -->
+                    <TextBlock Text="{Binding Outcome.NarrativeSummary}"
+                               Style="{StaticResource BodyTextStyle}"
+                               TextWrapping="Wrap" />
+
+                    <!-- Delta metrics row -->
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <TextBlock Text="{Binding Outcome.CpuChange}"
+                                   Visibility="{Binding Outcome.CpuChangeVisibility}"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding Outcome.RamChange}"
+                                   Visibility="{Binding Outcome.RamChangeVisibility}"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding Outcome.DiskChange}"
+                                   Visibility="{Binding Outcome.DiskChangeVisibility}"
+                                   Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding Outcome.InsightsResolved}"
+                                   Visibility="{Binding Outcome.InsightsResolvedVisibility}"
+                                   Foreground="#34D399"
+                                   FontSize="12"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Rollback button -->
+                    <Button Command="{Binding RollbackWorkflowCommand}"
+                            Visibility="{Binding RollbackButtonVisibility}"
+                            Padding="12,8" CornerRadius="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE7A7;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+                            <TextBlock Text="Rollback Changes" FontSize="13" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 6. WORKFLOW PLANNER
+                    Suggested workflows from the intelligence engine
+            ═══════════════════════════════════════════════════════════════ -->
+            <StackPanel Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <FontIcon Glyph="&#xE9F5;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="18"
+                              Foreground="{StaticResource AccentBlueBrush}" />
+                    <TextBlock Text="Workflow Planner"
+                               Style="{StaticResource SectionTitleStyle}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Text="Workflows are suggested based on active findings. Review, then run with your explicit approval."
+                           Style="{StaticResource BodyTextStyle}"
+                           TextWrapping="Wrap" />
+
+                <!-- No suggestions placeholder -->
+                <Border Visibility="{Binding NoSuggestionsVisibility}"
+                        Background="{StaticResource AppSurfaceBrush}"
+                        CornerRadius="12" Padding="32,28">
+                    <StackPanel HorizontalAlignment="Center" Spacing="10">
+                        <FontIcon Glyph="&#xE73E;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="32"
+                                  Foreground="{StaticResource MutedTextBrush}"
+                                  HorizontalAlignment="Center" />
+                        <TextBlock Text="No workflows suggested right now"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="The system looks good. Workflows will appear here when the intelligence engine detects patterns worth addressing."
+                                   Style="{StaticResource BodyTextStyle}"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   MaxWidth="420" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Suggested workflow cards -->
+                <ItemsRepeater ItemsSource="{Binding Suggestions}">
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate                                           >
+                            <Border x:ConnectionId='4' Background="{StaticResource AppSurfaceBrush}"
+                                    CornerRadius="12" Padding="20,18"
+                                    Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="44" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Icon -->
+                                    <Border Width="38" Height="38"
+                                            CornerRadius="8"
+                                            Background="#1A60A5FA"
+                                            VerticalAlignment="Top"
+                                            Margin="0,2,0,0">
+                                        <FontIcon x:ConnectionId='15'                       
+                                                  FontFamily="Segoe MDL2 Assets"
+                                                  FontSize="18"
+                                                  Foreground="#60A5FA"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <!-- Workflow details -->
+                                    <StackPanel Grid.Column="1" Spacing="6" Margin="12,0,12,0">
+
+                                        <!-- Name row -->
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock x:ConnectionId='13'                     
+                                                       FontWeight="SemiBold"
+                                                       FontSize="14"
+                                                       Foreground="{StaticResource PrimaryTextBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <!-- Reversible badge -->
+                                            <Border x:ConnectionId='14'                                                
+                                                    Background="#1A34D399"
+                                                    CornerRadius="4" Padding="6,2">
+                                                <TextBlock Text="Reversible"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#34D399" />
+                                            </Border>
+                                        </StackPanel>
+
+                                        <TextBlock x:ConnectionId='6'                            
+                                                   Style="{StaticResource BodyTextStyle}"
+                                                   TextWrapping="Wrap" />
+
+                                        <TextBlock x:ConnectionId='7'                          
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   TextWrapping="Wrap" />
+
+                                        <!-- Meta row: risk, trust, duration -->
+                                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <FontIcon x:ConnectionId='11' Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="11"
+                                                                                          />
+                                                <TextBlock x:ConnectionId='12'                          
+                                                           FontSize="11"
+                                                                                           />
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <FontIcon Glyph="&#xE8D7;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="11"
+                                                          Foreground="{StaticResource MutedTextBrush}" />
+                                                <TextBlock x:ConnectionId='10'                                   
+                                                           Style="{StaticResource CaptionTextStyle}" />
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <FontIcon Glyph="&#xE916;" FontFamily="Segoe MDL2 Assets"
+                                                          FontSize="11"
+                                                          Foreground="{StaticResource MutedTextBrush}" />
+                                                <TextBlock x:ConnectionId='9'                                  
+                                                           Style="{StaticResource CaptionTextStyle}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Expected outcome -->
+                                        <TextBlock x:ConnectionId='8'                                
+                                                   FontSize="12"
+                                                   Foreground="#34D399"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+
+                                    <!-- Run button -->
+                                    <Button x:ConnectionId='5' Grid.Column="2"
+                                            Command="{Binding DataContext.StartWorkflowCommand, ElementName=RootScrollViewer}"
+                                                                                  
+                                            VerticalAlignment="Top"
+                                            Margin="0,2,0,0"
+                                            Padding="12,8"
+                                            CornerRadius="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="13" />
+                                            <TextBlock Text="Run" FontSize="13" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 7. TRUST & SAFETY CONTROLS
+            ═══════════════════════════════════════════════════════════════ -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12" Padding="24,20">
+                <StackPanel Spacing="16">
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE8D7;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="18"
+                                  Foreground="{StaticResource AccentBlueBrush}" />
+                        <TextBlock Text="Trust &amp; Safety Controls"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <TextBlock Text="Your trust level determines how much of each workflow runs automatically. You can always lower this — raising it requires your explicit choice."
+                               Style="{StaticResource BodyTextStyle}"
+                               TextWrapping="Wrap" />
+
+                    <!-- Trust level slider -->
+                    <StackPanel Spacing="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Automation Trust Level"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       Foreground="{StaticResource PrimaryTextBrush}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding TrustLevelLabel}"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       Foreground="{StaticResource AccentBlueBrush}" />
+                        </Grid>
+
+                        <Slider Value="{Binding TrustLevelIndex, Mode=TwoWay}"
+                                Minimum="0" Maximum="3" StepFrequency="1"
+                                TickFrequency="1" TickPlacement="BottomRight"
+                                SnapsTo="Ticks" />
+
+                        <TextBlock Text="{Binding TrustLevelDescription}"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <!-- Trust level reference -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Trust level reference"
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   FontWeight="SemiBold" />
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Grid.Column="0" Padding="10,8" CornerRadius="8"
+                                    Background="#0A34D399">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Manual Only" FontWeight="SemiBold" FontSize="12"
+                                               Foreground="#34D399" />
+                                    <TextBlock Text="Suggest only — you run everything"
+                                               Style="{StaticResource CaptionTextStyle}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Row="0" Grid.Column="1" Padding="10,8" CornerRadius="8"
+                                    Background="#0A60A5FA">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Guided Approval" FontWeight="SemiBold" FontSize="12"
+                                               Foreground="#60A5FA" />
+                                    <TextBlock Text="You approve, steps run automatically"
+                                               Style="{StaticResource CaptionTextStyle}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Row="1" Grid.Column="0" Padding="10,8" CornerRadius="8"
+                                    Background="#0AF59E0B" Margin="0,8,0,0">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Supervised Automation" FontWeight="SemiBold" FontSize="12"
+                                               Foreground="#F59E0B" />
+                                    <TextBlock Text="Fully unattended after approval"
+                                               Style="{StaticResource CaptionTextStyle}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Row="1" Grid.Column="1" Padding="10,8" CornerRadius="8"
+                                    Background="#0AEF4444" Margin="0,8,0,0">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Recovery Automation" FontWeight="SemiBold" FontSize="12"
+                                               Foreground="#EF4444" />
+                                    <TextBlock Text="Plus auto-rollback if metrics worsen"
+                                               Style="{StaticResource CaptionTextStyle}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 8. PRIVACY &amp; SAFETY FOOTER
+            ═══════════════════════════════════════════════════════════════ -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    CornerRadius="12" Padding="20,16">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <FontIcon Glyph="&#xE72E;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="16"
+                              Foreground="{StaticResource MutedTextBrush}"
+                              VerticalAlignment="Center" />
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{StaticResource CaptionTextStyle}"
+                               VerticalAlignment="Center">
+                        All remediation workflows run locally. No data leaves your device. Every action is logged, reversible where possible, and requires your explicit approval before running. Lucid never auto-remediates without your knowledge.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
+
