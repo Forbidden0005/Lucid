@@ -130,57 +130,6 @@ public sealed class VisualContextService : IVisualContextService, IDisposable
         catch { return "Unable to read active window."; }
     }
 
-    // ── RunGuidedWorkflowAsync ────────────────────────────────────────────────
-
-    public async Task RunGuidedWorkflowAsync(
-        IReadOnlyList<GuidedVisualStep> steps,
-        string                         workflowTitle,
-        CancellationToken              ct = default)
-    {
-        if (steps.Count == 0) return;
-
-        _timeline.AddExternalEvent(new TimelineEvent
-        {
-            Id         = TimelineEvent.NewId(),
-            Type       = TimelineEventType.VisualWorkflowStarted,
-            OccurredAt = DateTimeOffset.Now,
-            Title      = $"Visual workflow started: {workflowTitle}",
-            Detail     = $"{steps.Count} guided steps",
-            Severity   = TimelineEventSeverity.Info,
-        });
-
-        // The actual overlay management is handled by the caller (CompanionOverlayWindow
-        // or a dedicated overlay host). VisualContextService only records timeline events
-        // and drives the consent / analysis pipeline between steps.
-        for (int i = 0; i < steps.Count && !ct.IsCancellationRequested; i++)
-        {
-            var step = steps[i];
-
-            _timeline.AddExternalEvent(new TimelineEvent
-            {
-                Id         = TimelineEvent.NewId(),
-                Type       = TimelineEventType.VisualTargetHighlighted,
-                OccurredAt = DateTimeOffset.Now,
-                Title      = $"Step {i + 1}/{steps.Count}: {step.StepTitle}",
-                Detail     = step.Instruction,
-                Severity   = TimelineEventSeverity.Info,
-            });
-
-            // If the step has a target rect, wait a moment to let the overlay render
-            if (!step.TargetRect.IsEmpty)
-                await Task.Delay(200, ct).ConfigureAwait(false);
-        }
-
-        _timeline.AddExternalEvent(new TimelineEvent
-        {
-            Id         = TimelineEvent.NewId(),
-            Type       = TimelineEventType.GuidedVisualStepCompleted,
-            OccurredAt = DateTimeOffset.Now,
-            Title      = $"Visual workflow completed: {workflowTitle}",
-            Severity   = TimelineEventSeverity.Good,
-        });
-    }
-
     // ── Core analysis pipeline ────────────────────────────────────────────────
 
     private async Task<ScreenAnalysisResult> RunAnalysisAsync(
