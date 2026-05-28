@@ -47,8 +47,8 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable, IA
     private readonly GpuSampler     _gpu     = new();
     private readonly DiskSampler    _disk    = new();
     private readonly ThermalSampler _thermal = new();
-    private readonly ProcessSampler _process = new();
-    private readonly StartupSampler _startup = new();
+    private readonly ProcessSampler            _process = new();
+    private readonly IStartupManagementService _startupManagement;
 
     private CancellationTokenSource? _cts;
     private Task?                    _pollTask;
@@ -67,9 +67,12 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable, IA
         _cts is { IsCancellationRequested: false } &&
         _pollTask is { IsCompleted: false };
 
-    public WindowsTelemetryService(DispatcherQueue dispatcher)
+    public WindowsTelemetryService(
+        DispatcherQueue            dispatcher,
+        IStartupManagementService  startupManagement)
     {
-        _dispatcher = dispatcher;
+        _dispatcher        = dispatcher;
+        _startupManagement = startupManagement;
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -138,8 +141,11 @@ public sealed class WindowsTelemetryService : ITelemetryService, IDisposable, IA
         // Startup entries refresh every StartupIntervalTicks cycles (~60 s).
         // The registry rarely changes at runtime, so sampling every tick is wasteful.
         // Fires on tick 0 (initial population) and then every 40 ticks thereafter.
+        // Use GetAllEntries() rather than raw Sample() so:
+        //   • entries whose exe no longer exists on disk are excluded (stale uninstaller keys)
+        //   • entries the user disabled via Task Manager reflect IsEnabled = false
         if (_startupTick == 0)
-            _lastStartupEntries = _startup.Sample();
+            _lastStartupEntries = _startupManagement.GetAllEntries();
         _startupTick = (_startupTick + 1) % StartupIntervalTicks;
 
         var cpu  = _cpu.Read();
