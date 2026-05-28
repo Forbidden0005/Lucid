@@ -44,7 +44,9 @@ public sealed class StartupItemCountRule : IInsightRule
         if (current.StartupEntries.Count == 0)
             return null;
 
-        var count = current.StartupEntries.Count;
+        // Count only enabled entries — disabled ones (turned off via Task Manager
+        // or the Lucid toggle) should not contribute to the congestion count.
+        var count = current.StartupEntries.Count(e => e.IsEnabled);
         if (count < ManyItemsThreshold)
             return null;
 

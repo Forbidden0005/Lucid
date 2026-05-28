@@ -847,7 +847,12 @@ public static class AppServices
         _executionQueue     = new ExecutionPriorityQueue();
         _pollingCoordinator = new PollingCoordinator();
 
-        _telemetry = new WindowsTelemetryService(uiDispatcher);
+        // Startup management must be created before the telemetry service so it
+        // can be injected — the telemetry service uses GetAllEntries() to correctly
+        // exclude stale registry entries and Task-Manager-disabled apps.
+        _startupManagement = new StartupManagementService();
+
+        _telemetry = new WindowsTelemetryService(uiDispatcher, _startupManagement);
         _history   = new TelemetryHistoryBuffer();
 
         // Register the telemetry service as the adaptive target so the governance
@@ -969,12 +974,6 @@ public static class AppServices
         // Initialised before the execution engine so it is ready the moment
         // the first action completes. JSON file created lazily on first write.
         _operationHistory = new OperationHistoryService();
-
-        // ── Startup management service ────────────────────────────────────────
-        // Write-side complement to StartupSampler. Uses the Windows
-        // StartupApproved registry mechanism to enable/disable entries.
-        // Created before the executor registry so executors can share the instance.
-        _startupManagement = new StartupManagementService();
 
         // ── Remediation execution engine ──────────────────────────────────────
         _executorRegistry = new ActionExecutorRegistry();
