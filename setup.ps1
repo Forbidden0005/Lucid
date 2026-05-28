@@ -199,6 +199,10 @@ if (-not $ollamaCmd) {
 }
 
 if ($ollamaCmd) {
+    # Resolve the executable path — compatible with Windows PowerShell 5.1
+    # ($ollamaCmd may be a CommandInfo object with a .Source property, or a plain string path)
+    $ollamaExe = if ($ollamaCmd.Source) { $ollamaCmd.Source } else { [string]$ollamaCmd }
+
     # Start Ollama serve in background if not already running
     $ollamaRunning = $false
     try {
@@ -207,7 +211,7 @@ if ($ollamaCmd) {
         Write-Info "Ollama server already running"
     } catch {
         Write-Info "Starting Ollama server..."
-        Start-Process -FilePath ($ollamaCmd.Source ?? $ollamaCmd) -ArgumentList "serve" -WindowStyle Hidden
+        Start-Process -FilePath $ollamaExe -ArgumentList "serve" -WindowStyle Hidden
         Start-Sleep -Seconds 3
     }
 
@@ -220,7 +224,7 @@ if ($ollamaCmd) {
         } else {
             Write-Info "Downloading llama3.2:3b model (~2GB - this is a one-time download)..."
             Write-Info "This may take 5-15 minutes depending on your connection speed."
-            & ($ollamaCmd.Source ?? $ollamaCmd) pull llama3.2:3b
+            & $ollamaExe pull llama3.2:3b
             Write-OK "llama3.2:3b model ready"
         }
     } catch {
