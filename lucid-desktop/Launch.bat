@@ -1,5 +1,5 @@
 @echo off
-cd /d "C:\Users\tyler\ExplainMyPC\frontend\Lucid.App\bin\x64\Debug\net8.0-windows10.0.19041.0"
+cd /d "C:\Users\tyler\ExplainMyPC\lucid-desktop\Lucid.App\bin\x64\Debug\net8.0-windows10.0.19041.0"
 
 if not exist "Lucid.App.exe" (
     echo.
