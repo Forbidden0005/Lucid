@@ -169,7 +169,15 @@ public sealed class StartupSampler
                     var command = key.GetValue(valueName) as string;
                     if (string.IsNullOrWhiteSpace(command)) continue;
 
-                    var exeName = ExtractExeName(command);
+                    var exePath = ExtractExePath(command);
+
+                    // Skip stale entries left behind by uninstallers — the registry
+                    // key exists but the executable is no longer on disk.
+                    if (!string.IsNullOrEmpty(exePath) && !File.Exists(exePath))
+                        continue;
+
+                    var exeName = Path.GetFileNameWithoutExtension(exePath)
+                                      .ToLowerInvariant();
                     var impact  = ClassifyImpact(exeName);
 
                     results.Add(new StartupEntry(
@@ -228,35 +236,39 @@ public sealed class StartupSampler
     }
 
     /// <summary>
-    /// Extracts a lower-case exe filename (without extension) from a registry
-    /// command string. Handles quoted paths and paths with arguments.
+    /// Extracts the full executable path from a registry command string.
+    /// Handles quoted paths (with arguments) and bare unquoted paths.
     ///
     /// Examples:
     ///   "C:\Program Files\Google\Chrome\Application\chrome.exe" --no-startup-window
-    ///       → "chrome"
+    ///       → "C:\Program Files\Google\Chrome\Application\chrome.exe"
     ///   C:\Windows\System32\ctfmon.exe
-    ///       → "ctfmon"
+    ///       → "C:\Windows\System32\ctfmon.exe"
     /// </summary>
-    private static string ExtractExeName(string command)
+    private static string ExtractExePath(string command)
     {
-        // Strip leading quote, then take everything up to the next quote or
-        // the first space (whichever comes first) to isolate the exe path.
         var trimmed = command.TrimStart();
-        string exePath;
 
         if (trimmed.StartsWith('"'))
         {
+            // Quoted path — everything between the first pair of quotes.
             int closing = trimmed.IndexOf('"', 1);
-            exePath = closing > 0 ? trimmed[1..closing] : trimmed[1..];
+            return closing > 0 ? trimmed[1..closing] : trimmed[1..];
         }
         else
         {
+            // Unquoted path — everything up to the first space character.
+            // Note: unquoted paths with spaces in them are malformed registry
+            // entries; they will correctly fail the File.Exists check and be
+            // excluded as stale/broken rather than misidentified.
             int space = trimmed.IndexOf(' ');
-            exePath = space > 0 ? trimmed[..space] : trimmed;
+            return space > 0 ? trimmed[..space] : trimmed;
         }
-
-        return Path.GetFileNameWithoutExtension(exePath).ToLowerInvariant();
     }
+
+    private static string ExtractExeName(string command) =>
+        Path.GetFileNameWithoutExtension(ExtractExePath(command))
+            .ToLowerInvariant();
 
     private static StartupImpact ClassifyImpact(string exeName) =>
         s_impactMap.TryGetValue(exeName, out var impact)
