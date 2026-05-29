@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Lucid.Services.Execution.Validation;
 using Lucid.Services.ProcessIntel;
 
 namespace Lucid.Services.Execution.Executors;
@@ -72,21 +73,57 @@ internal sealed class TerminateProcessExecutor : IActionExecutor
                 $"{name} is a critical system process — termination refused.", sw, ctx);
         }
 
-        ctx.Log.Info($"Terminating {name} (PID {pid})…");
+        // ── OS identity verification ───────────────────────────────────────────
+        // Verify the PID still belongs to the expected process before killing.
+        // Windows PIDs are recycled — the PID could belong to a different process
+        // by the time this executor runs. Abort if they don't match.
+        var verified = ProcessIdentityValidator.TryVerify(pid, name);
+
+        if (verified is null)
+        {
+            ctx.Log.Warn($"  Process PID {pid} no longer exists — it may have already exited.");
+            sw.Stop();
+            return ActionExecutionResult.Succeeded(
+                "action.process.terminate",
+                $"{name} was already gone.", sw.Elapsed, ctx.Log.Build());
+        }
+
+        if (!verified.IsConfirmed)
+        {
+            ctx.Log.Error(
+                $"  Identity mismatch: expected '{name}', but PID {pid} is now " +
+                $"'{verified.VerifiedName}'. The PID may have been recycled. Termination aborted.");
+            sw.Stop();
+            return ActionExecutionResult.Failed(
+                "action.process.terminate",
+                $"PID {pid} no longer belongs to '{name}' — termination aborted to prevent " +
+                $"accidentally stopping the wrong process.",
+                sw.Elapsed, ctx.Log.Build());
+        }
+
+        // Critical check on the OS-verified name, not just the caller-supplied name.
+        if (ProcessClassifier.IsCritical(verified.VerifiedName))
+        {
+            ctx.Log.Error($"  {verified.VerifiedName} is a critical Windows process. Termination refused.");
+            return Fail("action.process.terminate",
+                $"{verified.VerifiedName} is a critical system process — termination refused.", sw, ctx);
+        }
+
+        ctx.Log.Info($"Terminating {verified.VerifiedName} (PID {pid})…");
 
         try
         {
             using var proc = System.Diagnostics.Process.GetProcessById(pid);
             proc.Kill(entireProcessTree: false);
-            ctx.Log.Info($"  ✓ {name} terminated.");
+            ctx.Log.Info($"  ✓ {verified.VerifiedName} terminated.");
         }
         catch (ArgumentException)
         {
-            ctx.Log.Warn($"  Process PID {pid} not found — it may have already exited.");
+            ctx.Log.Warn($"  Process PID {pid} not found — it exited during execution.");
             sw.Stop();
             return ActionExecutionResult.Succeeded(
                 "action.process.terminate",
-                $"{name} was already gone.", sw.Elapsed, ctx.Log.Build());
+                $"{verified.VerifiedName} was already gone.", sw.Elapsed, ctx.Log.Build());
         }
         catch (Exception ex)
         {
@@ -94,13 +131,14 @@ internal sealed class TerminateProcessExecutor : IActionExecutor
             sw.Stop();
             return ActionExecutionResult.Failed(
                 "action.process.terminate",
-                $"Could not terminate {name}: {ex.Message}", sw.Elapsed, ctx.Log.Build(), ex.ToString());
+                $"Could not terminate {verified.VerifiedName}: {ex.Message}",
+                sw.Elapsed, ctx.Log.Build(), ex.ToString());
         }
 
         sw.Stop();
         return ActionExecutionResult.Succeeded(
             "action.process.terminate",
-            $"{name} (PID {pid}) terminated.", sw.Elapsed, ctx.Log.Build());
+            $"{verified.VerifiedName} (PID {pid}) terminated.", sw.Elapsed, ctx.Log.Build());
     }
 
     public Task<ActionExecutionResult> RollbackAsync(

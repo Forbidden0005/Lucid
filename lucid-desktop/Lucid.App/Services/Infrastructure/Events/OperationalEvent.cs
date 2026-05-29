@@ -190,6 +190,29 @@ public sealed record ConversationTurnCompletedEvent(
     string  SessionId,
     string? ResolvedIntent) : OperationalEvent;
 
+// ── Persistence domain ────────────────────────────────────────────────────────
+
+/// <summary>
+/// Published when the SQLite write queue reaches capacity and a write is dropped.
+/// Subscribers (diagnostics page, health monitor) can surface this to the user.
+/// </summary>
+/// <param name="DroppedCount">Running total of writes dropped since service start.</param>
+/// <param name="QueueDepth">Queue depth at the time of the drop.</param>
+/// <param name="MaxQueueDepth">Configured maximum queue depth.</param>
+public sealed record PersistenceQueueOverflowEvent(
+    long DroppedCount,
+    int  QueueDepth,
+    int  MaxQueueDepth) : OperationalEvent;
+
+/// <summary>
+/// Published when a direct (non-queued) write to SQLite fails.
+/// </summary>
+/// <param name="OperationContext">Brief description of what was being written.</param>
+/// <param name="ErrorMessage">Exception message for diagnostics.</param>
+public sealed record PersistenceWriteFailedEvent(
+    string  OperationContext,
+    string  ErrorMessage) : OperationalEvent;
+
 // ── Cognitive Reasoning domain ────────────────────────────────────────────────
 
 /// <summary>

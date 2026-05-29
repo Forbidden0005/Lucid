@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.Data.Sqlite;
+using Lucid.Services.Persistence.Reliability;
 
 namespace Lucid.Services.Persistence;
 
@@ -43,6 +44,21 @@ public sealed class SQLitePersistenceService : IDisposable
     private          Timer?         _flushTimer;
     private          bool           _disposed;
     private          bool           _healthy;
+
+    // ── Reliability metrics ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Live write-queue health metrics exposed to the diagnostics layer.
+    /// Incremented inline — no lock required.
+    /// </summary>
+    public WriteQueueMetrics QueueMetrics { get; } = new();
+
+    /// <summary>
+    /// Optional callback invoked when a write is dropped due to queue overflow.
+    /// Arguments: (currentQueueDepth, maxQueueDepth).
+    /// Set by AppServices after construction to wire in PersistenceHealthMonitor.
+    /// </summary>
+    public Action<int, int>? OnWriteDropped { get; set; }
 
     // ── Construction ──────────────────────────────────────────────────────────
 
@@ -130,7 +146,17 @@ public sealed class SQLitePersistenceService : IDisposable
     public void EnqueueWrite(Action<SqliteConnection> writeAction)
     {
         if (!_healthy || _disposed) return;
-        if (_writeQueue.Count >= MaxQueueDepth) return;  // back-pressure: drop
+
+        var depth = _writeQueue.Count;
+        if (depth >= MaxQueueDepth)
+        {
+            // Back-pressure: drop the write but make it visible.
+            QueueMetrics.RecordDrop();
+            OnWriteDropped?.Invoke(depth, MaxQueueDepth);
+            return;
+        }
+
+        QueueMetrics.RecordEnqueue();
         _writeQueue.Enqueue(writeAction);
     }
 
@@ -213,6 +239,7 @@ public sealed class SQLitePersistenceService : IDisposable
             }
 
             tx.Commit();
+            QueueMetrics.RecordFlush();
         }
         catch
         {

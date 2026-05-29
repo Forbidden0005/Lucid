@@ -43,6 +43,11 @@ using Lucid.Services.Remediation;
 using Lucid.Services.Simulation;
 using Lucid.Services.Watchtower;
 using Lucid.Services.VisualContext;
+using Lucid.Services.Trust.EndpointValidation;
+using Lucid.Services.Trust.Integrity;
+using Lucid.Services.Infrastructure.Startup;
+using Lucid.Services.Persistence.Reliability;
+using Lucid.Services.Diagnostics.Governance;
 using Microsoft.UI.Dispatching;
 
 
@@ -189,6 +194,13 @@ public static class AppServices
     private static TaskCompletionCoordinator?       _taskCoordinator;
     private static AutonomousWorkflowEngine?        _autonomousWorkflowEngine;
 
+    // ── Phase 18C: Trust & Governance Hardening ──────────────────────────────
+    private static TrustIntegrityService?          _trustIntegrity;
+    private static ConsentIntegrityValidator?      _consentIntegrityValidator;
+    private static TrustPostureRecoveryManager?    _trustPostureRecovery;
+    private static GovernanceDiagnosticsService?   _governanceDiagnostics;
+    private static PersistenceHealthMonitor?       _persistenceMonitor;
+
     // ── Phase 19: Unified Cognitive Reasoning Layer ───────────────────────────
     private static IOperationalContextSynthesizer? _contextSynthesizer;
     private static IReasoningMemoryService?        _reasoningMemory;
@@ -294,6 +306,21 @@ public static class AppServices
     public static ICognitiveReasoningEngine CognitiveReasoning =>
         _cognitiveReasoning ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called.");
+
+    // ── Phase 18C: Trust & Governance ────────────────────────────────────────
+
+    /// <summary>Governance audit trail and trust-event publisher.</summary>
+    public static GovernanceDiagnosticsService GovernanceDiagnostics =>
+        _governanceDiagnostics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Consent posture integrity validator — HMAC-backed tamper detection.</summary>
+    public static TrustPostureRecoveryManager TrustPostureRecovery =>
+        _trustPostureRecovery ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Persistence write-queue health metrics.</summary>
+    public static PersistenceHealthMonitor? PersistenceMonitor => _persistenceMonitor;
 
     /// <summary>Live hardware telemetry — CPU, RAM, GPU, Disk, Thermal.</summary>
     public static ITelemetryService Telemetry =>
@@ -959,10 +986,21 @@ public static class AppServices
         // ── SQLite persistence layer ──────────────────────────────────────────
         // Initialised first so repositories are ready before any services start
         // and before telemetry events begin firing.
-        // InitializeAsync() is synchronous at app start — SQLite schema creation
-        // is fast (< 50 ms) and the window has not been shown yet.
+        // StartupTimeoutGuard.Run() offloads onto the thread-pool to avoid
+        // deadlocking the WinUI sync context while blocking on the async init.
         var dbService = new SQLitePersistenceService();
-        dbService.InitializeAsync().GetAwaiter().GetResult();
+        var dbSnapshot = StartupTimeoutGuard.Run(
+            "SQLite initialization",
+            () => dbService.InitializeAsync(),
+            TimeSpan.FromSeconds(10));
+        if (!dbSnapshot.Succeeded)
+            _logger.Warning("Startup", $"SQLite init degraded: {dbSnapshot.ErrorMessage}");
+
+        // Wire in the persistence health monitor so queue overflows are visible
+        // via the event bus rather than silently dropped.
+        var persistenceMetrics = dbService.QueueMetrics;
+        _persistenceMonitor = new PersistenceHealthMonitor(persistenceMetrics, _eventBus!);
+        dbService.OnWriteDropped = (depth, max) => _persistenceMonitor.OnWriteDropped(depth, max);
         _telHistoryRepo    = new HistoricalTelemetryRepository(dbService);
         _timelineEventRepo = new TimelineEventRepository(dbService);
         _insightHistoryRepo = new InsightHistoryRepository(dbService);
@@ -1351,8 +1389,23 @@ public static class AppServices
         _desktopContext.Start();
 
         _companionSession = new CompanionSessionManager();
-        _llmChat          = new LlmChatService(
-            baseUrl:   _settings!.Current.LlmEndpointUrl,
+
+        // ── Local-only LLM enforcement ────────────────────────────────────────
+        // Validate the endpoint from settings before handing it to LlmChatService.
+        // OllamaClient also validates internally, but we log the violation here so
+        // the governance audit trail captures it at startup rather than silently
+        // recovering at the constructor level.
+        var llmUrlValidation = LocalEndpointValidator.Validate(_settings!.Current.LlmEndpointUrl);
+        if (!llmUrlValidation.IsAllowed)
+            _logger.Warning("Startup",
+                $"LLM endpoint '{llmUrlValidation.OriginalUrl}' is not local " +
+                $"({llmUrlValidation.Classification}): {llmUrlValidation.Reason} " +
+                $"Falling back to default localhost endpoint.");
+
+        _llmChat = new LlmChatService(
+            baseUrl:   llmUrlValidation.IsAllowed
+                           ? _settings!.Current.LlmEndpointUrl
+                           : "http://localhost:11434",
             modelName: _settings!.Current.LlmModel);
 
         var conversationSvc = new OperationalConversationService(
@@ -1398,11 +1451,36 @@ public static class AppServices
             _automationConsent,
             _timeline!);
 
-        // ── Apply persisted operational trust settings ────────────────────────
-        // Restore consent and automation modes saved from the previous session.
-        // Enum.TryParse is tolerant — unknown/future values fall through to the
-        // service's own default without crashing.
-        var savedSettings = _settings.Current;
+        // ── Phase 18C: Trust & Governance Hardening ──────────────────────────
+        // Initialize governance diagnostics first so all subsequent trust
+        // checks can publish audit events.
+        _governanceDiagnostics = new GovernanceDiagnosticsService(_eventBus!);
+
+        // Consent integrity validation — verify the persisted consent posture
+        // has not been tampered with outside the normal UI flows.
+        _trustIntegrity          = new TrustIntegrityService();
+        _consentIntegrityValidator = new ConsentIntegrityValidator(_trustIntegrity);
+        _trustPostureRecovery    = new TrustPostureRecoveryManager(_consentIntegrityValidator);
+
+        // Apply persisted operational trust settings (with tamper detection).
+        var rawSettings = _settings.Current;
+        var savedSettings = _trustPostureRecovery.ValidateOrRecover(rawSettings, out var tamperDetected);
+
+        if (tamperDetected)
+        {
+            _logger.Warning("Startup",
+                "Trust posture tamper detected — consent settings reset to safe defaults. " +
+                "The integrity file did not match the current settings.json.");
+            _governanceDiagnostics.RecordTamperDetected(
+                "Consent posture in settings.json did not match the stored integrity signature. " +
+                "Reset to AskForMediumAndHighRisk / ConfirmBeforeAction.");
+        }
+
+        // Publish endpoint rejection to governance log if URL was overridden above.
+        if (!llmUrlValidation.IsAllowed)
+            _governanceDiagnostics.RecordEndpointRejected(
+                llmUrlValidation.OriginalUrl, llmUrlValidation.Reason);
+
         if (Enum.TryParse<TrustConsentMode>(savedSettings.ConsentMode, out var savedConsentMode))
             _automationConsent!.SetMode(savedConsentMode);
         if (Enum.TryParse<AutomationMode>(savedSettings.AutomationMode, out var savedAutoMode))
@@ -1503,6 +1581,13 @@ public static class AppServices
         _simulationHistory   = null;
         _outcomeVerification = null;
         _healthTrajectory    = null;
+
+        // Phase 18C: Trust & Governance Hardening — stateless services.
+        _governanceDiagnostics   = null;
+        _trustPostureRecovery    = null;
+        _consentIntegrityValidator = null;
+        _trustIntegrity          = null;
+        _persistenceMonitor      = null;
 
         // Phase 19: Cognitive Reasoning Layer — stateless, just null references.
         // ReasoningMemoryService implements IDisposable (ReaderWriterLockSlim).

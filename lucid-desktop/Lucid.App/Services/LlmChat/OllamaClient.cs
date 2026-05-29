@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Lucid.Services.Trust.EndpointValidation;
 
 namespace Lucid.Services.LlmChat;
 
@@ -39,16 +40,34 @@ public sealed class OllamaClient : IDisposable
 
     /// <summary>
     /// Constructs an OllamaClient.
+    ///
+    /// <paramref name="baseUrl"/> is validated against the local-only policy.
+    /// If it targets a non-local address the value is silently replaced with
+    /// <see cref="DefaultBaseUrl"/> — Lucid never connects to remote hosts.
     /// </summary>
-    /// <param name="baseUrl">Ollama server URL — defaults to <c>http://localhost:11434</c>.</param>
+    /// <param name="baseUrl">Ollama server URL — must resolve to a loopback address.</param>
     /// <param name="modelName">Ollama model — defaults to <c>llama3.2:3b</c>.</param>
     public OllamaClient(
         string baseUrl   = DefaultBaseUrl,
         string modelName = DefaultModelName)
     {
-        _baseUrl   = string.IsNullOrWhiteSpace(baseUrl)   ? DefaultBaseUrl   : baseUrl.TrimEnd('/');
+        // ── Local-only enforcement ─────────────────────────────────────────────
+        // The platform guarantees "nothing ever leaves this machine."
+        // Any non-local URL in settings.json is silently replaced with the safe
+        // default. The validation result is stored for diagnostics callers.
+        var resolved = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl;
+        var validation = LocalEndpointValidator.Validate(resolved);
+        EndpointValidation = validation;
+        _baseUrl   = (validation.IsAllowed ? resolved : DefaultBaseUrl).TrimEnd('/');
         _modelName = string.IsNullOrWhiteSpace(modelName) ? DefaultModelName : modelName.Trim();
     }
+
+    /// <summary>
+    /// Result of the local-endpoint validation performed at construction.
+    /// IsAllowed = false means the supplied URL was rejected and the default
+    /// localhost URL is being used instead.
+    /// </summary>
+    public EndpointValidationResult EndpointValidation { get; }
 
     /// <summary>The model name this client is configured to use.</summary>
     public string ModelName => _modelName;
