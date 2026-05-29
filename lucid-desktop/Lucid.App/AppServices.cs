@@ -1,4 +1,9 @@
 ﻿using Lucid.Core.Infrastructure;
+using Lucid.Services.Infrastructure.Events;
+using Lucid.Services.Infrastructure.Lifecycle;
+using Lucid.Services.Infrastructure.OperationalState;
+using Lucid.Services.Diagnostics;
+using Lucid.Services.Diagnostics.Logging;
 using Lucid.Services;
 using Lucid.Services.Analytics;
 using Lucid.Services.Autonomy;
@@ -12,7 +17,6 @@ using Lucid.Services.Reasoning;
 using Lucid.Services.Workflow;
 using Lucid.Services.Baseline;
 using Lucid.Services.Behavior;
-using Lucid.Services.Diagnostics;
 using Lucid.Services.Distributed;
 using Lucid.Services.Governance;
 using Lucid.Services.Learning;
@@ -60,6 +64,14 @@ public static class AppServices
 {
     // ── Structured logger ─────────────────────────────────────────────────────
     private static ILucidLogger? _logger;
+
+    // ── Phase 18: Unified Operational Core ───────────────────────────────────
+    private static IEventBus?                    _eventBus;
+    private static ServiceHealthRegistry?        _healthRegistry;
+    private static LifecycleCoordinator?         _lifecycleCoordinator;
+    private static IOperationalStateCoordinator? _operationalState;
+    private static IOperationalLogger?           _operationalLogger;
+    private static IPlatformMetricsService?      _platformMetrics;
 
     private static ITelemetryService?           _telemetry;
     private static ITelemetryHistoryBuffer?     _history;
@@ -193,6 +205,50 @@ public static class AppServices
     /// </summary>
     public static ILucidLogger Logger =>
         _logger ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    // ── Phase 18 accessors ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Strongly-typed internal event bus. Use to publish and subscribe to
+    /// operational events without direct service-to-service coupling.
+    /// </summary>
+    public static IEventBus EventBus =>
+        _eventBus ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Platform service health registry.</summary>
+    public static ServiceHealthRegistry HealthRegistry =>
+        _healthRegistry ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Lifecycle coordinator — manages phased startup and shutdown
+    /// for services that opt in to <see cref="IServiceLifecycleParticipant"/>.
+    /// </summary>
+    public static LifecycleCoordinator LifecycleCoordinator =>
+        _lifecycleCoordinator ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Unified operational state snapshot. Read <see cref="IOperationalStateCoordinator.Current"/>
+    /// for the latest platform posture or subscribe to <see cref="IOperationalStateCoordinator.StateChanged"/>.
+    /// </summary>
+    public static IOperationalStateCoordinator OperationalState =>
+        _operationalState ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Operational logger with correlation context and in-memory capture
+    /// for the Diagnostics page.
+    /// </summary>
+    public static IOperationalLogger OperationalLogger =>
+        _operationalLogger ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Internal platform health and performance metrics.</summary>
+    public static IPlatformMetricsService PlatformMetrics =>
+        _platformMetrics ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called.");
 
     /// <summary>Live hardware telemetry — CPU, RAM, GPU, Disk, Thermal.</summary>
@@ -835,6 +891,20 @@ public static class AppServices
         // Created before everything else so all subsequent init steps can log.
         _logger = new LucidLogger();
         _logger.Info("Startup", "AppServices.Initialize() started");
+
+        // ── Phase 18: Unified Operational Core ────────────────────────────────
+        // These services form the platform's nervous system.
+        // Initialized immediately after the logger so every subsequent
+        // service can publish events, report state, and log with correlation.
+
+        _eventBus             = new LucidEventBus();
+        _healthRegistry       = new ServiceHealthRegistry();
+        _lifecycleCoordinator = new LifecycleCoordinator(_healthRegistry, _logger);
+        _operationalState     = new OperationalStateCoordinator();
+        _operationalLogger    = new OperationalLogger(_logger);
+        _platformMetrics      = new PlatformMetricsService();
+
+        _logger.Info("Startup", "Phase 18 Unified Operational Core initialized");
 
         // ── Settings ──────────────────────────────────────────────────────────
         // Loaded first — all downstream services can immediately read persisted
@@ -1532,6 +1602,16 @@ public static class AppServices
         _outcomeRepo        = null;
         _historicalAnalytics = null;
         _lastInsightIds     = [];
+
+        // ── Phase 18: Unified Operational Core teardown ───────────────────────
+        // Tear down in reverse init order: metrics → state → lifecycle → event bus.
+        // OperationalLogger and logger are disposed last.
+        (_platformMetrics     as IDisposable)?.Dispose(); _platformMetrics      = null;
+        (_operationalState    as IDisposable)?.Dispose(); _operationalState     = null;
+        _lifecycleCoordinator?.Dispose();                 _lifecycleCoordinator = null;
+        _healthRegistry?.Dispose();                       _healthRegistry       = null;
+        (_eventBus            as IDisposable)?.Dispose(); _eventBus             = null;
+        (_operationalLogger   as IDisposable)?.Dispose(); _operationalLogger    = null;
 
         // Dispose the logger last so shutdown log entries are written.
         if (_logger is IDisposable disposableLogger)
