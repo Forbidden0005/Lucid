@@ -512,6 +512,43 @@
     <!-- Reasoning Outcome -->
     <Compile Include="Services\Reasoning\Cognitive\ReasoningOutcome.cs" />
 
+    <!-- Phase 20: Unified Human Interaction & Cognitive UX Layer ─────────────── -->
+    <!-- D5: Calm Operational Language System -->
+    <Compile Include="Services\Interaction\Language\OperationalLanguagePolicy.cs" />
+    <Compile Include="Services\Interaction\Language\SeverityNarrativeEngine.cs" />
+    <Compile Include="Services\Interaction\Language\ConfidenceToneAdjuster.cs" />
+    <Compile Include="Services\Interaction\Language\CalmCommunicationFormatter.cs" />
+    <!-- D1: Unified Cognitive Presentation Layer -->
+    <Compile Include="Services\Interaction\Presentation\PresentationModels.cs" />
+    <Compile Include="Services\Interaction\Presentation\ConfidenceExplanationFormatter.cs" />
+    <Compile Include="Services\Interaction\Presentation\OperationalInsightPresenter.cs" />
+    <Compile Include="Services\Interaction\Presentation\CognitivePresentationService.cs" />
+    <!-- D2: Adaptive Information Density -->
+    <Compile Include="Services\Interaction\Density\InformationDensityLevel.cs" />
+    <Compile Include="Services\Interaction\Density\CognitiveLoadEstimator.cs" />
+    <Compile Include="Services\Interaction\Density\InformationDensityCoordinator.cs" />
+    <!-- D3: Unified Recommendation Surface -->
+    <Compile Include="Services\Interaction\Recommendations\RecommendationLifecycleState.cs" />
+    <Compile Include="Services\Interaction\Recommendations\UnifiedRecommendation.cs" />
+    <Compile Include="Services\Interaction\Recommendations\UnifiedRecommendationService.cs" />
+    <!-- D4: Explainability UX Infrastructure -->
+    <Compile Include="Services\Interaction\Explainability\EvidenceNarrativeBuilder.cs" />
+    <Compile Include="Services\Interaction\Explainability\ConfidenceNarrativeBuilder.cs" />
+    <Compile Include="Services\Interaction\Explainability\ArbitrationNarrativeBuilder.cs" />
+    <Compile Include="Services\Interaction\Explainability\ExplainabilityRenderer.cs" />
+    <!-- D6: Cognitive Timeline & Operational Narrative -->
+    <Compile Include="Services\Interaction\Narrative\CognitiveTimelineBuilder.cs" />
+    <Compile Include="Services\Interaction\Narrative\EventCorrelationNarrator.cs" />
+    <Compile Include="Services\Interaction\Narrative\WorkflowOutcomeNarrator.cs" />
+    <!-- D7: Unified Attention & Priority Coordination -->
+    <Compile Include="Services\Interaction\Attention\CognitiveInterruptBudget.cs" />
+    <Compile Include="Services\Interaction\Attention\RecommendationCooldownManager.cs" />
+    <Compile Include="Services\Interaction\Attention\NotificationPriorityEngine.cs" />
+    <Compile Include="Services\Interaction\Attention\AttentionCoordinator.cs" />
+    <!-- D8: Interaction Diagnostics -->
+    <Compile Include="Services\Interaction\Diagnostics\InteractionHealthMetrics.cs" />
+    <Compile Include="Services\Interaction\Diagnostics\InteractionDiagnosticsService.cs" />
+
     <!--
       Core infrastructure — compiled selectively.
       Contracts and Infrastructure are live; Extensions are live.
