@@ -14,6 +14,10 @@ using Lucid.Services.LlmChat;
 using Lucid.Services.DesktopContext;
 using Lucid.Services.Companion;
 using Lucid.Services.Reasoning;
+using Lucid.Services.Reasoning.Cognitive;
+using Lucid.Services.Reasoning.Context;
+using Lucid.Services.Reasoning.Memory;
+using Lucid.Services.Intelligence.Arbitration;
 using Lucid.Services.Workflow;
 using Lucid.Services.Baseline;
 using Lucid.Services.Behavior;
@@ -185,6 +189,12 @@ public static class AppServices
     private static TaskCompletionCoordinator?       _taskCoordinator;
     private static AutonomousWorkflowEngine?        _autonomousWorkflowEngine;
 
+    // ── Phase 19: Unified Cognitive Reasoning Layer ───────────────────────────
+    private static IOperationalContextSynthesizer? _contextSynthesizer;
+    private static IReasoningMemoryService?        _reasoningMemory;
+    private static IRecommendationArbitrator?      _arbitrator;
+    private static ICognitiveReasoningEngine?      _cognitiveReasoning;
+
     // ── Semantic Desktop Understanding layer (Phase 18B) ─────────────────────
     private static ConsentBoundScreenAnalysis?  _visualConsent;
     private static ScreenCaptureCoordinator?    _screenCapture;
@@ -249,6 +259,40 @@ public static class AppServices
     /// <summary>Internal platform health and performance metrics.</summary>
     public static IPlatformMetricsService PlatformMetrics =>
         _platformMetrics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    // ── Phase 19 accessors ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Synthesizes current workload context from telemetry and process signals.
+    /// Used by the cognitive reasoning engine and recommendation arbitrator.
+    /// </summary>
+    public static IOperationalContextSynthesizer ContextSynthesizer =>
+        _contextSynthesizer ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Lightweight in-memory inference history. Tracks pattern recurrence,
+    /// validation outcomes, and confidence calibration inputs.
+    /// </summary>
+    public static IReasoningMemoryService ReasoningMemory =>
+        _reasoningMemory ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Recommendation arbitrator — deduplicates, ranks, and clusters
+    /// recommended actions through the prioritization + fatigue + context pipeline.
+    /// </summary>
+    public static IRecommendationArbitrator RecommendationArbitrator =>
+        _arbitrator ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Cognitive reasoning engine. Call <c>AnalyzeAsync()</c> to run a
+    /// cross-domain inference cycle and get contextual operational conclusions.
+    /// </summary>
+    public static ICognitiveReasoningEngine CognitiveReasoning =>
+        _cognitiveReasoning ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called.");
 
     /// <summary>Live hardware telemetry — CPU, RAM, GPU, Disk, Thermal.</summary>
@@ -1260,6 +1304,30 @@ public static class AppServices
         _alertFatigueManager    = new AlertFatigueManager(_interventionMemory);
         _recommendationExplanation = new RecommendationExplanationService();
 
+        // ── Phase 19: Unified Cognitive Reasoning Layer ───────────────────────
+        // Context synthesizer classifies the current workload from telemetry signals.
+        // Reasoning memory tracks inference history for pattern detection and confidence calibration.
+        // Recommendation arbitrator composes existing prioritizer + fatigue + context suppression.
+        // Cognitive reasoning engine synthesizes all signals into higher-level operational conclusions.
+        var globalPrioritizer = new GlobalRecommendationPrioritizer();
+        _contextSynthesizer = new OperationalContextSynthesizer(
+            _operationalState!);
+        _reasoningMemory    = new ReasoningMemoryService();
+        _arbitrator         = new RecommendationArbitrator(
+            globalPrioritizer,
+            _alertFatigueManager!,
+            _learningService!);
+        _cognitiveReasoning = new CognitiveReasoningEngine(
+            _intelligence!,
+            _operationalState!,
+            _contextSynthesizer,
+            _reasoningMemory,
+            _eventBus!,
+            _operationalLogger!,
+            _session!);
+
+        _logger.Info("Startup", "Phase 19 Unified Cognitive Reasoning Layer initialized");
+
         // ── Operational Evidence & Workflow layer ─────────────────────────────
         // All services are stateless (no Start/Stop). Created after all upstream
         // intelligence and history services are running so they have data to work with.
@@ -1435,6 +1503,14 @@ public static class AppServices
         _simulationHistory   = null;
         _outcomeVerification = null;
         _healthTrajectory    = null;
+
+        // Phase 19: Cognitive Reasoning Layer — stateless, just null references.
+        // ReasoningMemoryService implements IDisposable (ReaderWriterLockSlim).
+        (_reasoningMemory as IDisposable)?.Dispose();
+        _cognitiveReasoning = null;
+        _arbitrator         = null;
+        _reasoningMemory    = null;
+        _contextSynthesizer = null;
 
         // Personalization layer — stateless services, just null references.
         _interventionMemory        = null;

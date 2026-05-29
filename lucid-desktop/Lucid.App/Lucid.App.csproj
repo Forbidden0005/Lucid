@@ -436,6 +436,36 @@
     <Compile Include="Services\Diagnostics\IPlatformMetricsService.cs" />
     <Compile Include="Services\Diagnostics\PlatformMetricsService.cs" />
 
+    <!-- Phase 19: Unified Cognitive Reasoning Layer ──────────────────────────── -->
+    <!-- Confidence & Evidence models -->
+    <Compile Include="Services\Reasoning\Cognitive\ConfidenceLevel.cs" />
+    <Compile Include="Services\Reasoning\Cognitive\EvidenceStrength.cs" />
+    <Compile Include="Services\Reasoning\Cognitive\UncertaintyFactor.cs" />
+    <Compile Include="Services\Reasoning\Cognitive\ConfidenceScore.cs" />
+    <Compile Include="Services\Reasoning\Cognitive\ReasoningEvidence.cs" />
+    <Compile Include="Services\Reasoning\Cognitive\InferencePriority.cs" />
+    <!-- Operational Inference -->
+    <Compile Include="Services\Reasoning\Cognitive\OperationalInference.cs" />
+    <Compile Include="Services\Reasoning\Cognitive\ReasoningContext.cs" />
+    <!-- Cognitive Reasoning Engine -->
+    <Compile Include="Services\Reasoning\Cognitive\ICognitiveReasoningEngine.cs" />
+    <Compile Include="Services\Reasoning\Cognitive\CognitiveReasoningEngine.cs" />
+    <!-- Context Synthesis -->
+    <Compile Include="Services\Reasoning\Context\ContextProfile.cs" />
+    <Compile Include="Services\Reasoning\Context\ActivityInterpretationEngine.cs" />
+    <Compile Include="Services\Reasoning\Context\IOperationalContextSynthesizer.cs" />
+    <Compile Include="Services\Reasoning\Context\OperationalContextSynthesizer.cs" />
+    <!-- Reasoning Memory -->
+    <Compile Include="Services\Reasoning\Memory\ReasoningMemoryEntry.cs" />
+    <Compile Include="Services\Reasoning\Memory\IReasoningMemoryService.cs" />
+    <Compile Include="Services\Reasoning\Memory\ReasoningMemoryService.cs" />
+    <!-- Recommendation Arbitration -->
+    <Compile Include="Services\Intelligence\Arbitration\RecommendationSeverityModel.cs" />
+    <Compile Include="Services\Intelligence\Arbitration\RecommendationCluster.cs" />
+    <Compile Include="Services\Intelligence\Arbitration\ContextSuppressionEngine.cs" />
+    <Compile Include="Services\Intelligence\Arbitration\IRecommendationArbitrator.cs" />
+    <Compile Include="Services\Intelligence\Arbitration\RecommendationArbitrator.cs" />
+
     <!--
       Core infrastructure — compiled selectively.
       Contracts and Infrastructure are live; Extensions are live.
