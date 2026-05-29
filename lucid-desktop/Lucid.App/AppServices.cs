@@ -56,6 +56,13 @@ using Lucid.Services.Interaction.Explainability;
 using Lucid.Services.Interaction.Narrative;
 using Lucid.Services.Interaction.Attention;
 using Lucid.Services.Interaction.Diagnostics;
+using Lucid.Services.Intelligence.Patterns;
+using Lucid.Services.Intelligence.Baselines;
+using Lucid.Services.Intelligence.Outcomes;
+using Lucid.Services.Intelligence.Calibration;
+using Lucid.Services.Intelligence.Drift;
+using Lucid.Services.Intelligence.Learning;
+using Lucid.Services.Diagnostics.Learning;
 using Microsoft.UI.Dispatching;
 
 
@@ -221,6 +228,17 @@ public static class AppServices
     private static RecommendationOutcomeTracker? _outcomeTracker;
     private static PatternConsistencyAnalyzer?   _patternAnalyzer;
 
+    // ── Phase 21: Adaptive Operational Learning & Pattern Intelligence ────────
+    private static PatternIntelligenceEngine?       _patternIntelligence;
+    private static AdaptiveBaselineTracker?         _adaptiveBaselines;
+    private static RecommendationEffectivenessAnalyzer? _effectivenessAnalyzer;
+    private static LearningOutcomeService?          _learningOutcomeService;
+    private static ConfidenceCalibrationEngine?     _calibrationEngine;
+    private static LongitudinalBehaviorTracker?     _longitudinalTracker;
+    private static GovernanceLearningPolicy?        _governanceLearningPolicy;
+    private static AdaptiveLearningMetrics?         _adaptiveLearningMetrics;
+    private static LearningDiagnosticsService?      _learningDiagnostics;
+
     // ── Phase 20: Unified Human Interaction & Cognitive UX Layer ─────────────
     private static CognitivePresentationService?    _cognitivePresentationService;
     private static InformationDensityCoordinator?   _densityCoordinator;
@@ -366,6 +384,53 @@ public static class AppServices
     /// </summary>
     public static PatternConsistencyAnalyzer PatternAnalyzer =>
         _patternAnalyzer ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    // ── Phase 21: Adaptive Operational Learning & Pattern Intelligence ─────────
+
+    /// <summary>Pattern intelligence engine — detects recurring operational patterns.</summary>
+    public static PatternIntelligenceEngine PatternIntelligence =>
+        _patternIntelligence ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Adaptive baseline tracker — per-workload-type baseline profiles.</summary>
+    public static AdaptiveBaselineTracker AdaptiveBaselines =>
+        _adaptiveBaselines ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Recommendation effectiveness analyzer — outcome-grounded usefulness scoring.</summary>
+    public static RecommendationEffectivenessAnalyzer EffectivenessAnalyzer =>
+        _effectivenessAnalyzer ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Learning outcome service — unified outcome coordinator.</summary>
+    public static LearningOutcomeService LearningOutcomes =>
+        _learningOutcomeService ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Confidence calibration engine — adaptive accuracy tracking and drift detection.</summary>
+    public static ConfidenceCalibrationEngine CalibrationEngine =>
+        _calibrationEngine ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Longitudinal behavior tracker — extended time-window metric history.</summary>
+    public static LongitudinalBehaviorTracker LongitudinalTracker =>
+        _longitudinalTracker ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Governance learning policy — evaluates learning permission from consent posture.</summary>
+    public static GovernanceLearningPolicy LearningPolicy =>
+        _governanceLearningPolicy ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Adaptive learning metrics — pattern recognition and calibration counters.</summary>
+    public static AdaptiveLearningMetrics AdaptiveLearningMetrics =>
+        _adaptiveLearningMetrics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Learning diagnostics service — adaptive learning audit trail.</summary>
+    public static LearningDiagnosticsService LearningDiagnostics =>
+        _learningDiagnostics ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called.");
 
     // ── Phase 20: Unified Human Interaction & Cognitive UX Layer ─────────────
@@ -1521,6 +1586,22 @@ public static class AppServices
 
         _logger.Info("Startup", "Phase 20 Unified Human Interaction & Cognitive UX Layer initialized");
 
+        // ── Phase 21: Adaptive Operational Learning & Pattern Intelligence ────
+        _adaptiveLearningMetrics  = new AdaptiveLearningMetrics();
+        _learningDiagnostics      = new LearningDiagnosticsService(_eventBus!);
+        _patternIntelligence      = new PatternIntelligenceEngine();
+        _adaptiveBaselines        = new AdaptiveBaselineTracker();
+        _effectivenessAnalyzer    = new RecommendationEffectivenessAnalyzer(
+            _outcomeTracker!, _learningService!);
+        _learningOutcomeService   = new LearningOutcomeService(
+            _effectivenessAnalyzer, _interventionMemory!, _learningService!);
+        _calibrationEngine        = new ConfidenceCalibrationEngine();
+        _longitudinalTracker      = new LongitudinalBehaviorTracker();
+        _governanceLearningPolicy = new GovernanceLearningPolicy(
+            _settings!, _governanceDiagnostics!, _operationalState!);
+
+        _logger.Info("Startup", "Phase 21 Adaptive Operational Learning & Pattern Intelligence initialized");
+
         // ── Operational Evidence & Workflow layer ─────────────────────────────
         // All services are stateless (no Start/Stop). Created after all upstream
         // intelligence and history services are running so they have data to work with.
@@ -1754,6 +1835,17 @@ public static class AppServices
         _reasoningDiagnostics = null;
         _outcomeTracker       = null;
         _patternAnalyzer      = null;
+
+        // Phase 21: Adaptive Learning Layer — null references only.
+        _patternIntelligence      = null;
+        _adaptiveBaselines        = null;
+        _effectivenessAnalyzer    = null;
+        _learningOutcomeService   = null;
+        _calibrationEngine        = null;
+        _longitudinalTracker      = null;
+        _governanceLearningPolicy = null;
+        _adaptiveLearningMetrics  = null;
+        _learningDiagnostics      = null;
 
         // Phase 20: Interaction Layer — stateless services, just null references.
         _cognitivePresentationService = null;

@@ -549,6 +549,37 @@
     <Compile Include="Services\Interaction\Diagnostics\InteractionHealthMetrics.cs" />
     <Compile Include="Services\Interaction\Diagnostics\InteractionDiagnosticsService.cs" />
 
+    <!-- Phase 21: Adaptive Operational Learning & Pattern Intelligence ─────── -->
+    <!-- D1: Pattern Intelligence Engine -->
+    <Compile Include="Services\Intelligence\Patterns\OperationalPattern.cs" />
+    <Compile Include="Services\Intelligence\Patterns\RecurrenceTracker.cs" />
+    <Compile Include="Services\Intelligence\Patterns\PatternSimilarityAnalyzer.cs" />
+    <Compile Include="Services\Intelligence\Patterns\PatternIntelligenceEngine.cs" />
+    <!-- D2: Baseline Modeling Infrastructure -->
+    <Compile Include="Services\Intelligence\Baselines\BaselineModels.cs" />
+    <Compile Include="Services\Intelligence\Baselines\VarianceAnalyzer.cs" />
+    <Compile Include="Services\Intelligence\Baselines\AdaptiveBaselineTracker.cs" />
+    <!-- D3: Recommendation Outcome Learning -->
+    <Compile Include="Services\Intelligence\Outcomes\OutcomeEffectivenessRecord.cs" />
+    <Compile Include="Services\Intelligence\Outcomes\RecommendationEffectivenessAnalyzer.cs" />
+    <Compile Include="Services\Intelligence\Outcomes\LearningOutcomeService.cs" />
+    <!-- D4: Adaptive Confidence Calibration -->
+    <Compile Include="Services\Intelligence\Calibration\CalibrationRecord.cs" />
+    <Compile Include="Services\Intelligence\Calibration\HistoricalAccuracyTracker.cs" />
+    <Compile Include="Services\Intelligence\Calibration\ConfidenceDriftAnalyzer.cs" />
+    <Compile Include="Services\Intelligence\Calibration\ConfidenceCalibrationEngine.cs" />
+    <!-- D5: Operational Drift Detection (additive) -->
+    <Compile Include="Services\Intelligence\Drift\StabilityTrendModel.cs" />
+    <Compile Include="Services\Intelligence\Drift\LongitudinalBehaviorTracker.cs" />
+    <Compile Include="Services\Intelligence\Drift\TrendEvolutionAnalyzer.cs" />
+    <!-- D6: Explainable Learning Infrastructure -->
+    <Compile Include="Services\Diagnostics\Learning\LearningTraceRecord.cs" />
+    <Compile Include="Services\Diagnostics\Learning\LearningNarrativeBuilder.cs" />
+    <Compile Include="Services\Diagnostics\Learning\LearningDiagnosticsService.cs" />
+    <!-- D7 + D8: Governance Learning Policy & Adaptive Metrics -->
+    <Compile Include="Services\Intelligence\Learning\GovernanceLearningPolicy.cs" />
+    <Compile Include="Services\Intelligence\Learning\AdaptiveLearningMetrics.cs" />
+
     <!--
       Core infrastructure — compiled selectively.
       Contracts and Infrastructure are live; Extensions are live.
