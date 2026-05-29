@@ -1,4 +1,5 @@
-﻿using Lucid.Services;
+﻿using Lucid.Core.Infrastructure;
+using Lucid.Services;
 using Lucid.Services.Analytics;
 using Lucid.Services.Autonomy;
 using Lucid.Services.Automation;
@@ -57,6 +58,9 @@ namespace Lucid;
 /// </summary>
 public static class AppServices
 {
+    // ── Structured logger ─────────────────────────────────────────────────────
+    private static ILucidLogger? _logger;
+
     private static ITelemetryService?           _telemetry;
     private static ITelemetryHistoryBuffer?     _history;
     private static ISystemBaselineService?      _baseline;
@@ -182,6 +186,14 @@ public static class AppServices
     private static ISettingsService? _settings;
 
     // ── Service accessors ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Structured file-backed logger. Available from the first line of
+    /// Initialize() — safe to call from any service or background thread.
+    /// </summary>
+    public static ILucidLogger Logger =>
+        _logger ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
 
     /// <summary>Live hardware telemetry — CPU, RAM, GPU, Disk, Thermal.</summary>
     public static ITelemetryService Telemetry =>
@@ -819,6 +831,11 @@ public static class AppServices
     /// </summary>
     public static void Initialize(DispatcherQueue uiDispatcher)
     {
+        // ── Structured logger ─────────────────────────────────────────────────
+        // Created before everything else so all subsequent init steps can log.
+        _logger = new LucidLogger();
+        _logger.Info("Startup", "AppServices.Initialize() started");
+
         // ── Settings ──────────────────────────────────────────────────────────
         // Loaded first — all downstream services can immediately read persisted
         // preferences. File read is synchronous and fast (< 5 ms). Defaults are
@@ -1340,6 +1357,7 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        _logger?.Info("Startup", "AppServices.Shutdown() called — tearing down services");
         _settings = null;
 
         // Simulation, history, verification, and trajectory services are stateless — null them.
@@ -1514,6 +1532,13 @@ public static class AppServices
         _outcomeRepo        = null;
         _historicalAnalytics = null;
         _lastInsightIds     = [];
+
+        // Dispose the logger last so shutdown log entries are written.
+        if (_logger is IDisposable disposableLogger)
+        {
+            disposableLogger.Dispose();
+            _logger = null;
+        }
     }
 }
 
