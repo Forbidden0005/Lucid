@@ -436,6 +436,31 @@
     <Compile Include="Services\Diagnostics\IPlatformMetricsService.cs" />
     <Compile Include="Services\Diagnostics\PlatformMetricsService.cs" />
 
+    <!-- Phase 18C: Trust & Governance Hardening ──────────────────────────────── -->
+    <!-- D1: Local-Only LLM Enforcement -->
+    <Compile Include="Services\Trust\EndpointValidation\EndpointTrustClassification.cs" />
+    <Compile Include="Services\Trust\EndpointValidation\EndpointValidationResult.cs" />
+    <Compile Include="Services\Trust\EndpointValidation\LocalEndpointValidator.cs" />
+    <!-- D2: Consent Integrity Protection -->
+    <Compile Include="Services\Trust\Integrity\SignedTrustEnvelope.cs" />
+    <Compile Include="Services\Trust\Integrity\TrustIntegrityService.cs" />
+    <Compile Include="Services\Trust\Integrity\ConsentIntegrityValidator.cs" />
+    <Compile Include="Services\Trust\Integrity\TrustPostureRecoveryManager.cs" />
+    <!-- D3: Executor Identity Validation -->
+    <Compile Include="Services\Execution\Validation\ProcessExecutionFingerprint.cs" />
+    <Compile Include="Services\Execution\Validation\VerifiedProcessTarget.cs" />
+    <Compile Include="Services\Execution\Validation\ProcessIdentityValidator.cs" />
+    <!-- D4: Persistence Overflow Visibility -->
+    <Compile Include="Services\Persistence\Reliability\WriteQueueMetrics.cs" />
+    <Compile Include="Services\Persistence\Reliability\PersistenceHealthMonitor.cs" />
+    <!-- D5: Startup Deadlock Hardening -->
+    <Compile Include="Services\Infrastructure\Startup\StartupHealthSnapshot.cs" />
+    <Compile Include="Services\Infrastructure\Startup\StartupTimeoutGuard.cs" />
+    <!-- D6: Trust & Governance Diagnostics -->
+    <Compile Include="Services\Diagnostics\Governance\TrustTransitionRecord.cs" />
+    <Compile Include="Services\Diagnostics\Governance\GovernanceAuditEvent.cs" />
+    <Compile Include="Services\Diagnostics\Governance\GovernanceDiagnosticsService.cs" />
+
     <!-- Phase 19: Unified Cognitive Reasoning Layer ──────────────────────────── -->
     <!-- Confidence & Evidence models -->
     <Compile Include="Services\Reasoning\Cognitive\ConfidenceLevel.cs" />

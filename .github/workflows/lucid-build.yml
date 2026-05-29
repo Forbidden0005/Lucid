@@ -1,0 +1,89 @@
+name: Lucid Build & Test
+
+on:
+  push:
+    branches: [ main, "phase-18c/**", "feature/**" ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  BUILD_CONFIGURATION: Debug
+
+jobs:
+  # ── Build ────────────────────────────────────────────────────────────────────
+  build:
+    name: Build (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore NuGet packages
+        working-directory: lucid-desktop
+        run: dotnet restore Lucid.slnx -p:Platform=x64
+
+      - name: Build Lucid.App
+        working-directory: lucid-desktop
+        run: >
+          dotnet build Lucid.App/Lucid.App.csproj
+          -c ${{ env.BUILD_CONFIGURATION }}
+          -p:Platform=x64
+          --no-restore
+
+      - name: Build Lucid.Tests
+        working-directory: lucid-desktop
+        run: >
+          dotnet build Lucid.Tests/Lucid.Tests.csproj
+          -c ${{ env.BUILD_CONFIGURATION }}
+          -p:Platform=x64
+          --no-restore
+
+  # ── Tests ────────────────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests (x64)
+    runs-on: windows-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore NuGet packages
+        working-directory: lucid-desktop
+        run: dotnet restore Lucid.slnx -p:Platform=x64
+
+      - name: Run tests
+        working-directory: lucid-desktop
+        run: >
+          dotnet test Lucid.Tests/Lucid.Tests.csproj
+          -c ${{ env.BUILD_CONFIGURATION }}
+          -p:Platform=x64
+          --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: lucid-desktop/Lucid.Tests/TestResults/
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: "lucid-desktop/Lucid.Tests/TestResults/**/coverage.cobertura.xml"
