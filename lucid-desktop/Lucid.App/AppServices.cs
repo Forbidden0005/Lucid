@@ -49,6 +49,13 @@ using Lucid.Services.Infrastructure.Startup;
 using Lucid.Services.Persistence.Reliability;
 using Lucid.Services.Diagnostics.Governance;
 using Lucid.Services.Diagnostics.Reasoning;
+using Lucid.Services.Interaction.Presentation;
+using Lucid.Services.Interaction.Density;
+using Lucid.Services.Interaction.Recommendations;
+using Lucid.Services.Interaction.Explainability;
+using Lucid.Services.Interaction.Narrative;
+using Lucid.Services.Interaction.Attention;
+using Lucid.Services.Interaction.Diagnostics;
 using Microsoft.UI.Dispatching;
 
 
@@ -214,6 +221,16 @@ public static class AppServices
     private static RecommendationOutcomeTracker? _outcomeTracker;
     private static PatternConsistencyAnalyzer?   _patternAnalyzer;
 
+    // ── Phase 20: Unified Human Interaction & Cognitive UX Layer ─────────────
+    private static CognitivePresentationService?    _cognitivePresentationService;
+    private static InformationDensityCoordinator?   _densityCoordinator;
+    private static UnifiedRecommendationService?    _unifiedRecommendationService;
+    private static ExplainabilityRenderer?          _explainabilityRenderer;
+    private static CognitiveTimelineBuilder?        _cognitiveTimelineBuilder;
+    private static AttentionCoordinator?            _attentionCoordinator;
+    private static InteractionHealthMetrics?        _interactionMetrics;
+    private static InteractionDiagnosticsService?   _interactionDiagnostics;
+
     // ── Semantic Desktop Understanding layer (Phase 18B) ─────────────────────
     private static ConsentBoundScreenAnalysis?  _visualConsent;
     private static ScreenCaptureCoordinator?    _screenCapture;
@@ -349,6 +366,69 @@ public static class AppServices
     /// </summary>
     public static PatternConsistencyAnalyzer PatternAnalyzer =>
         _patternAnalyzer ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    // ── Phase 20: Unified Human Interaction & Cognitive UX Layer ─────────────
+
+    /// <summary>
+    /// Converts cognitive engine output and insight findings into
+    /// policy-compliant, fully-formatted presentation snapshots for ViewModels.
+    /// </summary>
+    public static CognitivePresentationService CognitivePresentation =>
+        _cognitivePresentationService ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Tracks the recommended information density level based on system load
+    /// and active inference count. Supports manual override for diagnostic panels.
+    /// </summary>
+    public static InformationDensityCoordinator DensityCoordinator =>
+        _densityCoordinator ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Transforms arbitration clusters into lifecycle-tracked
+    /// <see cref="UnifiedRecommendation"/> records with formatted display text.
+    /// </summary>
+    public static UnifiedRecommendationService UnifiedRecommendations =>
+        _unifiedRecommendationService ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Renders inference explanations, confidence breakdowns, and arbitration
+    /// narratives for the Explainability UX panel.
+    /// </summary>
+    public static ExplainabilityRenderer ExplainabilityRenderer =>
+        _explainabilityRenderer ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Builds narrative window summaries and 15-minute bucket groups
+    /// from the timeline event stream.
+    /// </summary>
+    public static CognitiveTimelineBuilder CognitiveTimeline =>
+        _cognitiveTimelineBuilder ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Central attention gatekeeper — evaluates whether a recommendation should
+    /// surface now given budget, cooldowns, workload, and fatigue state.
+    /// </summary>
+    public static AttentionCoordinator AttentionCoordinator =>
+        _attentionCoordinator ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>Interaction-layer health metrics: suppression rates, render latency, etc.</summary>
+    public static InteractionHealthMetrics InteractionMetrics =>
+        _interactionMetrics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Interaction diagnostics service — records suppression events and publishes
+    /// diagnostic events for the "Why was this hidden?" transparency panel.
+    /// </summary>
+    public static InteractionDiagnosticsService InteractionDiagnostics =>
+        _interactionDiagnostics ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called.");
 
     // ── Phase 18C: Trust & Governance ────────────────────────────────────────
@@ -1421,6 +1501,26 @@ public static class AppServices
 
         _logger.Info("Startup", "Phase 19 Unified Cognitive Reasoning Layer initialized");
 
+        // ── Phase 20: Unified Human Interaction & Cognitive UX Layer ──────────
+        // All services are created after Phase 19 so they can inject the cognitive engine.
+        // Static language/formatting utilities (OperationalLanguagePolicy, SeverityNarrativeEngine,
+        // ConfidenceToneAdjuster, CalmCommunicationFormatter) require no registration.
+        _interactionMetrics           = new InteractionHealthMetrics();
+        _cognitivePresentationService = new CognitivePresentationService(
+            _cognitiveReasoning!, _intelligence!);
+        _densityCoordinator           = new InformationDensityCoordinator(
+            _operationalState!, _cognitiveReasoning!);
+        _unifiedRecommendationService = new UnifiedRecommendationService(
+            _arbitrator!, _alertFatigueManager!);
+        _explainabilityRenderer       = new ExplainabilityRenderer(_recommendationExplanation);
+        _cognitiveTimelineBuilder     = new CognitiveTimelineBuilder(_timeline!);
+        _attentionCoordinator         = new AttentionCoordinator(
+            _alertFatigueManager!, _operationalState!);
+        _interactionDiagnostics       = new InteractionDiagnosticsService(
+            _eventBus!, _interactionMetrics);
+
+        _logger.Info("Startup", "Phase 20 Unified Human Interaction & Cognitive UX Layer initialized");
+
         // ── Operational Evidence & Workflow layer ─────────────────────────────
         // All services are stateless (no Start/Stop). Created after all upstream
         // intelligence and history services are running so they have data to work with.
@@ -1654,6 +1754,16 @@ public static class AppServices
         _reasoningDiagnostics = null;
         _outcomeTracker       = null;
         _patternAnalyzer      = null;
+
+        // Phase 20: Interaction Layer — stateless services, just null references.
+        _cognitivePresentationService = null;
+        _densityCoordinator           = null;
+        _unifiedRecommendationService = null;
+        _explainabilityRenderer       = null;
+        _cognitiveTimelineBuilder     = null;
+        _attentionCoordinator         = null;
+        _interactionMetrics           = null;
+        _interactionDiagnostics       = null;
         _contextSynthesizer = null;
 
         // Personalization layer — stateless services, just null references.
