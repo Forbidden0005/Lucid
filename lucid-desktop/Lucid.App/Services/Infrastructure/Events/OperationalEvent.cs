@@ -1,3 +1,5 @@
+using Lucid.Services.Reasoning.Cognitive;
+
 namespace Lucid.Services.Infrastructure.Events;
 
 // ── Base contract ─────────────────────────────────────────────────────────────
@@ -187,3 +189,17 @@ public sealed record ConversationTurnStartedEvent(string SessionId) : Operationa
 public sealed record ConversationTurnCompletedEvent(
     string  SessionId,
     string? ResolvedIntent) : OperationalEvent;
+
+// ── Cognitive Reasoning domain ────────────────────────────────────────────────
+
+/// <summary>
+/// Published after each cognitive reasoning cycle completes.
+/// Subscribers can react to new inferences without polling
+/// <see cref="Lucid.Services.Reasoning.Cognitive.ICognitiveReasoningEngine.CurrentInferences"/>.
+/// </summary>
+/// <param name="InferenceCount">Number of <see cref="Lucid.Services.Reasoning.Cognitive.OperationalInference"/> objects produced.</param>
+/// <param name="HighestPriority">Priority of the highest-priority inference produced,
+/// or <see cref="InferencePriority.Background"/> when no inferences were generated.</param>
+public sealed record CognitiveInferenceCycleCompletedEvent(
+    int               InferenceCount,
+    InferencePriority HighestPriority) : OperationalEvent;
