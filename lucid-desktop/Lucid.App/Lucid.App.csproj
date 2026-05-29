@@ -404,6 +404,38 @@
     <None Include="Controls\**" />
     <None Include="Models\**" />
 
+    <!-- Phase 18: Unified Operational Core ─────────────────────────────────── -->
+    <!-- Event Bus -->
+    <Compile Include="Services\Infrastructure\Events\EventPriority.cs" />
+    <Compile Include="Services\Infrastructure\Events\EventDispatchMode.cs" />
+    <Compile Include="Services\Infrastructure\Events\OperationalEvent.cs" />
+    <Compile Include="Services\Infrastructure\Events\EventSubscriptionToken.cs" />
+    <Compile Include="Services\Infrastructure\Events\IEventBus.cs" />
+    <Compile Include="Services\Infrastructure\Events\LucidEventBus.cs" />
+    <!-- Lifecycle Coordinator -->
+    <Compile Include="Services\Infrastructure\Lifecycle\StartupPhase.cs" />
+    <Compile Include="Services\Infrastructure\Lifecycle\ShutdownPhase.cs" />
+    <Compile Include="Services\Infrastructure\Lifecycle\IServiceLifecycleParticipant.cs" />
+    <Compile Include="Services\Infrastructure\Lifecycle\ServiceHealthRegistry.cs" />
+    <Compile Include="Services\Infrastructure\Lifecycle\LifecycleCoordinator.cs" />
+    <!-- Operational State Coordinator -->
+    <Compile Include="Services\Infrastructure\OperationalState\OperationalMode.cs" />
+    <Compile Include="Services\Infrastructure\OperationalState\RuntimeCondition.cs" />
+    <Compile Include="Services\Infrastructure\OperationalState\SystemAttentionLevel.cs" />
+    <Compile Include="Services\Infrastructure\OperationalState\OperationalStateSnapshot.cs" />
+    <Compile Include="Services\Infrastructure\OperationalState\IOperationalStateCoordinator.cs" />
+    <Compile Include="Services\Infrastructure\OperationalState\OperationalStateCoordinator.cs" />
+    <!-- Operational Logger -->
+    <Compile Include="Services\Diagnostics\Logging\LogSeverity.cs" />
+    <Compile Include="Services\Diagnostics\Logging\CorrelationContext.cs" />
+    <Compile Include="Services\Diagnostics\Logging\OperationalLogEntry.cs" />
+    <Compile Include="Services\Diagnostics\Logging\IOperationalLogger.cs" />
+    <Compile Include="Services\Diagnostics\Logging\OperationalLogger.cs" />
+    <!-- Platform Metrics -->
+    <Compile Include="Services\Diagnostics\PlatformMetrics.cs" />
+    <Compile Include="Services\Diagnostics\IPlatformMetricsService.cs" />
+    <Compile Include="Services\Diagnostics\PlatformMetricsService.cs" />
+
     <!--
       Core infrastructure — compiled selectively.
       Contracts and Infrastructure are live; Extensions are live.
