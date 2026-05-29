@@ -490,6 +490,27 @@
     <Compile Include="Services\Intelligence\Arbitration\ContextSuppressionEngine.cs" />
     <Compile Include="Services\Intelligence\Arbitration\IRecommendationArbitrator.cs" />
     <Compile Include="Services\Intelligence\Arbitration\RecommendationArbitrator.cs" />
+    <!-- Phase 19 gap additions -->
+    <!-- Evidence Attribution -->
+    <Compile Include="Services\Reasoning\Evidence\EvidenceSourceType.cs" />
+    <Compile Include="Services\Reasoning\Evidence\EvidenceAttribution.cs" />
+    <!-- Context layer -->
+    <Compile Include="Services\Reasoning\Context\WorkloadClassifier.cs" />
+    <Compile Include="Services\Reasoning\Context\RuntimeBehaviorModel.cs" />
+    <!-- Memory layer -->
+    <Compile Include="Services\Reasoning\Memory\HistoricalInferenceRecord.cs" />
+    <Compile Include="Services\Reasoning\Memory\RecommendationOutcomeTracker.cs" />
+    <Compile Include="Services\Reasoning\Memory\PatternConsistencyAnalyzer.cs" />
+    <!-- Arbitration: Merge Engine -->
+    <Compile Include="Services\Intelligence\Arbitration\RecommendationMergeEngine.cs" />
+    <!-- Cognitive Diagnostics -->
+    <Compile Include="Services\Diagnostics\Reasoning\CognitiveTraceRecord.cs" />
+    <Compile Include="Services\Diagnostics\Reasoning\ArbitrationDecisionRecord.cs" />
+    <Compile Include="Services\Diagnostics\Reasoning\ReasoningDiagnosticsService.cs" />
+    <!-- Cognitive Health Metrics -->
+    <Compile Include="Services\Reasoning\Cognitive\CognitiveHealthMetrics.cs" />
+    <!-- Reasoning Outcome -->
+    <Compile Include="Services\Reasoning\Cognitive\ReasoningOutcome.cs" />
 
     <!--
       Core infrastructure — compiled selectively.
