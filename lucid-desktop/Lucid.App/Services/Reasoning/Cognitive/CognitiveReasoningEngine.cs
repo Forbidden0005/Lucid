@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using Lucid.Services.Diagnostics.Governance;
+using Lucid.Services.Diagnostics.Reasoning;
 using Lucid.Services.Infrastructure.Events;
 using Lucid.Services.Infrastructure.OperationalState;
 using Lucid.Services.Intelligence;
@@ -35,12 +38,24 @@ public sealed class CognitiveReasoningEngine : ICognitiveReasoningEngine
     private readonly IOperationalLogger              _logger;
     private readonly ISessionContextService          _session;
 
+    // ── Phase 19 gap: governance & diagnostics integration ────────────────────
+    private readonly GovernanceDiagnosticsService? _governanceDiagnostics;
+    private readonly ReasoningDiagnosticsService?  _reasoningDiagnostics;
+    private readonly CognitiveHealthMetrics        _healthMetrics;
+
     private volatile IReadOnlyList<OperationalInference> _current = [];
     private volatile ReasoningContext?                   _lastContext;
     // DateTime? cannot be volatile (value type) — use UTC ticks; -1 = never run.
     private long _lastAnalysisAtTicks = -1L;
 
     private const string Category = "CognitiveReasoning";
+
+    /// <summary>
+    /// Live health metrics for this reasoning engine.
+    /// Exposed via <c>AppServices.CognitiveMetrics</c>.
+    /// Thread-safe — Interlocked-backed counters.
+    /// </summary>
+    public CognitiveHealthMetrics HealthMetrics => _healthMetrics;
 
     public CognitiveReasoningEngine(
         ISystemInsightEngine           insights,
@@ -49,15 +64,22 @@ public sealed class CognitiveReasoningEngine : ICognitiveReasoningEngine
         IReasoningMemoryService        memory,
         IEventBus                      eventBus,
         IOperationalLogger             logger,
-        ISessionContextService         session)
+        ISessionContextService         session,
+        // Optional Phase 19 gap additions — backward compatible (default null).
+        GovernanceDiagnosticsService?  governanceDiagnostics = null,
+        ReasoningDiagnosticsService?   reasoningDiagnostics  = null,
+        CognitiveHealthMetrics?        healthMetrics         = null)
     {
-        _insights           = insights;
-        _operationalState   = operationalState;
-        _contextSynthesizer = contextSynthesizer;
-        _memory             = memory;
-        _eventBus           = eventBus;
-        _logger             = logger;
-        _session            = session;
+        _insights              = insights;
+        _operationalState      = operationalState;
+        _contextSynthesizer    = contextSynthesizer;
+        _memory                = memory;
+        _eventBus              = eventBus;
+        _logger                = logger;
+        _session               = session;
+        _governanceDiagnostics = governanceDiagnostics;
+        _reasoningDiagnostics  = reasoningDiagnostics;
+        _healthMetrics         = healthMetrics ?? new CognitiveHealthMetrics();
     }
 
     // ── ICognitiveReasoningEngine ─────────────────────────────────────────────
@@ -72,6 +94,8 @@ public sealed class CognitiveReasoningEngine : ICognitiveReasoningEngine
     public async Task<IReadOnlyList<OperationalInference>> AnalyzeAsync(
         CancellationToken cancellationToken = default)
     {
+        var cycleStart  = DateTime.UtcNow;
+        var stopwatch   = Stopwatch.StartNew();
         var correlation = CorrelationContext.New();
         _logger.Debug(Category, "Reasoning cycle starting", correlation);
 
@@ -80,22 +104,30 @@ public sealed class CognitiveReasoningEngine : ICognitiveReasoningEngine
                            .ConfigureAwait(false);
 
         // Step 2: Build reasoning context snapshot.
-        var state        = _operationalState.Current;
+        var state          = _operationalState.Current;
         var activeInsights = _insights.CurrentInsights;
-        var sessionAge   = GetSessionAgeSeconds();
+        var sessionAge     = GetSessionAgeSeconds();
 
         var rc = BuildReasoningContext(state, activeInsights, context, sessionAge);
         _lastContext = rc;
 
-        // Step 3: Evaluate inference rules.
-        var inferences = new List<OperationalInference>();
+        // Step 3: Evaluate inference rules — track fired vs skipped for diagnostics.
+        var inferences   = new List<OperationalInference>();
+        var firedRules   = new List<string>();
+        var skippedRules = new List<string>();
 
-        EvaluateStartupCongestionRule(rc, inferences);
-        EvaluateSustainedPressureRule(rc, inferences);
-        EvaluateThermalContextRule(rc, context, inferences);
-        EvaluateStoragePressureRule(rc, inferences);
-        EvaluateCombinedPressureRule(rc, inferences);
-        EvaluateSessionDegradationRule(rc, inferences);
+        TrackRule("StartupCongestionRule", inferences,
+            () => EvaluateStartupCongestionRule(rc, inferences), firedRules, skippedRules);
+        TrackRule("SustainedPressureRule", inferences,
+            () => EvaluateSustainedPressureRule(rc, inferences), firedRules, skippedRules);
+        TrackRule("ThermalContextRule", inferences,
+            () => EvaluateThermalContextRule(rc, context, inferences), firedRules, skippedRules);
+        TrackRule("StoragePressureRule", inferences,
+            () => EvaluateStoragePressureRule(rc, inferences), firedRules, skippedRules);
+        TrackRule("CombinedPressureRule", inferences,
+            () => EvaluateCombinedPressureRule(rc, inferences), firedRules, skippedRules);
+        TrackRule("SessionDegradationRule", inferences,
+            () => EvaluateSessionDegradationRule(rc, inferences), firedRules, skippedRules);
 
         // Step 4: Sort by priority descending.
         inferences.Sort((a, b) => b.Priority.CompareTo(a.Priority));
@@ -111,10 +143,46 @@ public sealed class CognitiveReasoningEngine : ICognitiveReasoningEngine
         _current = result;
         Interlocked.Exchange(ref _lastAnalysisAtTicks, DateTime.UtcNow.Ticks);
 
-        _logger.Debug(Category,
-            $"Reasoning cycle complete — {inferences.Count} inference(s) produced", correlation);
+        stopwatch.Stop();
 
-        // Step 6: Publish cycle completion event.
+        // Step 6: Derive governance note from recent audit events (if wired).
+        var governanceNote = BuildGovernanceNote();
+
+        // Step 7: Update health metrics.
+        var active     = inferences.Where(i => !i.IsSuppressed).ToList();
+        var suppressed = inferences.Where(i => i.IsSuppressed).ToList();
+        var maxConf    = active.Select(i => i.Confidence.Value).DefaultIfEmpty(0).Max();
+
+        _healthMetrics.RecordCycle(
+            inferenceCount:   inferences.Count,
+            suppressedCount:  suppressed.Count,
+            maxConfidence:    maxConf,
+            durationMs:       stopwatch.Elapsed.TotalMilliseconds);
+
+        // Step 8: Record a cognitive trace for the diagnostics service (if wired).
+        if (_reasoningDiagnostics != null)
+        {
+            var trace = new CognitiveTraceRecord
+            {
+                CycleStartedAtUtc   = cycleStart,
+                Duration            = stopwatch.Elapsed,
+                Inferences          = result,
+                SuppressedInferences = suppressed.AsReadOnly(),
+                Context             = context,
+                FiredRules          = firedRules.AsReadOnly(),
+                SkippedRules        = skippedRules.AsReadOnly(),
+                GovernanceNote      = governanceNote,
+            };
+
+            try { _reasoningDiagnostics.RecordCycle(trace); }
+            catch { /* diagnostics recording is best-effort */ }
+        }
+
+        _logger.Debug(Category,
+            $"Reasoning cycle complete — {inferences.Count} inference(s) in " +
+            $"{stopwatch.Elapsed.TotalMilliseconds:F1} ms", correlation);
+
+        // Step 9: Publish cycle completion event.
         _ = _eventBus.PublishAsync(new CognitiveInferenceCycleCompletedEvent(
             InferenceCount: inferences.Count,
             HighestPriority: inferences.Count > 0
@@ -124,6 +192,31 @@ public sealed class CognitiveReasoningEngine : ICognitiveReasoningEngine
             CancellationToken.None);
 
         return result;
+    }
+
+    // ── Governance note ───────────────────────────────────────────────────────
+
+    private string? BuildGovernanceNote()
+    {
+        if (_governanceDiagnostics == null) return null;
+
+        var recent = _governanceDiagnostics.GetAuditLog().Take(10).ToList();
+        if (recent.Count == 0) return null;
+
+        // Tamper detection is the highest-priority governance signal.
+        if (recent.Any(e => e.TransitionType == "TrustPostureTampered"))
+            return "Trust posture tamper detected — safe defaults applied this session";
+
+        // Elevated operation-denial rate signals a constrained trust environment.
+        var denied = recent.Count(e => e.TransitionType == "OperationDenied");
+        if (denied >= 3)
+            return $"{denied} operations denied by governance policy in this session";
+
+        // Endpoint rejections indicate an attempt to use a non-local LLM endpoint.
+        if (recent.Any(e => e.TransitionType == "EndpointRejected"))
+            return "Non-local LLM endpoint rejected — local-only policy enforced";
+
+        return null;
     }
 
     // ── Context assembly ──────────────────────────────────────────────────────
@@ -426,5 +519,25 @@ public sealed class CognitiveReasoningEngine : ICognitiveReasoningEngine
     {
         try { return _session.Current.SessionAge.TotalSeconds; }
         catch { return 0; }
+    }
+
+    /// <summary>
+    /// Invokes a rule evaluation action and records the rule name in either
+    /// <paramref name="firedRules"/> or <paramref name="skippedRules"/> depending
+    /// on whether the rule produced a new inference.
+    /// </summary>
+    private static void TrackRule(
+        string                     ruleName,
+        List<OperationalInference> inferences,
+        Action                     evaluate,
+        List<string>               firedRules,
+        List<string>               skippedRules)
+    {
+        var countBefore = inferences.Count;
+        evaluate();
+        if (inferences.Count > countBefore)
+            firedRules.Add(ruleName);
+        else
+            skippedRules.Add(ruleName);
     }
 }

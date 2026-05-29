@@ -48,6 +48,7 @@ using Lucid.Services.Trust.Integrity;
 using Lucid.Services.Infrastructure.Startup;
 using Lucid.Services.Persistence.Reliability;
 using Lucid.Services.Diagnostics.Governance;
+using Lucid.Services.Diagnostics.Reasoning;
 using Microsoft.UI.Dispatching;
 
 
@@ -207,6 +208,12 @@ public static class AppServices
     private static IRecommendationArbitrator?      _arbitrator;
     private static ICognitiveReasoningEngine?      _cognitiveReasoning;
 
+    // ── Phase 19 gap: cognitive observability ────────────────────────────────
+    private static ReasoningDiagnosticsService?  _reasoningDiagnostics;
+    private static CognitiveHealthMetrics?       _cognitiveMetrics;
+    private static RecommendationOutcomeTracker? _outcomeTracker;
+    private static PatternConsistencyAnalyzer?   _patternAnalyzer;
+
     // ── Semantic Desktop Understanding layer (Phase 18B) ─────────────────────
     private static ConsentBoundScreenAnalysis?  _visualConsent;
     private static ScreenCaptureCoordinator?    _screenCapture;
@@ -305,6 +312,43 @@ public static class AppServices
     /// </summary>
     public static ICognitiveReasoningEngine CognitiveReasoning =>
         _cognitiveReasoning ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    // ── Phase 19 gap: cognitive observability ─────────────────────────────────
+
+    /// <summary>
+    /// Thread-safe runtime metrics for the cognitive reasoning pipeline.
+    /// Tracks cycles, inferences, arbitration decisions, suppression rates,
+    /// and average confidence. Updated after every AnalyzeAsync() call.
+    /// </summary>
+    public static CognitiveHealthMetrics CognitiveMetrics =>
+        _cognitiveMetrics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Reasoning diagnostics service — collects cognitive cycle traces and
+    /// arbitration decision records. Exposes the last 50 cycles and 500 decisions.
+    /// Publishes CognitiveTraceCommittedEvent after each cycle for live UI refresh.
+    /// </summary>
+    public static ReasoningDiagnosticsService ReasoningDiagnostics =>
+        _reasoningDiagnostics ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Tracks accept/reject/dismiss/expiry outcomes for recommended actions.
+    /// Feeds the personalization and pattern consistency layers.
+    /// Local-only, in-memory (max 50 outcomes per action ID).
+    /// </summary>
+    public static RecommendationOutcomeTracker OutcomeTracker =>
+        _outcomeTracker ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called.");
+
+    /// <summary>
+    /// Analyzes historical inference patterns to compute per-inference consistency
+    /// boosts/penalties. Stateless — pass the current inference and history snapshot.
+    /// </summary>
+    public static PatternConsistencyAnalyzer PatternAnalyzer =>
+        _patternAnalyzer ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called.");
 
     // ── Phase 18C: Trust & Governance ────────────────────────────────────────
@@ -1355,6 +1399,14 @@ public static class AppServices
             globalPrioritizer,
             _alertFatigueManager!,
             _learningService!);
+
+        // Phase 19 gap: cognitive observability — created before the engine so
+        // they can be injected directly (avoid a two-phase init dance).
+        _cognitiveMetrics     = new CognitiveHealthMetrics();
+        _reasoningDiagnostics = new ReasoningDiagnosticsService(_eventBus!);
+        _outcomeTracker       = new RecommendationOutcomeTracker();
+        _patternAnalyzer      = new PatternConsistencyAnalyzer();
+
         _cognitiveReasoning = new CognitiveReasoningEngine(
             _intelligence!,
             _operationalState!,
@@ -1362,7 +1414,10 @@ public static class AppServices
             _reasoningMemory,
             _eventBus!,
             _operationalLogger!,
-            _session!);
+            _session!,
+            _governanceDiagnostics,
+            _reasoningDiagnostics,
+            _cognitiveMetrics);
 
         _logger.Info("Startup", "Phase 19 Unified Cognitive Reasoning Layer initialized");
 
@@ -1592,9 +1647,13 @@ public static class AppServices
         // Phase 19: Cognitive Reasoning Layer — stateless, just null references.
         // ReasoningMemoryService implements IDisposable (ReaderWriterLockSlim).
         (_reasoningMemory as IDisposable)?.Dispose();
-        _cognitiveReasoning = null;
-        _arbitrator         = null;
-        _reasoningMemory    = null;
+        _cognitiveReasoning   = null;
+        _arbitrator           = null;
+        _reasoningMemory      = null;
+        _cognitiveMetrics     = null;
+        _reasoningDiagnostics = null;
+        _outcomeTracker       = null;
+        _patternAnalyzer      = null;
         _contextSynthesizer = null;
 
         // Personalization layer — stateless services, just null references.
