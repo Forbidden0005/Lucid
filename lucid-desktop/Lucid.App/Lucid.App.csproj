@@ -400,11 +400,23 @@
 
     <!-- Future feature code — excluded until ready to wire up -->
     <Compile Remove="Controls\**" />
-    <Compile Remove="Core\**" />
     <Compile Remove="Models\**" />
     <None Include="Controls\**" />
-    <None Include="Core\**" />
     <None Include="Models\**" />
+
+    <!--
+      Core infrastructure — compiled selectively.
+      Contracts and Infrastructure are live; Extensions are live.
+      Anything else in Core\ remains as None until promoted.
+    -->
+    <Compile Remove="Core\**" />
+    <Compile Include="Core\Contracts\IInitializable.cs" />
+    <Compile Include="Core\Contracts\IShutdownable.cs" />
+    <Compile Include="Core\Infrastructure\ILucidLogger.cs" />
+    <Compile Include="Core\Infrastructure\LucidLogger.cs" />
+    <Compile Include="Core\Extensions\CollectionExtensions.cs" />
+    <Compile Include="Core\Extensions\DateTimeExtensions.cs" />
+    <None Include="Core\**" Exclude="Core\Contracts\IInitializable.cs;Core\Contracts\IShutdownable.cs;Core\Infrastructure\ILucidLogger.cs;Core\Infrastructure\LucidLogger.cs;Core\Extensions\CollectionExtensions.cs;Core\Extensions\DateTimeExtensions.cs" />
   </ItemGroup>
 
   <!-- Exclude custom controls XAML (they reference excluded code) -->

@@ -16,19 +16,19 @@
                 -->
 
                 <!-- 1. Colour palette + semantic status aliases -->
-                <ResourceDictionary Source="ms-appx:///Styles/AppColors.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/AppColors.xaml" />
 
                 <!-- 2. Spacing / thickness / corner-radius tokens -->
-                <ResourceDictionary Source="ms-appx:///Styles/AppSpacing.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/AppSpacing.xaml" />
 
                 <!-- 3. Typography -->
-                <ResourceDictionary Source="ms-appx:///Styles/AppTypography.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/AppTypography.xaml" />
 
                 <!-- 4. Component styles (each depends on AppColors) -->
-                <ResourceDictionary Source="ms-appx:///Styles/AppCards.xaml" />
-                <ResourceDictionary Source="ms-appx:///Styles/AppBadges.xaml" />
-                <ResourceDictionary Source="ms-appx:///Styles/AppProgress.xaml" />
-                <ResourceDictionary Source="ms-appx:///Styles/AppButtons.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/AppCards.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/AppBadges.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/AppProgress.xaml" />
+                <ResourceDictionary Source="ms-appx:///Themes/AppButtons.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
