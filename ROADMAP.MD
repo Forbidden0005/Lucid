@@ -1,8 +1,8 @@
-# ExplainMyPC — Next Generation Roadmap
+# Lucid (formerly ExplainMyPC) — Roadmap
 
-## What ExplainMyPC Is Becoming
+## What Lucid Is Becoming
 
-ExplainMyPC is no longer just:
+Lucid is no longer just:
 - a PC cleaner
 - a repair utility
 - a telemetry dashboard
@@ -23,6 +23,9 @@ The platform now combines:
 - timeline cognition
 - trust-aware security analysis
 - historical operational memory
+- adaptive learning and confidence calibration
+- cognitive-load-aware communication
+- companion overlay and desktop context awareness
 
 The long-term direction should optimize for:
 - trust
@@ -59,6 +62,9 @@ The platform already contains:
 - timeline aggregation
 - sparkline visualization
 - insight drilldowns
+- cognitive reasoning engine
+- recommendation arbitration
+- adaptive learning and pattern intelligence
 
 ## Operational Layer
 - execution engine
@@ -69,6 +75,7 @@ The platform already contains:
 - storage analysis
 - live execution logs
 - operation history
+- operational watchtower (autonomous degradation detection)
 
 ## Security & Process Layer
 - process intelligence
@@ -77,8 +84,17 @@ The platform already contains:
 - Defender awareness
 - startup trust analysis
 - behavioral anomaly detection
+- trust integrity service
+- governance audit system
 
-This is already significantly beyond a standard utility application.
+## Interaction & Context Layer
+- companion overlay window (always-on-top, bubble/expanded states)
+- desktop context awareness (foreground window, File Explorer path, clipboard)
+- deterministic conversation engine (22 intent types, evidence-grounded)
+- attention coordination and cognitive interrupt budget
+- calm communication formatting and confidence tone adjustment
+
+This is significantly beyond a standard utility application.
 
 ---
 
@@ -103,6 +119,7 @@ Example:
 - security analysis improves trust scoring
 - repairs feed operational history
 - operational history improves future recommendations
+- adaptive learning improves confidence calibration over time
 
 The platform should increasingly feel:
 - aware
@@ -112,7 +129,7 @@ The platform should increasingly feel:
 
 ---
 
-# Phase 1 — Platform Stabilization
+# Phase 1 — Platform Stabilization ✅ COMPLETE
 
 ## Goal
 Ensure long-term maintainability before adding extreme complexity.
@@ -137,7 +154,7 @@ Files:
 ---
 
 ### 2. Resource Governance
-Prevent ExplainMyPC from becoming resource-heavy.
+Prevent Lucid from becoming resource-heavy.
 
 Add:
 - adaptive polling
@@ -168,10 +185,10 @@ Build:
 - `WorkClassification` — each executor declares its resource class at registration
 
 Goal:
-"ExplainMyPC must never be the reason the PC is slow."
+"Lucid must never be the reason the PC is slow."
 
 Example problem this solves:
-"ExplainMyPC is using 38% CPU to explain why your CPU is high."
+"Lucid is using 38% CPU to explain why your CPU is high."
 
 ---
 
@@ -219,7 +236,7 @@ Recommended:
 
 ---
 
-# Phase 2 — Operational Intelligence Expansion
+# Phase 2 — Operational Intelligence Expansion ✅ COMPLETE
 
 ## Goal
 Deepen causality and operational understanding.
@@ -296,7 +313,7 @@ Goal:
 
 ---
 
-# Phase 3 — Security Intelligence
+# Phase 3 — Security Intelligence ✅ COMPLETE
 
 ## Goal
 Become a transparent operational security layer.
@@ -307,7 +324,7 @@ NOT antivirus.
 
 ## Security Philosophy
 
-ExplainMyPC should:
+Lucid should:
 - explain
 - contextualize
 - correlate
@@ -351,7 +368,7 @@ It should NOT:
 
 ---
 
-# Phase 4 — ExplainMyPC Flagship Experience
+# Phase 4 — Lucid Flagship Experience ✅ COMPLETE
 
 ## Goal
 Make the platform conversational and operationally understandable.
@@ -418,7 +435,7 @@ Recommendations should eventually consider:
 
 ---
 
-# Phase 5 — Advanced Visualization
+# Phase 5 — Advanced Visualization ✅ COMPLETE
 
 ## Goal
 Turn operational understanding into visual cognition.
@@ -452,10 +469,10 @@ Turn operational understanding into visual cognition.
 
 ---
 
-# Phase 6 — Ecosystem & Platformization
+# Phase 6 — Ecosystem & Platformization ✅ COMPLETE
 
 ## Goal
-Prepare ExplainMyPC for long-term extensibility.
+Prepare Lucid for long-term extensibility.
 
 ---
 
@@ -468,7 +485,7 @@ As the platform grows, these services will start observing each other directly:
 - SecurityIntelligenceService
 - ProcessIntelligenceService
 - StorageAnalysisService
-- future ExplainMyPC conversational layer
+- future conversational layer
 
 Direct cross-service subscriptions are fine now while the architecture fits in one person's head.
 When that changes, introduce a Domain Event Bus for decoupling.
@@ -479,8 +496,6 @@ Design:
 - `InProcessEventBus` — lightweight in-process implementation (no external broker)
 - Services publish events (e.g. `InsightOnsetEvent`, `ActionExecutedEvent`, `ProcessAnomalyEvent`)
 - Consumers subscribe to the bus instead of holding direct service references
-
-This is NOT urgent. Add it when hidden coupling starts causing bugs or making services hard to test.
 
 ---
 
@@ -502,7 +517,7 @@ Eventually support:
 
 ---
 
-## 2. Update & Migration System
+## 3. Update & Migration System
 
 Needed for:
 - schema changes
@@ -512,13 +527,157 @@ Needed for:
 
 ---
 
-## 3. Crash Recovery & Recovery Mode
+## 4. Crash Recovery & Recovery Mode
 
 Add:
 - safe startup mode
 - executor recovery
 - corrupted state detection
 - timeline recovery
+
+---
+
+# Phase History (7–21)
+
+These phases were implemented after Phase 6 and are fully built into the codebase.
+
+---
+
+## Phase 7 — Autonomous Operational Watchtower ✅ COMPLETE
+
+**Goal:** Proactive degradation detection without user intervention.
+
+- `OperationalWatchtowerService` runs 30-minute autonomous cycles
+- Detects pattern degradation and operational drift between cycles
+- Generates proactive alerts surfaced to the UI without requiring user action
+- Classified as a background/idle-only executor; yields to foreground work
+
+---
+
+## Phase 15 — Adaptive Personalization & Intervention Memory ✅ COMPLETE
+
+**Goal:** Adapt the platform's behavior based on observed user response patterns.
+
+- `PersonalizationEngine` tracks which recommendation types the user engages with
+- `InterventionMemoryService` records timing and phrasing of past interventions
+- Future intervention timing and phrasing adjusts based on historical response patterns
+- Prevents repeated, ignored recommendations from re-surfacing at the same frequency
+
+---
+
+## Phase 16 — Unified Operational Evidence Graph & Investigation Workspace ✅ COMPLETE
+
+**Goal:** Causal chain reasoning from correlated multi-source evidence.
+
+- `OperationalEvidenceGraph` builds causal chains from telemetry, anomaly, drift, and session data
+- `RootCauseAnalysisEngine` traverses the graph to identify probable root causes
+- `EvidenceExplanationService` translates graph paths into plain-English causal narratives
+- `InvestigationPage` UI surfaces the evidence graph and root cause walkthrough
+
+---
+
+## Phase 17A — Companion Overlay Window ✅ COMPLETE
+
+**Goal:** Always-available surface for operational awareness without switching windows.
+
+- Frameless always-on-top panel with bubble state and expanded state
+- Drag to reposition; snap-to-edge behavior on release
+- `CompanionSessionManager` tracks companion state across sessions
+- Transitions between states are animated and non-intrusive
+
+---
+
+## Phase 17B — Desktop Context Awareness ✅ COMPLETE
+
+**Goal:** Surface contextually relevant suggestions based on what the user is doing.
+
+- `DesktopContextService` observes foreground window, active File Explorer path, and clipboard metadata via Win32 APIs
+- Contextual suggestions refresh automatically on focus change
+- No content of files or clipboard is read — only metadata (filenames, paths, window titles)
+- Feeds context into the companion overlay and conversation engine
+
+---
+
+## Phase 17C — Conversation Engine ✅ COMPLETE
+
+**Goal:** Deterministic, evidence-grounded natural language interaction layer.
+
+- `OperationalConversationService` handles 22 distinct intent types
+- Keyword-matched intent classification — no probabilistic LLM routing
+- Every response includes a confidence score, evidence sources, and uncertainty notes where applicable
+- 9-file implementation under `Services/Conversation/`
+- Integrated with the companion overlay and InvestigationPage
+
+---
+
+## Phase 18 — Unified Operational Core ✅ COMPLETE
+
+**Goal:** Decouple services via a shared event and lifecycle foundation.
+
+- `LucidEventBus` — in-process pub/sub bus replacing direct cross-service subscriptions
+- `LifecycleCoordinator` — manages ordered startup and shutdown of all services
+- `OperationalStateCoordinator` — tracks system-wide operational state
+- `OperationalLogger` — structured logging with correlation context (session ID, operation ID)
+
+---
+
+## Phase 18C — Trust & Governance Hardening ✅ COMPLETE
+
+**Goal:** Enforce trust boundaries and auditability across the platform.
+
+- `TrustIntegrityService` validates that reasoning outputs have traceable evidence sources
+- `GovernanceDiagnosticsService` and `GovernanceAuditEvent` provide a complete audit trail for all governance decisions
+- `OllamaClient` integrates a local LLM (localhost-only); `LocalEndpointValidator` enforces no remote calls
+- `PersistenceHealthMonitor` detects and reports SQLite write failures before they silently corrupt state
+
+---
+
+## Phase 19 — Unified Cognitive Reasoning Layer ✅ COMPLETE
+
+**Goal:** Evidence-weighted inference with uncertainty propagation across the intelligence layer.
+
+- `CognitiveReasoningEngine` synthesizes multi-source evidence into weighted inferences
+- `RecommendationArbitrator` resolves conflicts between competing recommendations using evidence weight
+- `OperationalContextSynthesizer` assembles a unified operational context object from live + historical data
+- `ReasoningMemoryService` persists past reasoning chains so future inferences can reference prior conclusions
+
+---
+
+## Phase 19 Gap — Evidence Attribution & Cognitive Diagnostics ✅ COMPLETE
+
+**Goal:** Fill attribution and diagnostic gaps left by the Phase 19 initial implementation.
+
+- Evidence attribution paths: every inference now traces back to its source signals
+- Governance-aware reasoning: reasoning outputs are gated by trust integrity checks
+- Diagnostic completeness: `CognitiveReasoningEngine` now emits structured diagnostics for failed or low-confidence inferences
+
+---
+
+## Phase 20 — Human Interaction & Cognitive UX Layer ✅ COMPLETE
+
+**Goal:** Control how and when the system surfaces information to avoid overwhelming the user.
+
+- `AttentionCoordinator` decides when to interrupt the user versus queue for later
+- `CognitiveInterruptBudget` tracks how many interruptions have been surfaced in a time window
+- `CognitiveLoadEstimator` estimates current user cognitive load from context signals
+- `UnifiedRecommendationService` merges and deduplicates recommendations from all subsystems
+- `CalmCommunicationFormatter` ensures output phrasing matches calm, factual tone
+- `ConfidenceToneAdjuster` modulates phrasing based on inference confidence level
+- `SeverityNarrativeEngine` generates severity-appropriate descriptions without fear-based language
+
+---
+
+## Phase 21 — Adaptive Operational Learning & Pattern Intelligence ✅ COMPLETE
+
+**Goal:** The platform learns from its own inferences and adjusts confidence calibration over time.
+
+- `AdaptiveBaselineTracker` updates per-machine behavioral baselines as the system observes more data
+- `ConfidenceCalibrationEngine` adjusts raw inference confidence based on historical accuracy
+- `HistoricalAccuracyTracker` records which past inferences were later confirmed or disconfirmed
+- `PatternIntelligenceEngine` detects recurring operational patterns across sessions
+- `PatternSimilarityAnalyzer` computes similarity scores between current and historical patterns
+- `RecurrenceTracker` tracks how often a given pattern repeats and at what intervals
+- `LongitudinalBehaviorTracker` maintains long-horizon behavioral trends across days and weeks
 
 ---
 
@@ -550,7 +709,7 @@ Add:
 ## Build
 Use:
 
-`dotnet build ExplainMyPC.slnx -c Debug -p:Platform=x64`
+`dotnet build Lucid.slnx -c Debug -p:Platform=x64`
 
 Avoid AnyCPU.
 
@@ -576,29 +735,27 @@ Recommended future tags:
 - v0.3-operational-tools
 - v0.4-security-intelligence
 - v0.5-flagship-experience
+- v0.6-cognitive-layer (Phase 18–21)
 
 ---
 
-# Current Highest-Value Priorities
+# Current Highest-Value Priorities (Phase 22 Candidates)
+
+Phase 21 is complete. The platform has a fully operational cognitive reasoning, adaptive learning, and interaction governance stack. The next priorities address hardening, namespace alignment, UI surface gaps, and the Rust native layer.
 
 In order:
 
-1. Platform stabilization
-2. Resource governance
-3. Explain My PC flagship experience
-4. Security intelligence
-5. Process relationship intelligence
-6. Operational replay
-7. Indexed persistence layer
-8. Advanced forecasting
-9. Modular architecture
-10. Historical analytics
+1. **Production hardening** — replace bare `catch` blocks in repositories with logged, structured errors; improve SQLite write durability (WAL mode, retry on busy)
+2. **Full namespace/project rename** — `ExplainMyPC` → `Lucid` throughout all C# namespaces, `.csproj`, `.slnx`, and string references
+3. **UI surface for Phases 18–21** — the learning, cognitive, and governance layers are fully built but have no dedicated UI pages; a Cognitive Layer diagnostics page and a Learning History page would expose this intelligence to users
+4. **Rust native modules** — the `lucid-native/` skeleton exists but no Rust has been written; high-performance scanning engines (filesystem traversal, SHA-256 hashing, process enumeration) are planned here
+5. **AppServices DI migration** — the static 80+-singleton service locator will need DI container migration as the service count grows; incremental migration via `IServiceProvider` shim preferred
 
 ---
 
 # The Long-Term Vision
 
-ExplainMyPC is becoming:
+Lucid is becoming:
 
 > A trustworthy, local-first operational intelligence layer for Windows.
 
@@ -616,8 +773,8 @@ But:
 - reversible remediation
 - contextual awareness
 - historical operational memory
+- adaptive learning that improves over time
 
 The most important differentiator should remain:
 
 > Explainability + Trust.
-
