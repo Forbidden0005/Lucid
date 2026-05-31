@@ -155,11 +155,14 @@ public sealed class SignatureVerificationService
 
         var lower = path.ToLowerInvariant();
 
-        // High-risk locations for unsigned executables
+        // Genuinely unusual locations for installed software: temp dirs and recycle bin.
+        // Note: \downloads\ alone is not sufficient — many users run portable apps from
+        // Downloads and that is perfectly normal.  FlaggedForReview signals convergence
+        // is needed; the PersistenceScanner adds additional contextual scoring on top.
         if (lower.Contains(@"\temp\") || lower.Contains(@"\tmp\") ||
             lower.Contains(@"\appdata\local\temp") ||
-            lower.Contains(@"\downloads\"))
-            return TrustLevel.Suspicious;
+            lower.Contains(@"\recycle") || lower.Contains(@"\$recycle.bin"))
+            return TrustLevel.FlaggedForReview;
 
         return TrustLevel.Unsigned;
     }
