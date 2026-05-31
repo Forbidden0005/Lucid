@@ -171,6 +171,22 @@ public sealed record WindowsSecurityStatus(
         [Defender, Firewall, SmartScreen, SecureBoot, Tpm, BitLocker, MemoryIntegrity];
 }
 
+// ── Shared path signal constants ─────────────────────────────────────────────
+
+/// <summary>
+/// Executable path fragments that are genuinely unusual for installed software.
+/// Shared between <see cref="PersistenceScanner"/> and <see cref="SignatureVerificationService"/>
+/// so the two classifiers stay in sync and can't drift independently.
+/// </summary>
+internal static class SecurityPaths
+{
+    internal static readonly string[] HighSignal =
+    [
+        @"\temp\", @"\tmp\", @"\appdata\local\temp",
+        @"\recycle", @"\$recycle.bin",
+    ];
+}
+
 // ── Security analysis result ──────────────────────────────────────────────────
 
 /// <summary>Complete result of a security intelligence scan.</summary>

@@ -24,13 +24,11 @@ internal sealed class PersistenceScanner
 
     // High-signal path fragments: locations that are genuinely unusual for installed
     // software to run from (temp dirs, recycle bin, world-writable public dirs).
+    // Core set shared with SignatureVerificationService via SecurityPaths.HighSignal;
+    // \users\public\ is additional context relevant only to startup persistence.
     // Each match contributes 2 points toward the risk score.
     private static readonly string[] s_highSignalPaths =
-    [
-        @"\temp\", @"\tmp\", @"\appdata\local\temp",
-        @"\recycle", @"\$recycle.bin",
-        @"\users\public\",
-    ];
+        [..SecurityPaths.HighSignal, @"\users\public\"];
 
     // Low-signal path fragments: locations that are mildly contextual but routinely
     // legitimate (e.g. a portable app the user placed in their Downloads folder).
@@ -194,13 +192,14 @@ internal sealed class PersistenceScanner
 
         if (!string.IsNullOrEmpty(exePath))
         {
-            if (s_highSignalPaths.Any(p => exePath.Contains(p, StringComparison.OrdinalIgnoreCase)))
+            var lowerPath = exePath.ToLowerInvariant();
+            if (s_highSignalPaths.Any(p => lowerPath.Contains(p)))
             {
                 // Running from temp/recycle/public is unusual for installed software (+2)
                 riskScore += 2;
                 inHighSignalPath = true;
             }
-            else if (s_lowSignalPaths.Any(p => exePath.Contains(p, StringComparison.OrdinalIgnoreCase)))
+            else if (s_lowSignalPaths.Any(p => lowerPath.Contains(p)))
             {
                 // Downloads or public folder is a mild contextual signal (+1)
                 riskScore += 1;
@@ -212,8 +211,9 @@ internal sealed class PersistenceScanner
             riskScore += 1;
 
         // Name fragment overlap with common service patterns — very weak signal (+1 total,
-        // regardless of how many patterns match, to prevent stacking)
-        if (s_weakNamePatterns.Any(p => entry.ExecutableName.Contains(p, StringComparison.OrdinalIgnoreCase)))
+        // regardless of how many patterns match, to prevent stacking).
+        // entry.ExecutableName is already lowercased at construction (StartupSampler).
+        if (s_weakNamePatterns.Any(p => entry.ExecutableName.Contains(p)))
             riskScore += 1;
 
         // Thresholds: require genuine convergence before elevating trust level.
