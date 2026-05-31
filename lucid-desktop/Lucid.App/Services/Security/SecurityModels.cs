@@ -21,10 +21,11 @@ public enum TrustLevel
     Unsigned           = 3,
 
     /// <summary>
-    /// Unsigned and exhibits one or more behavioral or location-based risk signals.
-    /// Lucid does NOT claim this is malware — it flags it for user review.
+    /// Unsigned and exhibits convergence of multiple weak contextual signals.
+    /// Lucid does NOT claim this is malware — it surfaces it for user review.
+    /// A single weak signal is never sufficient to reach this level.
     /// </summary>
-    Suspicious         = 4,
+    FlaggedForReview   = 4,
 
     /// <summary>
     /// Unsigned with multiple risk signals (temp location, no description, process anomaly).
@@ -95,8 +96,8 @@ public sealed record SecurityFinding(
         TrustLevel.SignedKnownVendor => "Signed",
         TrustLevel.UnsignedCommon    => "Unsigned (common)",
         TrustLevel.Unsigned          => "Unsigned",
-        TrustLevel.Suspicious        => "Suspicious",
-        TrustLevel.HighRisk          => "High risk",
+        TrustLevel.FlaggedForReview  => "Worth reviewing",
+        TrustLevel.HighRisk          => "Multiple signals — review",
         _                            => "Unknown",
     };
 
@@ -119,15 +120,15 @@ public sealed record StartupTrustEntry(
     string    Location,
     string?   RiskReason = null)
 {
-    public bool HasRisk => TrustLevel >= TrustLevel.Suspicious;
+    public bool HasRisk => TrustLevel >= TrustLevel.FlaggedForReview;
     public string TrustLabel => TrustLevel switch
     {
         TrustLevel.TrustedMicrosoft  => "Microsoft",
         TrustLevel.SignedKnownVendor => "Signed",
         TrustLevel.UnsignedCommon    => "Common app",
         TrustLevel.Unsigned          => "Unsigned",
-        TrustLevel.Suspicious        => "Suspicious",
-        TrustLevel.HighRisk          => "High risk",
+        TrustLevel.FlaggedForReview  => "Worth reviewing",
+        TrustLevel.HighRisk          => "Multiple signals — review",
         _                            => "Unknown",
     };
 }
@@ -185,5 +186,5 @@ public sealed record SecurityAnalysisResult(
 {
     public int SignedCount   => StartupEntries.Count(e => e.IsSigned);
     public int UnsignedCount => StartupEntries.Count(e => !e.IsSigned);
-    public int SuspiciousCount => Findings.Count(f => f.Severity >= FindingSeverity.Moderate);
+    public int ReviewCount => Findings.Count(f => f.Severity >= FindingSeverity.Moderate);
 }

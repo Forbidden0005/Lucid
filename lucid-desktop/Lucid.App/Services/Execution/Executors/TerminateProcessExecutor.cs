@@ -42,13 +42,10 @@ internal sealed class TerminateProcessExecutor : IActionExecutor
         if (!TryGetPid(ctx, out int pid, out string name))
             return Fail("action.process.terminate", "No process ID specified.", sw, ctx);
 
-        if (ProcessClassifier.IsCritical(name))
-        {
-            ctx.Log.Error($"{name} (PID {pid}) is a critical Windows process and cannot be terminated.");
-            return Fail("action.process.terminate",
-                $"{name} is a critical system process — termination refused.", sw, ctx);
-        }
-
+        // NOTE: we deliberately do NOT check ProcessClassifier.IsCritical on the
+        // caller-supplied `name` here. Dry-run can't verify PID-to-name mapping, so
+        // a name-based gate gives false assurance. The real safety check runs on the
+        // OS-verified process name at actual execution time (RunTerminate → line ~105).
         ctx.Log.Info($"Preview — would terminate: {name} (PID {pid})");
         ctx.Log.Info("  This terminates the process immediately. Unsaved work in that app will be lost.");
         ctx.Log.Info("  No rollback is possible — the process must be restarted manually.");
@@ -66,12 +63,11 @@ internal sealed class TerminateProcessExecutor : IActionExecutor
         if (!TryGetPid(ctx, out int pid, out string name))
             return Fail("action.process.terminate", "No process ID specified.", sw, ctx);
 
-        if (ProcessClassifier.IsCritical(name))
-        {
-            ctx.Log.Error($"{name} is a critical Windows process. Termination refused.");
-            return Fail("action.process.terminate",
-                $"{name} is a critical system process — termination refused.", sw, ctx);
-        }
+        // NOTE: we deliberately do NOT check ProcessClassifier.IsCritical on the
+        // caller-supplied `name` here. The caller could pass "notepad" while the PID
+        // actually points to lsass due to PID recycling — checking the caller name
+        // would be a false safety gate. The authoritative critical-process check
+        // runs below on verified.VerifiedName after OS identity confirmation.
 
         // ── OS identity verification ───────────────────────────────────────────
         // Verify the PID still belongs to the expected process before killing.
