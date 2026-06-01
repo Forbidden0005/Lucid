@@ -139,11 +139,12 @@
                                             <ItemsControl ItemsSource="{x:Bind Apps}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="vm:PrivacyAppEntryViewModel">
-                                                        <Grid MinHeight="38">
+                                                        <Grid MinHeight="40" Margin="0,2,0,2">
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" />
                                                                 <ColumnDefinition Width="Auto" />
-                                                                <ColumnDefinition Width="80" />
+                                                                <ColumnDefinition Width="56" />
+                                                                <ColumnDefinition Width="72" />
                                                             </Grid.ColumnDefinitions>
 
                                                             <!-- App name + type label -->
@@ -167,14 +168,29 @@
                                                                        VerticalAlignment="Center"
                                                                        Margin="12,0" />
 
-                                                            <!-- Allowed / Denied status -->
+                                                            <!-- Allowed / Denied status — Mode=OneWay because IsAllowed is observable -->
                                                             <TextBlock Grid.Column="2"
-                                                                       Text="{x:Bind StatusText}"
+                                                                       Text="{x:Bind StatusText, Mode=OneWay}"
                                                                        FontSize="11"
                                                                        FontWeight="SemiBold"
-                                                                       Foreground="{x:Bind StatusBrush}"
+                                                                       Foreground="{x:Bind StatusBrush, Mode=OneWay}"
                                                                        HorizontalAlignment="Right"
                                                                        VerticalAlignment="Center" />
+
+                                                            <!-- Revoke / Restore toggle button -->
+                                                            <Button Grid.Column="3"
+                                                                    Content="{x:Bind ToggleLabel, Mode=OneWay}"
+                                                                    Command="{x:Bind TogglePermissionCommand}"
+                                                                    FontSize="11"
+                                                                    Padding="8,4"
+                                                                    CornerRadius="6"
+                                                                    HorizontalAlignment="Right"
+                                                                    VerticalAlignment="Center"
+                                                                    Margin="8,0,0,0">
+                                                                <ToolTipService.ToolTip>
+                                                                    <ToolTip Content="Toggle this app's permission in the Windows ConsentStore" />
+                                                                </ToolTipService.ToolTip>
+                                                            </Button>
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

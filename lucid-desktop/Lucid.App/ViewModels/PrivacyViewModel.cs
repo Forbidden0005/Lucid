@@ -25,39 +25,79 @@ internal static class PrivacyBrushPalette
 // Init-only — the parent ViewModel repopulates the collections wholesale
 // on each load. These classes do not implement INotifyPropertyChanged.
 
-/// <summary>Display model for a single app's grant record within one permission category.</summary>
-public sealed class PrivacyAppEntryViewModel
+/// <summary>
+/// Display model for a single app's grant record within one permission category.
+///
+/// Observable: <see cref="IsAllowed"/> changes when the user toggles the permission,
+/// propagating immediately to <see cref="StatusText"/>, <see cref="StatusBrush"/>,
+/// and <see cref="ToggleLabel"/> via NotifyPropertyChangedFor.
+/// </summary>
+public sealed partial class PrivacyAppEntryViewModel : ObservableObject
 {
-    public string          AppDisplayName    { get; init; } = "";
-    public bool            IsAllowed         { get; init; }
-    public bool            IsPackaged        { get; init; }
+    // ── Static / non-mutable ───────────────────────────────────────────────────
 
-    /// <summary>"Allowed" or "Denied"</summary>
-    public string          StatusText        { get; init; } = "";
-
-    /// <summary>"Modern App" for packaged apps; "Desktop App" for Win32.</summary>
-    public string          AppTypeLabel      { get; init; } = "";
-
+    /// <summary>Capability registry key (e.g. "webcam"). Used by the toggle command.</summary>
+    public string    PermissionType    { get; }
+    /// <summary>App registry subkey identifier. Used by the toggle command.</summary>
+    public string    AppIdentifier     { get; }
+    public string    AppDisplayName    { get; }
+    public bool      IsPackaged        { get; }
+    /// <summary>"Modern App" or "Desktop App"</summary>
+    public string    AppTypeLabel      { get; }
     /// <summary>Relative time string, e.g. "2d ago", or empty when never used.</summary>
-    public string          LastUsedText      { get; init; } = "";
+    public string    LastUsedText      { get; }
+    public Visibility LastUsedVisibility { get; }
 
+    // ── Observable (changes on toggle) ────────────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText))]
+    [NotifyPropertyChangedFor(nameof(StatusBrush))]
+    [NotifyPropertyChangedFor(nameof(ToggleLabel))]
+    private bool _isAllowed;
+
+    /// <summary>"Allowed" or "Denied" — updates when IsAllowed changes.</summary>
+    public string          StatusText  => _isAllowed ? "Allowed" : "Denied";
     /// <summary>Green when allowed, red when denied.</summary>
-    public SolidColorBrush StatusBrush       { get; init; } = PrivacyBrushPalette.Neutral;
+    public SolidColorBrush StatusBrush => _isAllowed ? PrivacyBrushPalette.Allow : PrivacyBrushPalette.Deny;
+    /// <summary>Button label: "Revoke" when allowed, "Restore" when denied.</summary>
+    public string          ToggleLabel => _isAllowed ? "Revoke" : "Restore";
 
-    /// <summary>Collapsed when the app has never exercised this permission.</summary>
-    public Visibility      LastUsedVisibility { get; init; }
+    // ── Construction ──────────────────────────────────────────────────────────
 
     internal PrivacyAppEntryViewModel(PrivacyPermissionRecord r)
     {
+        PermissionType     = r.PermissionType;
+        AppIdentifier      = r.AppIdentifier;
         AppDisplayName     = r.AppDisplayName;
-        IsAllowed          = r.IsAllowed;
+        _isAllowed         = r.IsAllowed;
         IsPackaged         = r.IsPackaged;
-        StatusText         = r.IsAllowed ? "Allowed" : "Denied";
         AppTypeLabel       = r.IsPackaged ? "Modern App" : "Desktop App";
-        StatusBrush        = r.IsAllowed ? PrivacyBrushPalette.Allow : PrivacyBrushPalette.Deny;
         LastUsedText       = r.LastUsed.HasValue ? FormatRelativeTime(r.LastUsed.Value) : "";
         LastUsedVisibility = r.LastUsed.HasValue ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    // ── Toggle command ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Writes the new Allow/Deny value to the ConsentStore registry key.
+    /// On success, flips <see cref="IsAllowed"/> so the UI updates immediately.
+    /// On failure (denied, Group Policy, etc.) leaves the UI unchanged.
+    /// </summary>
+    [RelayCommand]
+    private async Task TogglePermissionAsync()
+    {
+        var newState = !IsAllowed;
+        var success  = await Task.Run(
+            () => PrivacyPermissionWriter.TrySetAppPermission(
+                      PermissionType, AppIdentifier, newState))
+            .ConfigureAwait(true);  // marshal back to UI thread for property set
+
+        if (success)
+            IsAllowed = newState;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static string FormatRelativeTime(DateTimeOffset t)
     {
