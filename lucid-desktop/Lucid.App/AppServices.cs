@@ -1440,8 +1440,10 @@ public static class AppServices
         // ── Operational Replay service ────────────────────────────────────────
         // Stateless — no Start()/Stop() required. Created after timeline and
         // history so it can capture a fully-populated snapshot on first request.
+        // SQLite repositories are passed to enable extended windows (1h/6h/24h).
         _replayService = new OperationalReplayService(
-            _timeline, _history, _operationHistory, _baseline);
+            _timeline, _history, _operationHistory, _baseline,
+            _telHistoryRepo, _timelineEventRepo);
 
         // ── Remediation learning service ──────────────────────────────────────
         // Created after replay service (depends on it for before/after comparisons).

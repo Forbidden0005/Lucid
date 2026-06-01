@@ -1,5 +1,6 @@
 ﻿using Lucid.Services.Baseline;
 using Lucid.Services.History;
+using Lucid.Services.Persistence;
 using Lucid.Services.Telemetry;
 using Lucid.Services.Timeline;
 
@@ -24,10 +25,12 @@ namespace Lucid.Services.Replay;
 /// </summary>
 internal sealed class OperationalReplayService : IOperationalReplayService
 {
-    private readonly ITimelineAggregationService _timeline;
-    private readonly ITelemetryHistoryBuffer     _history;
-    private readonly IOperationHistoryService    _operationHistory;
-    private readonly ISystemBaselineService      _baseline;
+    private readonly ITimelineAggregationService    _timeline;
+    private readonly ITelemetryHistoryBuffer        _history;
+    private readonly IOperationHistoryService       _operationHistory;
+    private readonly ISystemBaselineService         _baseline;
+    private readonly HistoricalTelemetryRepository? _telHistoryRepo;
+    private readonly TimelineEventRepository?       _timelineEventRepo;
 
     // Window around an action for before/after comparison
     private static readonly TimeSpan ComparisonWindow = TimeSpan.FromMinutes(5);
@@ -35,16 +38,23 @@ internal sealed class OperationalReplayService : IOperationalReplayService
     // Nearest-action search window
     private static readonly TimeSpan ActionSearchWindow = TimeSpan.FromMinutes(5);
 
+    // Windows longer than this use SQLite; shorter ones use the in-memory buffer.
+    private static readonly TimeSpan MemoryBufferDepth = TimeSpan.FromMinutes(28);
+
     public OperationalReplayService(
-        ITimelineAggregationService timeline,
-        ITelemetryHistoryBuffer     history,
-        IOperationHistoryService    operationHistory,
-        ISystemBaselineService      baseline)
+        ITimelineAggregationService    timeline,
+        ITelemetryHistoryBuffer        history,
+        IOperationHistoryService       operationHistory,
+        ISystemBaselineService         baseline,
+        HistoricalTelemetryRepository? telHistoryRepo    = null,
+        TimelineEventRepository?       timelineEventRepo = null)
     {
-        _timeline         = timeline;
-        _history          = history;
-        _operationHistory = operationHistory;
-        _baseline         = baseline;
+        _timeline          = timeline;
+        _history           = history;
+        _operationHistory  = operationHistory;
+        _baseline          = baseline;
+        _telHistoryRepo    = telHistoryRepo;
+        _timelineEventRepo = timelineEventRepo;
     }
 
     // ── Session creation ──────────────────────────────────────────────────────
@@ -52,42 +62,93 @@ internal sealed class OperationalReplayService : IOperationalReplayService
     public async Task<ReplaySession> CreateSessionAsync(
         ReplayWindow window = ReplayWindow.FullSession)
     {
-        // ── 1. Capture telemetry time series (all 5 metrics in parallel) ──────
-        var telemetrySeries = BuildTelemetrySeries();
+        var now = DateTimeOffset.UtcNow;
 
-        // ── 2. Apply window filter ────────────────────────────────────────────
-        if (window != ReplayWindow.FullSession)
+        // Determine whether this window fits in the in-memory rolling buffer
+        // or requires a SQLite query.
+        bool isFullSession = window == ReplayWindow.FullSession;
+        var  windowSpan    = isFullSession
+            ? TimeSpan.MaxValue
+            : TimeSpan.FromSeconds((int)window);
+
+        bool useSqlite = _telHistoryRepo is not null
+                         && (isFullSession || windowSpan > MemoryBufferDepth);
+
+        List<HistoricalTelemetryPoint> telemetrySeries;
+        List<TimelineEvent>            events;
+
+        if (useSqlite)
         {
-            var cutoff = DateTimeOffset.Now - TimeSpan.FromSeconds((int)window);
-            telemetrySeries = telemetrySeries
-                .Where(p => p.Timestamp >= cutoff)
+            // ── SQLite path: supports 1h / 6h / 24h / full-session windows ────
+            DateTimeOffset from;
+            if (isFullSession)
+            {
+                // Use the oldest available sample time as the session start.
+                var oldest = await _telHistoryRepo!.GetOldestSampleTimeAsync();
+                from = oldest ?? now - MemoryBufferDepth;
+            }
+            else
+            {
+                from = now - windowSpan;
+            }
+
+            // Run both queries concurrently.
+            var samplesTask = _telHistoryRepo!.GetSamplesAsync(from, now);
+            var eventsTask  = _timelineEventRepo is not null
+                ? _timelineEventRepo.GetEventsAsync(from, now, maxCount: 2000)
+                : Task.FromResult<IReadOnlyList<PersistedTimelineEvent>>([]);
+
+            await Task.WhenAll(samplesTask, eventsTask).ConfigureAwait(false);
+
+            // SQLite telemetry already sorted ASC by GetSamplesAsync.
+            telemetrySeries = samplesTask.Result
+                .Select(static s => new HistoricalTelemetryPoint(
+                    s.SampledAt,
+                    s.CpuPercent,
+                    s.RamPercent,
+                    s.GpuPercent  ?? 0,
+                    s.DiskPercent,
+                    s.TempCelsius ?? 0))
+                .ToList();
+
+            // SQLite events are DESC — re-order oldest-first for replay.
+            events = eventsTask.Result
+                .Select(ToTimelineEvent)
+                .OrderBy(static e => e.OccurredAt)
                 .ToList();
         }
-
-        // ── 3. Capture timeline events (oldest-first) ─────────────────────────
-        var events = _timeline.Events
-            .OrderBy(e => e.OccurredAt)
-            .ToList();
-
-        if (window != ReplayWindow.FullSession && events.Count > 0)
+        else
         {
-            var cutoff = DateTimeOffset.Now - TimeSpan.FromSeconds((int)window);
-            events = events.Where(e => e.OccurredAt >= cutoff).ToList();
+            // ── In-memory path: fast, covers up to ~30 minutes ────────────────
+            telemetrySeries = BuildTelemetrySeriesFromMemory();
+
+            events = _timeline.Events
+                .OrderBy(static e => e.OccurredAt)
+                .ToList();
+
+            if (!isFullSession)
+            {
+                var cutoff = now - windowSpan;
+                telemetrySeries = telemetrySeries
+                    .Where(p => p.Timestamp >= cutoff)
+                    .ToList();
+                events = events
+                    .Where(e => e.OccurredAt >= cutoff)
+                    .ToList();
+            }
         }
 
-        // ── 4. Load persistent operation history ──────────────────────────────
-        var rawActions = await _operationHistory.GetRecentAsync(200);
-        var actions    = rawActions
-            .OrderBy(a => a.ExecutedAt)
-            .ToList();
+        // ── Operation history ─────────────────────────────────────────────────
+        var rawActions = await _operationHistory.GetRecentAsync(200).ConfigureAwait(false);
+        var actions    = rawActions.OrderBy(static a => a.ExecutedAt).ToList();
 
-        if (window != ReplayWindow.FullSession && actions.Count > 0)
+        if (!isFullSession)
         {
-            var cutoff = DateTimeOffset.Now - TimeSpan.FromSeconds((int)window);
+            var cutoff = now - windowSpan;
             actions = actions.Where(a => a.ExecutedAt >= cutoff).ToList();
         }
 
-        // ── 5. Determine session time range ───────────────────────────────────
+        // ── Determine session time range ──────────────────────────────────────
         var allTimestamps = new List<DateTimeOffset>();
         if (telemetrySeries.Count > 0)
         {
@@ -100,21 +161,19 @@ internal sealed class OperationalReplayService : IOperationalReplayService
             allTimestamps.Add(events[^1].OccurredAt);
         }
 
-        var oldest = allTimestamps.Count > 0 ? allTimestamps.Min() : DateTimeOffset.Now;
-        var newest = DateTimeOffset.Now;
-
-        int total  = telemetrySeries.Count + events.Count + actions.Count;
+        var oldest2 = allTimestamps.Count > 0 ? allTimestamps.Min() : now;
+        int total   = telemetrySeries.Count + events.Count + actions.Count;
 
         return new ReplaySession(
-            Id:               Guid.NewGuid().ToString("N"),
-            CreatedAt:        DateTimeOffset.Now,
-            OldestDataPoint:  oldest,
-            NewestDataPoint:  newest,
-            TelemetrySeries:  telemetrySeries,
-            Events:           events,
-            Actions:          actions,
-            Baseline:         _baseline.CurrentBaseline,
-            TotalDataPoints:  total);
+            Id:              Guid.NewGuid().ToString("N"),
+            CreatedAt:       DateTimeOffset.Now,
+            OldestDataPoint: oldest2,
+            NewestDataPoint: DateTimeOffset.Now,
+            TelemetrySeries: telemetrySeries,
+            Events:          events,
+            Actions:         actions,
+            Baseline:        _baseline.CurrentBaseline,
+            TotalDataPoints: total);
     }
 
     // ── State reconstruction ──────────────────────────────────────────────────
@@ -247,11 +306,29 @@ internal sealed class OperationalReplayService : IOperationalReplayService
     // ── Private helpers ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// Queries all five metric arrays from the history buffer and merges them
-    /// by index into a single time series. Zipping by index is safe because all
-    /// five metrics are written atomically in the same buffer write lock.
+    /// Reconstructs a <see cref="TimelineEvent"/> from a persisted SQLite row.
     /// </summary>
-    private List<HistoricalTelemetryPoint> BuildTelemetrySeries()
+    private static TimelineEvent ToTimelineEvent(PersistedTimelineEvent p) => new()
+    {
+        Id                  = p.EventId,
+        Type                = (TimelineEventType)p.EventTypeOrdinal,
+        OccurredAt          = p.OccurredAt,
+        Title               = p.Title,
+        Detail              = p.Detail,
+        Severity            = (TimelineEventSeverity)p.SeverityOrdinal,
+        RelatedInsightId    = p.RelatedInsightId,
+        AttributedProcesses = p.AttributedProcesses?
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .ToList() ?? [],
+        ActionId            = p.ActionId,
+    };
+
+    /// <summary>
+    /// Queries all five metric arrays from the in-memory rolling buffer and
+    /// merges them by index into a single time series. Zipping by index is safe
+    /// because all five metrics are written atomically in the same buffer lock.
+    /// </summary>
+    private List<HistoricalTelemetryPoint> BuildTelemetrySeriesFromMemory()
     {
         var cpu  = _history.GetSamples(TelemetryMetric.Cpu,         TimeWindow.LastThirtyMinutes);
         var ram  = _history.GetSamples(TelemetryMetric.Ram,         TimeWindow.LastThirtyMinutes);

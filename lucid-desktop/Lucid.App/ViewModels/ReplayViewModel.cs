@@ -170,6 +170,8 @@ public sealed partial class ReplayViewModel : ObservableObject
     // ── Window selection chips ────────────────────────────────────────────────
 
     [ObservableProperty] private bool _isWindowFull = true;
+    [ObservableProperty] private bool _isWindow24h;
+    [ObservableProperty] private bool _isWindow6h;
     [ObservableProperty] private bool _isWindowHour;
     [ObservableProperty] private bool _isWindow15m;
     [ObservableProperty] private bool _isWindow5m;
@@ -184,10 +186,12 @@ public sealed partial class ReplayViewModel : ObservableObject
 
     // ── Commands ──────────────────────────────────────────────────────────────
 
-    public IAsyncRelayCommand RefreshCommand          { get; }
-    public IRelayCommand      SeekToBeginCommand      { get; }
-    public IRelayCommand      SeekToEndCommand        { get; }
+    public IAsyncRelayCommand RefreshCommand           { get; }
+    public IRelayCommand      SeekToBeginCommand       { get; }
+    public IRelayCommand      SeekToEndCommand         { get; }
     public IRelayCommand      SelectWindowFullCommand  { get; }
+    public IRelayCommand      SelectWindow24hCommand   { get; }
+    public IRelayCommand      SelectWindow6hCommand    { get; }
     public IRelayCommand      SelectWindowHourCommand  { get; }
     public IRelayCommand      SelectWindow15mCommand   { get; }
     public IRelayCommand      SelectWindow5mCommand    { get; }
@@ -203,6 +207,8 @@ public sealed partial class ReplayViewModel : ObservableObject
         SeekToBeginCommand      = new RelayCommand(() => CursorSeconds = 0);
         SeekToEndCommand        = new RelayCommand(() => CursorSeconds = TotalSessionSeconds);
         SelectWindowFullCommand = new RelayCommand(() => SelectWindow(ReplayWindow.FullSession));
+        SelectWindow24hCommand  = new RelayCommand(() => SelectWindow(ReplayWindow.Last24Hours));
+        SelectWindow6hCommand   = new RelayCommand(() => SelectWindow(ReplayWindow.LastSixHours));
         SelectWindowHourCommand = new RelayCommand(() => SelectWindow(ReplayWindow.LastHour));
         SelectWindow15mCommand  = new RelayCommand(() => SelectWindow(ReplayWindow.Last15Minutes));
         SelectWindow5mCommand   = new RelayCommand(() => SelectWindow(ReplayWindow.Last5Minutes));
@@ -480,11 +486,13 @@ public sealed partial class ReplayViewModel : ObservableObject
 
     private void SelectWindow(ReplayWindow window)
     {
-        _selectedWindow  = window;
-        IsWindowFull     = window == ReplayWindow.FullSession;
-        IsWindowHour     = window == ReplayWindow.LastHour;
-        IsWindow15m      = window == ReplayWindow.Last15Minutes;
-        IsWindow5m       = window == ReplayWindow.Last5Minutes;
+        _selectedWindow = window;
+        IsWindowFull    = window == ReplayWindow.FullSession;
+        IsWindow24h     = window == ReplayWindow.Last24Hours;
+        IsWindow6h      = window == ReplayWindow.LastSixHours;
+        IsWindowHour    = window == ReplayWindow.LastHour;
+        IsWindow15m     = window == ReplayWindow.Last15Minutes;
+        IsWindow5m      = window == ReplayWindow.Last5Minutes;
         _ = LoadSessionAsync();
     }
 

@@ -73,6 +73,16 @@
                               Command="{Binding SelectWindowFullCommand}"
                               Padding="12,6" CornerRadius="8" FontSize="12" />
 
+                <ToggleButton Content="24 Hours"
+                              IsChecked="{Binding IsWindow24h, Mode=TwoWay}"
+                              Command="{Binding SelectWindow24hCommand}"
+                              Padding="12,6" CornerRadius="8" FontSize="12" />
+
+                <ToggleButton Content="6 Hours"
+                              IsChecked="{Binding IsWindow6h, Mode=TwoWay}"
+                              Command="{Binding SelectWindow6hCommand}"
+                              Padding="12,6" CornerRadius="8" FontSize="12" />
+
                 <ToggleButton Content="1 Hour"
                               IsChecked="{Binding IsWindowHour, Mode=TwoWay}"
                               Command="{Binding SelectWindowHourCommand}"
