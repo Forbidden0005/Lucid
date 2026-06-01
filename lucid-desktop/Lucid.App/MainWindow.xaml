@@ -167,6 +167,13 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
+                <muxc:NavigationViewItem Tag="reasoning"
+                                         Content="Reasoning">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9CE;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
                 <muxc:NavigationViewItem Tag="devices"
                                          Content="Devices">
                     <muxc:NavigationViewItem.Icon>
