@@ -4,6 +4,7 @@ using Lucid.Services.Explain;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Learning;
 using Lucid.Services.Narrative;
+using Lucid.Services.Reasoning.Cognitive;
 using Lucid.Services.Timeline;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -89,6 +90,28 @@ public sealed class EvidenceItemViewModel
     public string Value     { get; init; } = "";
     public string KindLabel { get; init; } = "";
     public Brush  KindBrush { get; init; } = new SolidColorBrush(Colors.Gray);
+}
+
+/// <summary>
+/// ViewModel for one cognitive inference in the "Operational Context" section.
+/// Surfaces Phase 19-21 synthesized interpretations — higher-level than raw
+/// causal factors. Bridges "what's causing this" to "what happens next".
+/// </summary>
+public sealed class CognitiveInferenceViewModel
+{
+    public string  Headline           { get; init; } = "";
+    public string  Explanation        { get; init; } = "";
+    public string? Trajectory         { get; init; }
+    public string  PriorityLabel      { get; init; } = "";
+    public string  ConfidenceText     { get; init; } = "";
+    public int     ConfidencePercent  { get; init; }
+    public string  DomainsText        { get; init; } = "";
+    public string? WorkloadContext    { get; init; }
+    public Brush   PriorityBrush              { get; init; } = new SolidColorBrush(Colors.Gray);
+    public bool    HasTrajectory              { get; init; }
+    public Visibility HasTrajectoryVisibility { get; init; }
+    public bool    HasWorkloadContext                  { get; init; }
+    public Visibility HasWorkloadContextVisibility     { get; init; }
 }
 
 // ── Main ViewModel ─────────────────────────────────────────────────────────────
@@ -180,6 +203,14 @@ public partial class ExplainViewModel : ObservableObject
     // ── Section 6: Evidence ───────────────────────────────────────────────────
 
     public ObservableCollection<EvidenceItemViewModel> Evidence { get; } = [];
+
+    // ── Section 7: Operational Context (cognitive inferences) ─────────────────
+
+    [ObservableProperty] private string     _cognitiveInsightsSectionLabel     = "Analysis warming up…";
+    [ObservableProperty] private Visibility _cognitiveInsightsVisibility       = Visibility.Collapsed;
+    [ObservableProperty] private Visibility _noCognitiveInsightsVisibility     = Visibility.Visible;
+
+    public ObservableCollection<CognitiveInferenceViewModel> CognitiveInferences { get; } = [];
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -274,6 +305,18 @@ public partial class ExplainViewModel : ObservableObject
         Evidence.Clear();
         foreach (var ev in exp.Evidence)
             Evidence.Add(MapEvidence(ev));
+
+        // ── Section 7: Operational Context ────────────────────────────────────
+        CognitiveInferences.Clear();
+        foreach (var inf in exp.CognitiveInferences)
+            CognitiveInferences.Add(MapCognitiveInference(inf));
+
+        var hasCognitive                = exp.CognitiveInferences.Count > 0;
+        CognitiveInsightsVisibility     = hasCognitive ? Visibility.Visible   : Visibility.Collapsed;
+        NoCognitiveInsightsVisibility   = hasCognitive ? Visibility.Collapsed : Visibility.Visible;
+        CognitiveInsightsSectionLabel   = hasCognitive
+            ? $"{exp.CognitiveInferences.Count} synthesized observation(s)"
+            : "Analysis warming up…";
     }
 
     // ── Item mappers ──────────────────────────────────────────────────────────
@@ -372,6 +415,40 @@ public partial class ExplainViewModel : ObservableObject
         KindLabel = EvidenceKindLabel(item.Kind),
         KindBrush = EvidenceKindBrush(item.Kind),
     };
+
+    private static CognitiveInferenceViewModel MapCognitiveInference(OperationalInference inf)
+    {
+        var priorityBrush = inf.Priority switch
+        {
+            InferencePriority.Critical      => s_brushRed,
+            InferencePriority.Elevated      => s_brushAmber,
+            InferencePriority.Advisory      => s_brushBlue,
+            InferencePriority.Informational => s_brushSlate,
+            _                               => s_brushGray,
+        };
+
+        var domainsText = inf.Domains.Count > 0
+            ? string.Join(" · ", inf.Domains)
+            : "General";
+
+        return new CognitiveInferenceViewModel
+        {
+            Headline          = inf.Headline,
+            Explanation       = inf.Explanation,
+            Trajectory        = inf.Trajectory,
+            PriorityLabel     = inf.Priority.ToLabel(),
+            ConfidenceText    = inf.Confidence.Label,
+            ConfidencePercent = (int)(inf.Confidence.Value * 100),
+            DomainsText       = domainsText,
+            WorkloadContext   = inf.WorkloadContextAtInference,
+            PriorityBrush              = priorityBrush,
+            HasTrajectory              = inf.Trajectory is not null,
+            HasTrajectoryVisibility    = inf.Trajectory is not null ? Visibility.Visible : Visibility.Collapsed,
+            HasWorkloadContext              = inf.WorkloadContextAtInference is not null,
+            HasWorkloadContextVisibility   = inf.WorkloadContextAtInference is not null
+                                             ? Visibility.Visible : Visibility.Collapsed,
+        };
+    }
 
     // ── Visual helpers ── return static brush refs, zero allocation per call ─────
 

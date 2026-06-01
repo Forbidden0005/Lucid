@@ -415,6 +415,170 @@
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════════════════
+                 SECTION 7 — OPERATIONAL CONTEXT (Cognitive Layer)
+                 Synthesized higher-level interpretations from Phase 19-21.
+                 Bridges causal factors → "what this means in context".
+            ═══════════════════════════════════════════════════════════════ -->
+            <StackPanel Spacing="12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE9EF;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="14"
+                                  Foreground="{StaticResource AccentBlueBrush}"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Operational Context"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding CognitiveInsightsSectionLabel}"
+                               Style="{StaticResource CaptionTextStyle}"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Empty / warming-up state -->
+                <Border Style="{StaticResource CardSurface}" Padding="20"
+                        Visibility="{Binding NoCognitiveInsightsVisibility}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE9F9;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="14"
+                                  Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="Contextual analysis is still warming up — check back after the next intelligence cycle."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Cognitive inference cards -->
+                <ItemsControl ItemsSource="{Binding CognitiveInferences}"
+                              Visibility="{Binding CognitiveInsightsVisibility}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardSurface}"
+                                    Padding="0" Margin="0,0,0,8"
+                                    PointerEntered="Card_PointerEntered"
+                                    PointerExited="Card_PointerExited">
+                                <Border.RenderTransform><CompositeTransform /></Border.RenderTransform>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Priority accent stripe -->
+                                    <Border Grid.Column="0"
+                                            CornerRadius="8,0,0,8"
+                                            Background="{Binding PriorityBrush}" />
+
+                                    <!-- Content -->
+                                    <StackPanel Grid.Column="1" Padding="18,16,18,16" Spacing="10">
+
+                                        <!-- Header: priority badge + headline + confidence badge -->
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Priority badge -->
+                                            <Border CornerRadius="6" Padding="8,3">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="#1AFFFFFF" />
+                                                </Border.Background>
+                                                <TextBlock Text="{Binding PriorityLabel}"
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{Binding PriorityBrush}" />
+                                            </Border>
+
+                                            <!-- Headline -->
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Headline}"
+                                                       Style="{StaticResource CardTitleStyle}"
+                                                       VerticalAlignment="Center"
+                                                       TextWrapping="Wrap" />
+
+                                            <!-- Confidence badge -->
+                                            <Border Grid.Column="2"
+                                                    Background="{StaticResource AppSurfaceBrush}"
+                                                    CornerRadius="6" Padding="8,3"
+                                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                                    BorderThickness="1"
+                                                    VerticalAlignment="Top">
+                                                <TextBlock Text="{Binding ConfidenceText}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Explanation text -->
+                                        <TextBlock Text="{Binding Explanation}"
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   TextWrapping="Wrap"
+                                                   LineHeight="20" />
+
+                                        <!-- Trajectory (optional) — what happens if left unaddressed -->
+                                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                                    Visibility="{Binding HasTrajectoryVisibility}">
+                                            <FontIcon Glyph="&#xE970;" FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="10"
+                                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                                      VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Trajectory}"
+                                                       FontSize="11"
+                                                       FontStyle="Italic"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+
+                                        <!-- Footer: domains chip + optional workload context chip -->
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Border Background="{StaticResource AppSurfaceBrush}"
+                                                    CornerRadius="4" Padding="7,3"
+                                                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                                                    BorderThickness="1">
+                                                <TextBlock Text="{Binding DomainsText}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                            </Border>
+
+                                            <!-- Workload context chip (when available) -->
+                                            <Border CornerRadius="4" Padding="7,3"
+                                                    Visibility="{Binding HasWorkloadContextVisibility}">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="#1A6CA3F7" />
+                                                </Border.Background>
+                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                    <FontIcon Glyph="&#xE779;"
+                                                              FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="10"
+                                                              Foreground="{StaticResource AccentBlueBrush}"
+                                                              VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding WorkloadContext}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource AccentBlueBrush}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <!-- Confidence bar -->
+                                        <ProgressBar Value="{Binding ConfidencePercent}"
+                                                     Maximum="100"
+                                                     Style="{StaticResource ConfidenceBar}"
+                                                     Foreground="{Binding PriorityBrush}" />
+
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════════════════
                  SECTION 4 — WHAT HAPPENS NEXT?
             ═══════════════════════════════════════════════════════════════ -->
             <StackPanel Spacing="12">

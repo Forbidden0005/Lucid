@@ -1437,13 +1437,6 @@ public static class AppServices
             _deviceIdentity, _localSync);
         _localSync.Start();
 
-        // ── Lucid flagship engine ───────────────────────────────────────
-        // Must start after narrative and timeline — subscribes to both.
-        // Seeds from current state immediately if insights already exist.
-        _explainEngine = new ExplainMyPcEngine(
-            _intelligence, _timeline, _narrative, _baseline, _history);
-        _explainEngine.Start();
-
         // ── Operational Replay service ────────────────────────────────────────
         // Stateless — no Start()/Stop() required. Created after timeline and
         // history so it can capture a fully-populated snapshot on first request.
@@ -1565,6 +1558,14 @@ public static class AppServices
             _cognitiveMetrics);
 
         _logger.Info("Startup", "Phase 19 Unified Cognitive Reasoning Layer initialized");
+
+        // ── Lucid flagship engine ─────────────────────────────────────────────
+        // Placed here (after Phase 19) so the cognitive engine is available for
+        // the first Rebuild() cycle. Subscribes to narrative and timeline; seeds
+        // immediately if insights already exist.
+        _explainEngine = new ExplainMyPcEngine(
+            _intelligence, _timeline, _narrative, _baseline, _history, _cognitiveReasoning);
+        _explainEngine.Start();
 
         // ── Phase 20: Unified Human Interaction & Cognitive UX Layer ──────────
         // All services are created after Phase 19 so they can inject the cognitive engine.

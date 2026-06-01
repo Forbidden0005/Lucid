@@ -1,5 +1,6 @@
 ﻿using Lucid.Services.Intelligence;
 using Lucid.Services.Narrative;
+using Lucid.Services.Reasoning.Cognitive;
 using Lucid.Services.Timeline;
 
 namespace Lucid.Services.Explain;
@@ -133,6 +134,11 @@ public sealed record OperationalExplanation(
 
     // Section 6 — Why We Believe This
     IReadOnlyList<EvidenceItem> Evidence,
+
+    // Section 7 — Operational Context (Phase 19-21 cognitive layer inferences)
+    // Synthesized higher-level interpretations that contextualize raw causal factors.
+    // Filtered to non-suppressed, reliable (≥ Medium confidence) inferences only.
+    IReadOnlyList<OperationalInference> CognitiveInferences,
 
     // Metadata
     Narrative.SystemHealthState HealthStateEnum,

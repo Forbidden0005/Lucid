@@ -1,6 +1,7 @@
 ﻿using Lucid.Services.Baseline;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Narrative;
+using Lucid.Services.Reasoning.Cognitive;
 using Lucid.Services.Timeline;
 
 namespace Lucid.Services.Explain;
@@ -40,6 +41,7 @@ internal sealed class ExplainMyPcEngine : IExplainMyPcEngine
     private readonly IOperationalNarrativeEngine _narrative;
     private readonly ISystemBaselineService      _baseline;
     private readonly ITelemetryHistoryBuffer     _history;
+    private readonly ICognitiveReasoningEngine?  _cognitive;
 
     private bool _running;
 
@@ -51,13 +53,15 @@ internal sealed class ExplainMyPcEngine : IExplainMyPcEngine
         ITimelineAggregationService timeline,
         IOperationalNarrativeEngine narrative,
         ISystemBaselineService      baseline,
-        ITelemetryHistoryBuffer     history)
+        ITelemetryHistoryBuffer     history,
+        ICognitiveReasoningEngine?  cognitive = null)
     {
         _intelligence = intelligence;
         _timeline     = timeline;
         _narrative    = narrative;
         _baseline     = baseline;
         _history      = history;
+        _cognitive    = cognitive;
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -137,6 +141,18 @@ internal sealed class ExplainMyPcEngine : IExplainMyPcEngine
         var evidence = ExplanationComposer.ComposeEvidence(
             insights, baseline, _history.Count);
 
+        // ── 7.5. Snapshot cognitive inferences (Phase 19-21) ──────────────────
+        // Filter to non-suppressed, reliable (≥ Medium confidence) inferences,
+        // ordered by priority descending, capped at 5 for UI readability.
+        // Returns empty list when cognitive engine is unavailable or has no data yet.
+        var cognitiveInferences = (IReadOnlyList<OperationalInference>)
+            (_cognitive?.CurrentInferences
+                .Where(inf => !inf.IsSuppressed && inf.IsReliable)
+                .OrderByDescending(inf => inf.Priority)
+                .Take(5)
+                .ToList()
+             ?? []);
+
         // ── 8. Assemble final explanation ─────────────────────────────────────
         var explanation = new OperationalExplanation(
             SystemHealthState:       stateLabel,
@@ -149,6 +165,7 @@ internal sealed class ExplainMyPcEngine : IExplainMyPcEngine
             Forecasts:               forecasts,
             Recommendations:         recommendations,
             Evidence:                evidence,
+            CognitiveInferences:     cognitiveInferences,
             HealthStateEnum:         state,
             GeneratedAt:             DateTimeOffset.Now,
             DataPointsConsidered:    _history.Count + insights.Count + events.Count);
