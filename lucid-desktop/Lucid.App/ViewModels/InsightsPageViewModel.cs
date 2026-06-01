@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lucid.Services.History;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Learning;
 using Microsoft.UI.Xaml;
@@ -444,24 +445,61 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     public string HistoryCountText =>
         $"{HistoryRecords.Count} record{(HistoryRecords.Count == 1 ? "" : "s")}";
 
+    // ── Injected services ─────────────────────────────────────────────────────
+
+    private readonly ISystemInsightEngine              _intelligence;
+    private readonly IEarlyWarningService              _earlyWarning;
+    private readonly IAnomalyDetectionService          _anomalyDetection;
+    private readonly IDriftDetectionService            _driftDetection;
+    private readonly IOperationHistoryService          _historyService;
+    private readonly IInterventionMemoryService        _interventionMemory;
+    private readonly IPersonalizationEngine            _personalizationEngine;
+    private readonly IUserBehaviorClassifier           _userBehaviorClassifier;
+    private readonly IRemediationLearningService       _learningService;
+    private readonly IAlertFatigueManager              _alertFatigueManager;
+    private readonly IRecommendationExplanationService _recommendationExplanation;
+
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public InsightsPageViewModel()
+    public InsightsPageViewModel(
+        ISystemInsightEngine              intelligence,
+        IEarlyWarningService              earlyWarning,
+        IAnomalyDetectionService          anomalyDetection,
+        IDriftDetectionService            driftDetection,
+        IOperationHistoryService          historyService,
+        IInterventionMemoryService        interventionMemory,
+        IPersonalizationEngine            personalizationEngine,
+        IUserBehaviorClassifier           userBehaviorClassifier,
+        IRemediationLearningService       learningService,
+        IAlertFatigueManager              alertFatigueManager,
+        IRecommendationExplanationService recommendationExplanation)
     {
-        AppServices.Intelligence.InsightsUpdated += OnInsightsUpdated;
+        _intelligence              = intelligence;
+        _earlyWarning              = earlyWarning;
+        _anomalyDetection          = anomalyDetection;
+        _driftDetection            = driftDetection;
+        _historyService            = historyService;
+        _interventionMemory        = interventionMemory;
+        _personalizationEngine     = personalizationEngine;
+        _userBehaviorClassifier    = userBehaviorClassifier;
+        _learningService           = learningService;
+        _alertFatigueManager       = alertFatigueManager;
+        _recommendationExplanation = recommendationExplanation;
+
+        _intelligence.InsightsUpdated += OnInsightsUpdated;
 
         // Seed immediately from whatever the engine already has (back-nav / late init).
-        ApplyInsights(AppServices.Intelligence.CurrentInsights);
+        ApplyInsights(_intelligence.CurrentInsights);
 
         // Subscribe to anomaly intelligence services (all UI-thread events).
-        AppServices.EarlyWarning.WarningsUpdated      += OnWarningsUpdated;
-        AppServices.AnomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
-        AppServices.DriftDetection.DriftsUpdated      += OnDriftsUpdated;
+        _earlyWarning.WarningsUpdated      += OnWarningsUpdated;
+        _anomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
+        _driftDetection.DriftsUpdated      += OnDriftsUpdated;
 
         // Seed from current state.
-        ApplyWarnings(AppServices.EarlyWarning.CurrentWarnings);
-        ApplyAnomalies(AppServices.AnomalyDetection.CurrentAnomalies);
-        ApplyDrifts(AppServices.DriftDetection.CurrentDrifts);
+        ApplyWarnings(_earlyWarning.CurrentWarnings);
+        ApplyAnomalies(_anomalyDetection.CurrentAnomalies);
+        ApplyDrifts(_driftDetection.CurrentDrifts);
 
         // 30-second timer keeps insight card "RelativeTime" labels current.
         // Without this, a card that shows "just now" at detection time never
@@ -511,9 +549,9 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     {
         try
         {
-            var records = AppServices.InterventionMemory.Records;
-            _personalizationProfile = AppServices.PersonalizationEngine.ComputeProfile(records);
-            PersonalizationStyleReport = AppServices.UserBehaviorClassifier.Classify(_personalizationProfile);
+            var records = _interventionMemory.Records;
+            _personalizationProfile = _personalizationEngine.ComputeProfile(records);
+            PersonalizationStyleReport = _userBehaviorClassifier.Classify(_personalizationProfile);
             RecentInterventions = records.Take(15).ToList().AsReadOnly();
 
             // Format category rates for display
@@ -649,10 +687,10 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     {
         var ranked = s_prioritizer.Rank(
             insights,
-            AppServices.LearningService,
+            _learningService,
             _personalizationProfile,
-            AppServices.AlertFatigueManager,
-            AppServices.RecommendationExplanation);
+            _alertFatigueManager,
+            _recommendationExplanation);
         DisplayedActions = ranked.Select(PrioritizedActionViewModel.From).ToList();
 
         OnPropertyChanged(nameof(DisplayedActions));
@@ -722,7 +760,7 @@ public sealed partial class InsightsPageViewModel : ObservableObject
 
         try
         {
-            var records = await AppServices.HistoryService
+            var records = await _historyService
                 .GetRecentAsync(100)
                 .ConfigureAwait(true);  // stay on UI thread
 
@@ -800,10 +838,10 @@ public sealed partial class InsightsPageViewModel : ObservableObject
     public void Cleanup()
     {
         _timestampTimer.Stop();
-        AppServices.Intelligence.InsightsUpdated      -= OnInsightsUpdated;
-        AppServices.EarlyWarning.WarningsUpdated      -= OnWarningsUpdated;
-        AppServices.AnomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
-        AppServices.DriftDetection.DriftsUpdated      -= OnDriftsUpdated;
+        _intelligence.InsightsUpdated      -= OnInsightsUpdated;
+        _earlyWarning.WarningsUpdated      -= OnWarningsUpdated;
+        _anomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
+        _driftDetection.DriftsUpdated      -= OnDriftsUpdated;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

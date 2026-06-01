@@ -32,7 +32,9 @@ public sealed partial class ReasoningPage : Page
             AppServices.CalibrationEngine,
             AppServices.UnifiedRecommendations,
             AppServices.AttentionCoordinator,
-            DispatcherQueue.GetForCurrentThread());
+            DispatcherQueue.GetForCurrentThread(),
+            AppServices.RecommendationArbitrator,
+            AppServices.Intelligence);
 
         DataContext = _viewModel;
 

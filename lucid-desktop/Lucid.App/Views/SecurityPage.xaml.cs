@@ -6,7 +6,10 @@ namespace Lucid.Views;
 
 public sealed partial class SecurityPage : Page
 {
-    public SecurityViewModel ViewModel { get; } = new SecurityViewModel();
+    public SecurityViewModel ViewModel { get; } = new SecurityViewModel(
+        AppServices.Timeline,
+        AppServices.ExecutionEngine,
+        AppServices.StartupManagement);
 
     public SecurityPage()
     {

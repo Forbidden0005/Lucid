@@ -1,5 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lucid.Services;
+using Lucid.Services.Baseline;
+using Lucid.Services.History;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Narrative;
 using Lucid.Services.Telemetry;
@@ -39,6 +42,15 @@ namespace Lucid.ViewModels;
 /// </summary>
 public sealed partial class InsightDetailViewModel : ObservableObject
 {
+    // ── Injected services ─────────────────────────────────────────────────────
+
+    private readonly ISystemInsightEngine        _intelligence;
+    private readonly IOperationalNarrativeEngine _narrativeEngine;
+    private readonly ITelemetryHistoryBuffer     _history;
+    private readonly ISystemBaselineService      _baseline;
+    private readonly ITimelineAggregationService _timeline;
+    private readonly IOperationHistoryService    _historyService;
+
     // ── State ─────────────────────────────────────────────────────────────────
 
     private string         _insightId = string.Empty;
@@ -199,14 +211,30 @@ public sealed partial class InsightDetailViewModel : ObservableObject
     /// Initialises the workspace for the given insight ID. Call from
     /// <c>InsightDetailPage.OnNavigatedTo</c> on the UI thread.
     /// </summary>
+    public InsightDetailViewModel(
+        ISystemInsightEngine        intelligence,
+        IOperationalNarrativeEngine narrativeEngine,
+        ITelemetryHistoryBuffer     history,
+        ISystemBaselineService      baseline,
+        ITimelineAggregationService timeline,
+        IOperationHistoryService    historyService)
+    {
+        _intelligence    = intelligence;
+        _narrativeEngine = narrativeEngine;
+        _history         = history;
+        _baseline        = baseline;
+        _timeline        = timeline;
+        _historyService  = historyService;
+    }
+
     public void Load(string insightId)
     {
         _insightId = insightId;
-        _insight   = AppServices.Intelligence.CurrentInsights
+        _insight   = _intelligence.CurrentInsights
                          .FirstOrDefault(i => i.Id == insightId);
 
-        AppServices.Intelligence.InsightsUpdated += OnInsightsUpdated;
-        AppServices.Narrative.NarrativeUpdated   += OnNarrativeUpdated;
+        _intelligence.InsightsUpdated    += OnInsightsUpdated;
+        _narrativeEngine.NarrativeUpdated += OnNarrativeUpdated;
 
         RefreshAll();
 
@@ -216,8 +244,8 @@ public sealed partial class InsightDetailViewModel : ObservableObject
     /// <summary>Unsubscribes from live services. Call from Page.Unloaded.</summary>
     public void Cleanup()
     {
-        AppServices.Intelligence.InsightsUpdated -= OnInsightsUpdated;
-        AppServices.Narrative.NarrativeUpdated   -= OnNarrativeUpdated;
+        _intelligence.InsightsUpdated     -= OnInsightsUpdated;
+        _narrativeEngine.NarrativeUpdated -= OnNarrativeUpdated;
     }
 
     // ── Live update handlers ──────────────────────────────────────────────────
@@ -255,7 +283,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         RebuildRelatedEvents();
 
         // Narrative
-        var narrative = AppServices.Narrative.CurrentNarrative;
+        var narrative = _narrativeEngine.CurrentNarrative;
         if (narrative is not null) ApplyNarrative(narrative);
 
         // Confidence breakdown
@@ -287,14 +315,14 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         switch (SelectedWindowIndex)
         {
             case 0:
-                raw            = AppServices.History.GetSamples(metric.Value, TimeWindow.LastMinute);
+                raw            = _history.GetSamples(metric.Value, TimeWindow.LastMinute);
                 forecastMinutes = 1;
                 windowLabel    = "1 min window";
                 break;
             case 2:
             {
                 // 15-minute window: filter from the 30-min buffer
-                var all30 = AppServices.History.GetSamples(metric.Value, TimeWindow.LastThirtyMinutes);
+                var all30 = _history.GetSamples(metric.Value, TimeWindow.LastThirtyMinutes);
                 var cutoff = DateTimeOffset.Now - TimeSpan.FromMinutes(15);
                 raw            = all30.Where(p => p.Timestamp >= cutoff).ToList();
                 forecastMinutes = 6;
@@ -302,12 +330,12 @@ public sealed partial class InsightDetailViewModel : ObservableObject
                 break;
             }
             case 3:
-                raw            = AppServices.History.GetSamples(metric.Value, TimeWindow.LastThirtyMinutes);
+                raw            = _history.GetSamples(metric.Value, TimeWindow.LastThirtyMinutes);
                 forecastMinutes = 10;
                 windowLabel    = "30 min window";
                 break;
             default: // 1 = 5 min
-                raw            = AppServices.History.GetSamples(metric.Value, TimeWindow.LastFiveMinutes);
+                raw            = _history.GetSamples(metric.Value, TimeWindow.LastFiveMinutes);
                 forecastMinutes = 4;
                 windowLabel    = "5 min window";
                 break;
@@ -331,7 +359,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
 
         // ── Baseline band ─────────────────────────────────────────────────────
 
-        var   baseline      = AppServices.Baseline.CurrentBaseline;
+        var   baseline      = _baseline.CurrentBaseline;
         double? baselineMean   = null;
         double? baselineStdDev = null;
         string unit = metric.Value == TelemetryMetric.Temperature ? "°C" : "%";
@@ -359,7 +387,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         // ── Markers from related timeline events ──────────────────────────────
 
         var windowStart = raw[0].Timestamp;
-        var markers = AppServices.Timeline.Events
+        var markers = _timeline.Events
             .Where(e => e.RelatedInsightId == _insightId &&
                         e.OccurredAt >= windowStart)
             .Select(e => new ChartMarker(
@@ -455,7 +483,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
 
     private void RebuildRelatedEvents()
     {
-        RelatedEvents = AppServices.Timeline.Events
+        RelatedEvents = _timeline.Events
             .Where(e => e.RelatedInsightId == _insightId ||
                         (e.Type == TimelineEventType.ActionExecuted
                          && _insight?.RecommendedActions.Any(a => e.ActionId == a.Id) == true))
@@ -477,7 +505,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         {
             // Get up to 50 recent records, filter to those plausibly related to
             // this insight's recommended action IDs.
-            var all = await AppServices.HistoryService
+            var all = await _historyService
                 .GetRecentAsync(50)
                 .ConfigureAwait(true);
 
@@ -532,7 +560,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         var metric = TrendVisualizationHelper.MetricFor(_insightId);
         if (metric is not null)
         {
-            var stats    = AppServices.History.GetStats(metric.Value, TimeWindow.LastFiveMinutes);
+            var stats    = _history.GetStats(metric.Value, TimeWindow.LastFiveMinutes);
             int expected = (int)(300 / 1.5);   // 5 min ÷ 1.5s per tick ≈ 200 samples
             int coverage = stats.SampleCount == 0 ? 0
                          : (int)Math.Min(100, stats.SampleCount * 100.0 / expected);

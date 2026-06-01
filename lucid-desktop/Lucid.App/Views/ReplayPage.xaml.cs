@@ -22,7 +22,7 @@ public sealed partial class ReplayPage : Page
     {
         InitializeComponent();
 
-        _vm = new ReplayViewModel(AppServices.ReplayService);
+        _vm = new ReplayViewModel(AppServices.ReplayService, AppServices.LearningService);
         DataContext = _vm;
     }
 

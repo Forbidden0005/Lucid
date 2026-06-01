@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Execution;
 using Lucid.Services.History;
 using Lucid.Services.Storage;
+using Lucid.Services.Timeline;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
@@ -68,7 +69,10 @@ public sealed class CategoryRowViewModel
 
 public sealed partial class StorageViewModel : ObservableObject
 {
-    private readonly DispatcherQueue _dispatcher;
+    private readonly DispatcherQueue             _dispatcher;
+    private readonly ITimelineAggregationService _timeline;
+    private readonly IActionExecutionEngine      _executionEngine;
+    private readonly IOperationHistoryService    _historyService;
 
     // ── Scan state ────────────────────────────────────────────────────────────
 
@@ -148,10 +152,16 @@ public sealed partial class StorageViewModel : ObservableObject
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public StorageViewModel()
+    public StorageViewModel(
+        ITimelineAggregationService timeline,
+        IActionExecutionEngine      executionEngine,
+        IOperationHistoryService    historyService)
     {
-        _dispatcher = DispatcherQueue.GetForCurrentThread()
-                   ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _timeline        = timeline;
+        _executionEngine = executionEngine;
+        _historyService  = historyService;
+        _dispatcher      = DispatcherQueue.GetForCurrentThread()
+                        ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
@@ -173,8 +183,7 @@ public sealed partial class StorageViewModel : ObservableObject
         Categories.Clear();
         OldDownloads.Clear();
 
-        // Build the service with the current timeline if available
-        var timeline = AppServices.Timeline as Services.Timeline.TimelineAggregationService;
+        var timeline = _timeline as Services.Timeline.TimelineAggregationService;
         var svc      = new StorageAnalysisService(_dispatcher, timeline);
 
         svc.ScanProgressChanged += OnProgress;
@@ -227,7 +236,7 @@ public sealed partial class StorageViewModel : ObservableObject
                 },
             };
 
-            var result = await AppServices.ExecutionEngine
+            var result = await _executionEngine
                 .ExecuteAsync("action.storage.delete-large-file", context)
                 .ConfigureAwait(true);
 
@@ -272,7 +281,7 @@ public sealed partial class StorageViewModel : ObservableObject
                 },
             };
 
-            var result = await AppServices.ExecutionEngine
+            var result = await _executionEngine
                 .ExecuteAsync("action.storage.delete-duplicate-group", context)
                 .ConfigureAwait(true);
 
@@ -361,7 +370,7 @@ public sealed partial class StorageViewModel : ObservableObject
 
     // ── History recording ─────────────────────────────────────────────────────
 
-    private static async Task RecordHistoryAsync(
+    private async Task RecordHistoryAsync(
         ActionExecutionResult result, string title)
     {
         try
@@ -373,7 +382,7 @@ public sealed partial class StorageViewModel : ObservableObject
                 .Where(e => e.Level == ActionLogLevel.Error)
                 .Select(e => e.Message).ToList();
 
-            await AppServices.HistoryService.RecordAsync(new OperationRecord
+            await _historyService.RecordAsync(new OperationRecord
             {
                 ActionId        = result.ActionId,
                 ActionTitle     = title,

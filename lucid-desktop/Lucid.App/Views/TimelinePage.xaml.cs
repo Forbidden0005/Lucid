@@ -18,7 +18,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class TimelinePage : Page
 {
-    public TimelinePageViewModel ViewModel { get; } = new TimelinePageViewModel();
+    public TimelinePageViewModel ViewModel { get; } = new TimelinePageViewModel(AppServices.Timeline);
 
     public TimelinePage()
     {

@@ -105,7 +105,8 @@ public sealed class EvidenceItemViewModel
 /// </summary>
 public partial class ExplainViewModel : ObservableObject
 {
-    private readonly IExplainMyPcEngine _engine;
+    private readonly IExplainMyPcEngine        _engine;
+    private readonly IRemediationLearningService _learningService;
 
     // ── Brush palette ── allocated once at class init, zero per Apply() call ─────
     //
@@ -182,9 +183,10 @@ public partial class ExplainViewModel : ObservableObject
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
-    public ExplainViewModel(IExplainMyPcEngine engine)
+    public ExplainViewModel(IExplainMyPcEngine engine, IRemediationLearningService learningService)
     {
-        _engine = engine;
+        _engine          = engine;
+        _learningService = learningService;
         _engine.ExplanationUpdated += OnExplanationUpdated;
 
         // Seed from current explanation if already available
@@ -323,10 +325,10 @@ public partial class ExplainViewModel : ObservableObject
         SeverityBrush     = ForecastBrush(outlook.Severity),
     };
 
-    private static RecommendationViewModel MapRecommendation(RecommendationReasoning rec, int rank)
+    private RecommendationViewModel MapRecommendation(RecommendationReasoning rec, int rank)
     {
         // Effectiveness badge (cold-start safe — returns null before first analysis)
-        var profile = AppServices.LearningService.GetProfile(rec.Action.Id);
+        var profile = _learningService.GetProfile(rec.Action.Id);
         string effLabel    = "";
         string effText     = "";
         var    effVisible  = Visibility.Collapsed;

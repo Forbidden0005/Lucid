@@ -105,31 +105,38 @@ public sealed partial class ProcessesViewModel : ObservableObject
     // Row cache keyed by PID — preserves IsExpanded state across ticks
     private readonly Dictionary<int, ProcessRowViewModel> _cache = new();
 
+    private readonly ProcessIntelligenceService _processIntelligence;
+    private readonly IActionExecutionEngine     _executionEngine;
+    private readonly IOperationHistoryService   _historyService;
+
     private static Visibility V(bool v) => v ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public ProcessesViewModel() { }
+    public ProcessesViewModel(
+        ProcessIntelligenceService processIntelligence,
+        IActionExecutionEngine     executionEngine,
+        IOperationHistoryService   historyService)
+    {
+        _processIntelligence = processIntelligence;
+        _executionEngine     = executionEngine;
+        _historyService      = historyService;
+    }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     public void Start()
     {
-        // Subscribe to the shared ProcessIntelligenceService from AppServices rather
-        // than creating a second instance. Two instances polling the same process list
-        // on every telemetry tick doubles the CPU overhead for zero benefit.
-        AppServices.ProcessIntelligence.SnapshotUpdated += OnSnapshotUpdated;
+        _processIntelligence.SnapshotUpdated += OnSnapshotUpdated;
 
-        // Seed the UI immediately from the last available snapshot (may be null on
-        // very first navigation before the first tick arrives).
-        var snap = AppServices.ProcessIntelligence.LastSnapshot;
+        var snap = _processIntelligence.LastSnapshot;
         if (snap is not null)
             OnSnapshotUpdated(this, snap);
     }
 
     public void Stop()
     {
-        AppServices.ProcessIntelligence.SnapshotUpdated -= OnSnapshotUpdated;
+        _processIntelligence.SnapshotUpdated -= OnSnapshotUpdated;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
@@ -161,7 +168,7 @@ public sealed partial class ProcessesViewModel : ObservableObject
                 },
             };
 
-            var result = await AppServices.ExecutionEngine
+            var result = await _executionEngine
                 .ExecuteAsync("action.process.terminate", context)
                 .ConfigureAwait(true);
 
@@ -203,7 +210,7 @@ public sealed partial class ProcessesViewModel : ObservableObject
                 },
             };
 
-            await AppServices.ExecutionEngine
+            await _executionEngine
                 .ExecuteAsync("action.process.open-location", context)
                 .ConfigureAwait(true);
         }
@@ -280,11 +287,11 @@ public sealed partial class ProcessesViewModel : ObservableObject
 
     // ── History ───────────────────────────────────────────────────────────────
 
-    private static async Task RecordHistoryAsync(ActionExecutionResult result, string title)
+    private async Task RecordHistoryAsync(ActionExecutionResult result, string title)
     {
         try
         {
-            await AppServices.HistoryService.RecordAsync(new OperationRecord
+            await _historyService.RecordAsync(new OperationRecord
             {
                 ActionId        = result.ActionId,
                 ActionTitle     = title,

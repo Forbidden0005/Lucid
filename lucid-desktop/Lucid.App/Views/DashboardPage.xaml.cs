@@ -34,7 +34,22 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class DashboardPage : Page
 {
-    public DashboardViewModel ViewModel { get; } = new DashboardViewModel();
+    public DashboardViewModel ViewModel { get; } = new DashboardViewModel(
+        AppServices.Telemetry,
+        AppServices.Intelligence,
+        AppServices.EarlyWarning,
+        AppServices.AnomalyDetection,
+        AppServices.DriftDetection,
+        AppServices.HealthTrajectory,
+        AppServices.HistoricalAnalytics,
+        AppServices.InterventionMemory,
+        AppServices.PersonalizationEngine,
+        AppServices.UserBehaviorClassifier,
+        AppServices.Watchtower,
+        AppServices.PersonalityClassifier,
+        AppServices.AlertFatigueManager,
+        AppServices.RecommendationExplanation,
+        AppServices.LearningService);
 
     public DashboardPage()
     {

@@ -10,7 +10,10 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class StoragePage : Page
 {
-    public StorageViewModel ViewModel { get; } = new StorageViewModel();
+    public StorageViewModel ViewModel { get; } = new StorageViewModel(
+        AppServices.Timeline,
+        AppServices.ExecutionEngine,
+        AppServices.HistoryService);
 
     public StoragePage()
     {

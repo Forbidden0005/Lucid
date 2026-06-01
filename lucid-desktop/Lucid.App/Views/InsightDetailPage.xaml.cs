@@ -18,7 +18,13 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class InsightDetailPage : Page
 {
-    public InsightDetailViewModel ViewModel { get; } = new InsightDetailViewModel();
+    public InsightDetailViewModel ViewModel { get; } = new InsightDetailViewModel(
+        AppServices.Intelligence,
+        AppServices.Narrative,
+        AppServices.History,
+        AppServices.Baseline,
+        AppServices.Timeline,
+        AppServices.HistoryService);
 
     public InsightDetailPage()
     {

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Apps;
+using Lucid.Services.Startup;
 using Microsoft.UI.Xaml;
 
 namespace Lucid.ViewModels;
@@ -63,11 +64,13 @@ public sealed partial class AppsViewModel : ObservableObject
     // ── Commands ───────────────────────────────────────────────────────────────
 
     public IAsyncRelayCommand LoadCommand { get; }
+    private readonly IStartupManagementService _startupManagement;
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public AppsViewModel()
+    public AppsViewModel(IStartupManagementService startupManagement)
     {
+        _startupManagement = startupManagement;
         LoadCommand = new AsyncRelayCommand(LoadAsync);
     }
 
@@ -83,7 +86,7 @@ public sealed partial class AppsViewModel : ObservableObject
         {
             var records = await Task.Run(() =>
             {
-                var entries = AppServices.StartupManagement.GetAllEntries();
+                var entries = _startupManagement.GetAllEntries();
                 return InstalledAppScanner.Scan(entries);
             }).ConfigureAwait(true);
 

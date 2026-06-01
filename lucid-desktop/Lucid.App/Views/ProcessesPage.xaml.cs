@@ -6,7 +6,10 @@ namespace Lucid.Views;
 
 public sealed partial class ProcessesPage : Page
 {
-    public ProcessesViewModel ViewModel { get; } = new ProcessesViewModel();
+    public ProcessesViewModel ViewModel { get; } = new ProcessesViewModel(
+        AppServices.ProcessIntelligence,
+        AppServices.ExecutionEngine,
+        AppServices.HistoryService);
 
     public ProcessesPage()
     {

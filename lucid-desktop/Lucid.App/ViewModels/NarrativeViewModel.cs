@@ -51,15 +51,17 @@ public sealed partial class NarrativeViewModel : ObservableObject
     // ── Backing state ─────────────────────────────────────────────────────────
 
     private OperationalNarrative? _narrative;
+    private readonly IOperationalNarrativeEngine _narrativeSvc;
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public NarrativeViewModel()
+    public NarrativeViewModel(IOperationalNarrativeEngine narrativeSvc)
     {
-        AppServices.Narrative.NarrativeUpdated += OnNarrativeUpdated;
+        _narrativeSvc = narrativeSvc;
+        _narrativeSvc.NarrativeUpdated += OnNarrativeUpdated;
 
         // Seed immediately if a narrative has already been generated.
-        if (AppServices.Narrative.CurrentNarrative is { } existing)
+        if (_narrativeSvc.CurrentNarrative is { } existing)
             Apply(existing);
     }
 
@@ -201,7 +203,7 @@ public sealed partial class NarrativeViewModel : ObservableObject
     /// Call from the host page's Unloaded handler.
     /// </summary>
     public void Cleanup() =>
-        AppServices.Narrative.NarrativeUpdated -= OnNarrativeUpdated;
+        _narrativeSvc.NarrativeUpdated -= OnNarrativeUpdated;
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

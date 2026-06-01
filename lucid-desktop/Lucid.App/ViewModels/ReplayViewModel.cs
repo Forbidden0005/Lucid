@@ -78,7 +78,8 @@ public sealed class ComparisonMetricViewModel
 /// </summary>
 public sealed partial class ReplayViewModel : ObservableObject
 {
-    private readonly IOperationalReplayService _replay;
+    private readonly IOperationalReplayService   _replay;
+    private readonly IRemediationLearningService _learningService;
     private ReplaySession? _session;
 
     // Guards against re-entrant cursor updates while we set CursorSeconds
@@ -193,9 +194,10 @@ public sealed partial class ReplayViewModel : ObservableObject
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public ReplayViewModel(IOperationalReplayService replay)
+    public ReplayViewModel(IOperationalReplayService replay, IRemediationLearningService learningService)
     {
-        _replay = replay;
+        _replay          = replay;
+        _learningService = learningService;
 
         RefreshCommand          = new AsyncRelayCommand(LoadSessionAsync);
         SeekToBeginCommand      = new RelayCommand(() => CursorSeconds = 0);
@@ -443,7 +445,7 @@ public sealed partial class ReplayViewModel : ObservableObject
         }
 
         // Effectiveness badge — pull from learning service (cold-start safe)
-        var profile = AppServices.LearningService.GetProfile(comparison.Action.ActionId);
+        var profile = _learningService.GetProfile(comparison.Action.ActionId);
         if (profile is { IsWarmEnough: true })
         {
             ComparisonEffectivenessLabel   = profile.EffectivenessLabel;

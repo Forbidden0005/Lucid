@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lucid.Services;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Simulation;
 using Microsoft.UI.Xaml;
@@ -228,6 +229,10 @@ public sealed partial class SimulationViewModel : ObservableObject
     private readonly OperationalSimulationEngine     _engine;
     private readonly ISimulationHistoryService       _historyService;
     private readonly IOutcomeVerificationService     _outcomeVerification;
+    private readonly IAnomalyDetectionService        _anomalyDetection;
+    private readonly IDriftDetectionService          _driftDetection;
+    private readonly IEarlyWarningService            _earlyWarning;
+    private readonly ITelemetryService               _telemetry;
     private CancellationTokenSource? _activeCts;
 
     // ── Scenario selection ────────────────────────────────────────────────────
@@ -455,11 +460,19 @@ public sealed partial class SimulationViewModel : ObservableObject
     public SimulationViewModel(
         OperationalSimulationEngine engine,
         ISimulationHistoryService   historyService,
-        IOutcomeVerificationService outcomeVerification)
+        IOutcomeVerificationService outcomeVerification,
+        IAnomalyDetectionService    anomalyDetection,
+        IDriftDetectionService      driftDetection,
+        IEarlyWarningService        earlyWarning,
+        ITelemetryService           telemetry)
     {
         _engine              = engine;
         _historyService      = historyService;
         _outcomeVerification = outcomeVerification;
+        _anomalyDetection    = anomalyDetection;
+        _driftDetection      = driftDetection;
+        _earlyWarning        = earlyWarning;
+        _telemetry           = telemetry;
 
         BuildScenarioChips();
         BuildScenarioPresets();
@@ -470,9 +483,9 @@ public sealed partial class SimulationViewModel : ObservableObject
         RefreshHistory();
 
         // Subscribe to anomaly intelligence services — keep chart overlays live.
-        AppServices.AnomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
-        AppServices.DriftDetection.DriftsUpdated       += OnDriftsUpdated;
-        AppServices.EarlyWarning.WarningsUpdated        += OnWarningsUpdated;
+        _anomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
+        _driftDetection.DriftsUpdated       += OnDriftsUpdated;
+        _earlyWarning.WarningsUpdated        += OnWarningsUpdated;
         RefreshIntelligenceContext();
     }
 
@@ -816,7 +829,7 @@ public sealed partial class SimulationViewModel : ObservableObject
         {
             // Capture telemetry BEFORE any awaits — this is the "before" reading for
             // outcome verification (measuring whether the prediction came true later).
-            var lastReading = AppServices.Telemetry.LastReading;
+            var lastReading = _telemetry.LastReading;
             double ramBefore = lastReading?.RamPercent ?? 50;
             double cpuBefore = lastReading?.CpuPercent ?? 50;
 
@@ -908,7 +921,7 @@ public sealed partial class SimulationViewModel : ObservableObject
     /// </summary>
     private void EvaluatePending()
     {
-        var reading = AppServices.Telemetry.LastReading;
+        var reading = _telemetry.LastReading;
         if (reading is not null)
             _outcomeVerification.TryEvaluatePending(reading.RamPercent, reading.CpuPercent);
     }
@@ -1073,9 +1086,9 @@ public sealed partial class SimulationViewModel : ObservableObject
     /// </summary>
     private void RefreshIntelligenceContext()
     {
-        var anomalies = AppServices.AnomalyDetection.CurrentAnomalies;
-        var drifts    = AppServices.DriftDetection.CurrentDrifts;
-        var warnings  = AppServices.EarlyWarning.CurrentWarnings;
+        var anomalies = _anomalyDetection.CurrentAnomalies;
+        var drifts    = _driftDetection.CurrentDrifts;
+        var warnings  = _earlyWarning.CurrentWarnings;
 
         HasAnomalyContext = anomalies.Count > 0;
         HasDriftContext   = drifts.Count > 0;
@@ -1084,7 +1097,7 @@ public sealed partial class SimulationViewModel : ObservableObject
         // ── Anomaly dot Y — position at live RAM level on the chart ───────────
         // Canvas height is 130 px; RAM 0% → Y=130 (bottom), 100% → Y=0 (top).
         // Subtract 5 to centre the 10 px dot on the reading.
-        double ramNow = AppServices.Telemetry.LastReading?.RamPercent ?? 50.0;
+        double ramNow = _telemetry.LastReading?.RamPercent ?? 50.0;
         AnomalyDotY   = 130.0 - Math.Clamp(ramNow, 0.0, 100.0) / 100.0 * 130.0 - 5.0;
 
         // ── Confidence band — uncertainty envelope around the mid-chart line ──
@@ -1159,9 +1172,9 @@ public sealed partial class SimulationViewModel : ObservableObject
     /// </summary>
     public void Cleanup()
     {
-        AppServices.AnomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
-        AppServices.DriftDetection.DriftsUpdated       -= OnDriftsUpdated;
-        AppServices.EarlyWarning.WarningsUpdated        -= OnWarningsUpdated;
+        _anomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
+        _driftDetection.DriftsUpdated       -= OnDriftsUpdated;
+        _earlyWarning.WarningsUpdated        -= OnWarningsUpdated;
         _activeCts?.Cancel();
         _activeCts?.Dispose();
         _activeCts = null;

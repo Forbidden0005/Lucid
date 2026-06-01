@@ -30,7 +30,11 @@ public sealed partial class SimulationPage : Page
         _viewModel  = new SimulationViewModel(
             AppServices.SimulationEngine,
             AppServices.SimulationHistory,
-            AppServices.OutcomeVerification);
+            AppServices.OutcomeVerification,
+            AppServices.AnomalyDetection,
+            AppServices.DriftDetection,
+            AppServices.EarlyWarning,
+            AppServices.Telemetry);
         DataContext = _viewModel;
     }
 

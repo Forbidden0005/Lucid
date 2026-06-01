@@ -1,8 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Lucid.Helpers;
+using Lucid.Services;
 using Lucid.Services.Analytics;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Learning;
+using Lucid.Services.Watchtower;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -399,33 +401,82 @@ public partial class DashboardViewModel : ObservableObject
     public string TopActionWhyRecommended =>
         SmartActions.Count > 0 ? SmartActions[0].WhyRecommended : string.Empty;
 
+    // ── Injected services ─────────────────────────────────────────────────────
+
+    private readonly ITelemetryService                 _telemetry;
+    private readonly ISystemInsightEngine              _intelligence;
+    private readonly IEarlyWarningService              _earlyWarning;
+    private readonly IAnomalyDetectionService          _anomalyDetection;
+    private readonly IDriftDetectionService            _driftDetection;
+    private readonly IMachineHealthTrajectoryService   _healthTrajectory;
+    private readonly IHistoricalAnalyticsEngine        _historicalAnalytics;
+    private readonly IInterventionMemoryService        _interventionMemory;
+    private readonly IPersonalizationEngine            _personalizationEngine;
+    private readonly IUserBehaviorClassifier           _userBehaviorClassifier;
+    private readonly OperationalWatchtowerService      _watchtower;
+    private readonly ISystemPersonalityClassifier      _personalityClassifier;
+    private readonly IAlertFatigueManager              _alertFatigueManager;
+    private readonly IRecommendationExplanationService _recommendationExplanation;
+    private readonly IRemediationLearningService       _learningService;
+
     // ── Constructor ───────────────────────────────────────────────────────────
 
-    public DashboardViewModel()
+    public DashboardViewModel(
+        ITelemetryService                 telemetry,
+        ISystemInsightEngine              intelligence,
+        IEarlyWarningService              earlyWarning,
+        IAnomalyDetectionService          anomalyDetection,
+        IDriftDetectionService            driftDetection,
+        IMachineHealthTrajectoryService   healthTrajectory,
+        IHistoricalAnalyticsEngine        historicalAnalytics,
+        IInterventionMemoryService        interventionMemory,
+        IPersonalizationEngine            personalizationEngine,
+        IUserBehaviorClassifier           userBehaviorClassifier,
+        OperationalWatchtowerService      watchtower,
+        ISystemPersonalityClassifier      personalityClassifier,
+        IAlertFatigueManager              alertFatigueManager,
+        IRecommendationExplanationService recommendationExplanation,
+        IRemediationLearningService       learningService)
     {
+        _telemetry                 = telemetry;
+        _intelligence              = intelligence;
+        _earlyWarning              = earlyWarning;
+        _anomalyDetection          = anomalyDetection;
+        _driftDetection            = driftDetection;
+        _healthTrajectory          = healthTrajectory;
+        _historicalAnalytics       = historicalAnalytics;
+        _interventionMemory        = interventionMemory;
+        _personalizationEngine     = personalizationEngine;
+        _userBehaviorClassifier    = userBehaviorClassifier;
+        _watchtower                = watchtower;
+        _personalityClassifier     = personalityClassifier;
+        _alertFatigueManager       = alertFatigueManager;
+        _recommendationExplanation = recommendationExplanation;
+        _learningService           = learningService;
+
         // Subscribe to the app-level telemetry service.
-        AppServices.Telemetry.ReadingAvailable += OnReadingAvailable;
+        _telemetry.ReadingAvailable += OnReadingAvailable;
 
         // If a reading already exists (back-navigation or late construction),
         // apply it immediately so the UI doesn't wait for the next poll cycle.
-        if (AppServices.Telemetry.LastReading is { } snapshot)
+        if (_telemetry.LastReading is { } snapshot)
             OnReadingAvailable(null, snapshot);
 
         // Subscribe to intelligence findings.
-        AppServices.Intelligence.InsightsUpdated += OnInsightsUpdated;
+        _intelligence.InsightsUpdated += OnInsightsUpdated;
 
         // Seed from whatever the engine has already evaluated (back-navigation).
-        ApplyInsights(AppServices.Intelligence.CurrentInsights);
+        ApplyInsights(_intelligence.CurrentInsights);
 
         // Subscribe to anomaly intelligence services (all UI-thread events).
-        AppServices.EarlyWarning.WarningsUpdated    += OnWarningsUpdated;
-        AppServices.AnomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
-        AppServices.DriftDetection.DriftsUpdated    += OnDriftsUpdated;
+        _earlyWarning.WarningsUpdated      += OnWarningsUpdated;
+        _anomalyDetection.AnomaliesUpdated += OnAnomaliesUpdated;
+        _driftDetection.DriftsUpdated      += OnDriftsUpdated;
 
         // Seed anomaly intelligence from current state (back-navigation safe).
-        ApplyWarnings(AppServices.EarlyWarning.CurrentWarnings);
-        ApplyAnomalies(AppServices.AnomalyDetection.CurrentAnomalies);
-        ApplyDrifts(AppServices.DriftDetection.CurrentDrifts);
+        ApplyWarnings(_earlyWarning.CurrentWarnings);
+        ApplyAnomalies(_anomalyDetection.CurrentAnomalies);
+        ApplyDrifts(_driftDetection.CurrentDrifts);
 
         // Load real analytics data asynchronously — updates health score, trend,
         // CPU averages, and machine personality once queries complete.
@@ -515,10 +566,10 @@ public partial class DashboardViewModel : ObservableObject
         // ── Rebuild Smart Actions (personalization-aware, top 3 ranked) ─────
         var ranked = s_prioritizer.Rank(
             insights,
-            AppServices.LearningService,
+            _learningService,
             _personalizationProfile,
-            AppServices.AlertFatigueManager,
-            AppServices.RecommendationExplanation);
+            _alertFatigueManager,
+            _recommendationExplanation);
         SmartActions = ranked.Take(3)
                              .Select(PrioritizedActionViewModel.From)
                              .ToList();
@@ -606,7 +657,7 @@ public partial class DashboardViewModel : ObservableObject
             // which sets AppServices.HistoricalAnalytics.LastSummary as a side effect.
             // We reuse that summary for personality classification below — no second
             // round-trip to SQLite needed.
-            var report = await AppServices.HealthTrajectory.ComputeReportAsync()
+            var report = await _healthTrajectory.ComputeReportAsync()
                 .ConfigureAwait(true); // must return to UI thread to set properties
 
             if (!report.HasSufficientData) return; // sub-scores stay "—" on new installs
@@ -638,7 +689,7 @@ public partial class DashboardViewModel : ObservableObject
             // Machine personality — reuse the summary already computed above.
             // LastSummary is guaranteed non-null here: ComputeReportAsync() succeeded
             // and HasSufficientData is true, so the engine definitely set it.
-            if (AppServices.HistoricalAnalytics.LastSummary is { } personalitySummary)
+            if (_historicalAnalytics.LastSummary is { } personalitySummary)
                 ApplyPersonality(personalitySummary);
 
             // Adaptive personalization — compute from intervention memory.
@@ -659,9 +710,9 @@ public partial class DashboardViewModel : ObservableObject
     {
         try
         {
-            var records = AppServices.InterventionMemory.Records;
-            _personalizationProfile = AppServices.PersonalizationEngine.ComputeProfile(records);
-            OperationalStyle = AppServices.UserBehaviorClassifier.Classify(_personalizationProfile);
+            var records = _interventionMemory.Records;
+            _personalizationProfile = _personalizationEngine.ComputeProfile(records);
+            OperationalStyle = _userBehaviorClassifier.Classify(_personalizationProfile);
 
             OnPropertyChanged(nameof(OperationalStyle));
             OnPropertyChanged(nameof(HasOperationalStyle));
@@ -696,13 +747,13 @@ public partial class DashboardViewModel : ObservableObject
     {
         try
         {
-            var snapshot = AppServices.Watchtower.LastSnapshot;
+            var snapshot = _watchtower.LastSnapshot;
 
-            var report = AppServices.PersonalityClassifier.Classify(
+            var report = _personalityClassifier.Classify(
                 summary,
                 snapshot,
-                AppServices.DriftDetection.CurrentDrifts,
-                AppServices.AnomalyDetection.CurrentAnomalies);
+                _driftDetection.CurrentDrifts,
+                _anomalyDetection.CurrentAnomalies);
 
             PersonalityReport = report;
             OnPropertyChanged(nameof(PersonalityReport));
@@ -753,10 +804,10 @@ public partial class DashboardViewModel : ObservableObject
     public void Cleanup()
     {
         _timestampTimer.Stop();
-        AppServices.Telemetry.ReadingAvailable      -= OnReadingAvailable;
-        AppServices.Intelligence.InsightsUpdated    -= OnInsightsUpdated;
-        AppServices.EarlyWarning.WarningsUpdated    -= OnWarningsUpdated;
-        AppServices.AnomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
-        AppServices.DriftDetection.DriftsUpdated    -= OnDriftsUpdated;
+        _telemetry.ReadingAvailable        -= OnReadingAvailable;
+        _intelligence.InsightsUpdated      -= OnInsightsUpdated;
+        _earlyWarning.WarningsUpdated      -= OnWarningsUpdated;
+        _anomalyDetection.AnomaliesUpdated -= OnAnomaliesUpdated;
+        _driftDetection.DriftsUpdated      -= OnDriftsUpdated;
     }
 }

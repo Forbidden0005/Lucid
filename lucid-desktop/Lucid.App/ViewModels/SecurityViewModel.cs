@@ -4,6 +4,8 @@ using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Execution;
 using Lucid.Services.History;
 using Lucid.Services.Security;
+using Lucid.Services.Startup;
+using Lucid.Services.Timeline;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
@@ -79,7 +81,10 @@ public sealed class SecurityFeatureViewModel
 
 public sealed partial class SecurityViewModel : ObservableObject
 {
-    private readonly DispatcherQueue _dispatcher;
+    private readonly DispatcherQueue             _dispatcher;
+    private readonly ITimelineAggregationService _timeline;
+    private readonly IActionExecutionEngine      _executionEngine;
+    private readonly IStartupManagementService   _startupManagement;
 
     // ── Scan state ────────────────────────────────────────────────────────────
 
@@ -135,10 +140,16 @@ public sealed partial class SecurityViewModel : ObservableObject
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public SecurityViewModel()
+    public SecurityViewModel(
+        ITimelineAggregationService timeline,
+        IActionExecutionEngine      executionEngine,
+        IStartupManagementService   startupManagement)
     {
-        _dispatcher = DispatcherQueue.GetForCurrentThread()
-                   ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _timeline          = timeline;
+        _executionEngine   = executionEngine;
+        _startupManagement = startupManagement;
+        _dispatcher        = DispatcherQueue.GetForCurrentThread()
+                          ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
@@ -160,8 +171,8 @@ public sealed partial class SecurityViewModel : ObservableObject
         Findings.Clear();
         StartupEntries.Clear();
 
-        var timeline = AppServices.Timeline as Services.Timeline.TimelineAggregationService;
-        var svc = new SecurityIntelligenceService(_dispatcher, AppServices.StartupManagement, timeline);
+        var timeline = _timeline as Services.Timeline.TimelineAggregationService;
+        var svc = new SecurityIntelligenceService(_dispatcher, _startupManagement, timeline);
 
         svc.ScanProgressChanged += (_, pct) =>
         {
@@ -211,7 +222,7 @@ public sealed partial class SecurityViewModel : ObservableObject
                     [Services.Execution.Executors.OpenVirusTotalExecutor.ParamFileName] = vm.Title,
                 },
             };
-            await AppServices.ExecutionEngine
+            await _executionEngine
                 .ExecuteAsync("action.security.open-virustotal", context)
                 .ConfigureAwait(true);
         }
@@ -239,7 +250,7 @@ public sealed partial class SecurityViewModel : ObservableObject
                     [Services.Execution.Executors.OpenProcessLocationExecutor.ParamExecutablePath] = vm.FilePath,
                 },
             };
-            await AppServices.ExecutionEngine
+            await _executionEngine
                 .ExecuteAsync("action.process.open-location", context)
                 .ConfigureAwait(true);
         }
@@ -257,7 +268,7 @@ public sealed partial class SecurityViewModel : ObservableObject
         {
             var log = new ActionExecutionLog();
             var context = new ActionExecutionContext { IsElevated = false, ConfirmationGranted = true, Log = log };
-            await AppServices.ExecutionEngine
+            await _executionEngine
                 .ExecuteAsync("action.security.open-windows-security", context)
                 .ConfigureAwait(true);
         }

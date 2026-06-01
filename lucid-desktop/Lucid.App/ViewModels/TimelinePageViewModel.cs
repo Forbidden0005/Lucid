@@ -129,18 +129,22 @@ public sealed partial class TimelinePageViewModel : ObservableObject
     public SolidColorBrush SessionChipBorder => ChipBorder(IsSessionFilterActive);
     public SolidColorBrush SessionChipText   => ChipText(IsSessionFilterActive);
 
+    private readonly ITimelineAggregationService _timeline;
+
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public TimelinePageViewModel()
+    public TimelinePageViewModel(ITimelineAggregationService timeline)
     {
+        _timeline = timeline;
+
         // Seed from events already in the aggregation service buffer.
-        foreach (var ev in AppServices.Timeline.Events)
+        foreach (var ev in _timeline.Events)
             _allEvents.Add(new TimelineEventViewModel(ev));
 
         RebuildFlatItems();
 
         // Subscribe to live additions. All fire on UI thread — no dispatching needed.
-        AppServices.Timeline.NewEventAdded += OnNewEventAdded;
+        _timeline.NewEventAdded += OnNewEventAdded;
 
         // Tick every 30 s to age relative-time labels on existing cards.
         // Mirrors the same pattern used in InsightsPageViewModel / DashboardViewModel.
@@ -322,6 +326,6 @@ public sealed partial class TimelinePageViewModel : ObservableObject
     public void Cleanup()
     {
         _timestampTimer.Stop();
-        AppServices.Timeline.NewEventAdded -= OnNewEventAdded;
+        _timeline.NewEventAdded -= OnNewEventAdded;
     }
 }

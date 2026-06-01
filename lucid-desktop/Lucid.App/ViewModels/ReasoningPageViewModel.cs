@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lucid.Services.Intelligence;
 using Lucid.Services.Intelligence.Arbitration;
 using Lucid.Services.Intelligence.Baselines;
 using Lucid.Services.Intelligence.Calibration;
@@ -112,6 +113,8 @@ public sealed partial class ReasoningPageViewModel : ObservableObject
     private readonly UnifiedRecommendationService   _recommendations;
     private readonly AttentionCoordinator           _attention;
     private readonly DispatcherQueue                _ui;
+    private readonly IRecommendationArbitrator      _arbitrator;
+    private readonly ISystemInsightEngine           _intelligence;
 
     // ── Loading state ─────────────────────────────────────────────────────────
 
@@ -203,7 +206,9 @@ public sealed partial class ReasoningPageViewModel : ObservableObject
         ConfidenceCalibrationEngine     calibration,
         UnifiedRecommendationService    recommendations,
         AttentionCoordinator            attention,
-        DispatcherQueue                 ui)
+        DispatcherQueue                 ui,
+        IRecommendationArbitrator       arbitrator,
+        ISystemInsightEngine            intelligence)
     {
         _contextSynthesizer = contextSynthesizer;
         _reasoning          = reasoning;
@@ -211,6 +216,8 @@ public sealed partial class ReasoningPageViewModel : ObservableObject
         _baselines          = baselines;
         _calibration        = calibration;
         _recommendations    = recommendations;
+        _arbitrator         = arbitrator;
+        _intelligence       = intelligence;
         _attention          = attention;
         _ui                 = ui;
     }
@@ -268,8 +275,8 @@ public sealed partial class ReasoningPageViewModel : ObservableObject
         var calibration      = _calibration.Refresh();
 
         // Recommendations require arbitration (synchronous).
-        var clusters = AppServices.RecommendationArbitrator.Arbitrate(
-            AppServices.Intelligence.CurrentInsights, context, inferences);
+        var clusters = _arbitrator.Arbitrate(
+            _intelligence.CurrentInsights, context, inferences);
         var unified  = _recommendations.GetRecommendations(clusters);
 
         // Marshal all UI updates to the dispatcher thread.

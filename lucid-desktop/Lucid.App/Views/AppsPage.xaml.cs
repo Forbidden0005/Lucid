@@ -8,7 +8,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class AppsPage : Page
 {
-    public AppsViewModel ViewModel { get; } = new AppsViewModel();
+    public AppsViewModel ViewModel { get; } = new AppsViewModel(AppServices.StartupManagement);
 
     public AppsPage()
     {

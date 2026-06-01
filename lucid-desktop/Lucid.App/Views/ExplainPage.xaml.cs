@@ -24,7 +24,7 @@ public sealed partial class ExplainPage : Page
         InitializeComponent();
 
         // Wire ViewModel to the live engine registered in AppServices
-        DataContext = new ExplainViewModel(AppServices.ExplainEngine);
+        DataContext = new ExplainViewModel(AppServices.ExplainEngine, AppServices.LearningService);
 
         // Unsubscribe when the page is unloaded to prevent event-handler leaks
         // on back-navigation (each navigation creates a fresh ExplainViewModel).
