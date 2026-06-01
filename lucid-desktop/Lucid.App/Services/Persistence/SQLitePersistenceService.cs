@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using Lucid.Core.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Lucid.Services.Persistence.Reliability;
 
@@ -38,6 +39,7 @@ public sealed class SQLitePersistenceService : IDisposable
     // ── State ─────────────────────────────────────────────────────────────────
 
     private readonly string         _dbPath;
+    private readonly ILucidLogger?  _logger;
     private          SqliteConnection? _connection;
     private readonly SemaphoreSlim  _lock   = new(1, 1);
     private readonly ConcurrentQueue<Action<SqliteConnection>> _writeQueue = new();
@@ -62,14 +64,19 @@ public sealed class SQLitePersistenceService : IDisposable
 
     // ── Construction ──────────────────────────────────────────────────────────
 
-    public SQLitePersistenceService()
+    public SQLitePersistenceService(ILucidLogger? logger = null)
     {
+        _logger = logger;
+
         var dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Lucid", "Data");
 
         try { Directory.CreateDirectory(dir); }
-        catch { /* best-effort */ }
+        catch (Exception ex)
+        {
+            _logger?.Warning("Persistence", $"Could not create data directory '{dir}' — writes will fail", ex);
+        }
 
         _dbPath = Path.Combine(dir, "explainmypc.db");
     }
@@ -101,11 +108,14 @@ public sealed class SQLitePersistenceService : IDisposable
                 await ApplyMigrationsAsync(_connection).ConfigureAwait(false);
                 _healthy = true;
             }
-            catch
+            catch (Exception recoveryEx)
             {
                 // Can't open at all — disable persistence without crashing
                 _healthy = false;
-                _ = ex; // suppress warning
+                _logger?.Error("Persistence",
+                    $"SQLite database '{_dbPath}' is unrecoverable after corruption recovery attempt — persistence disabled. " +
+                    $"Original: {ex.Message}",
+                    recoveryEx);
             }
         }
         finally
@@ -173,9 +183,9 @@ public sealed class SQLitePersistenceService : IDisposable
         {
             writeAction(_connection);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort
+            _logger?.Warning("Persistence", "ExecuteDirectAsync write failed", ex);
         }
         finally
         {
@@ -198,8 +208,9 @@ public sealed class SQLitePersistenceService : IDisposable
         {
             return queryFunc(_connection);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.Warning("Persistence", "QueryAsync failed — returning default", ex);
             return default;
         }
         finally
@@ -231,9 +242,9 @@ public sealed class SQLitePersistenceService : IDisposable
                 {
                     action(_connection);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Skip individual failed writes — don't abort the whole batch
+                    _logger?.Debug("Persistence", $"Queued write skipped in batch flush: {ex.Message}");
                 }
                 count++;
             }
@@ -241,9 +252,9 @@ public sealed class SQLitePersistenceService : IDisposable
             tx.Commit();
             QueueMetrics.RecordFlush();
         }
-        catch
+        catch (Exception ex)
         {
-            // Don't let flush errors crash the app
+            _logger?.Error("Persistence", "FlushQueueAsync transaction commit failed — writes in this batch are lost", ex);
         }
         finally
         {
@@ -260,28 +271,48 @@ public sealed class SQLitePersistenceService : IDisposable
 
         _flushTimer?.Dispose();
 
-        // Final flush — fire and forget (Dispose must be sync)
+        // Final flush — sync (Dispose must not async-block)
+        var pendingCount = _writeQueue.Count;
         try
         {
-            _lock.Wait(TimeSpan.FromSeconds(5));
-            try
+            if (!_lock.Wait(TimeSpan.FromSeconds(5)))
             {
-                if (_healthy && _connection is not null && !_writeQueue.IsEmpty)
+                _logger?.Warning("Persistence",
+                    $"Final flush timed out waiting for lock — {pendingCount} pending write(s) may be lost");
+            }
+            else
+            {
+                try
                 {
-                    using var tx = _connection.BeginTransaction();
-                    while (_writeQueue.TryDequeue(out var action))
+                    if (_healthy && _connection is not null && !_writeQueue.IsEmpty)
                     {
-                        try { action(_connection); } catch { }
+                        using var tx = _connection.BeginTransaction();
+                        while (_writeQueue.TryDequeue(out var action))
+                        {
+                            try { action(_connection); }
+                            catch (Exception ex)
+                            {
+                                _logger?.Debug("Persistence", $"Write skipped in final flush: {ex.Message}");
+                            }
+                        }
+                        tx.Commit();
+                        _logger?.Debug("Persistence", $"Final flush committed {pendingCount} pending write(s)");
                     }
-                    tx.Commit();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.Error("Persistence", "Final flush commit failed — pending writes lost", ex);
+                }
+                finally
+                {
+                    _lock.Release();
                 }
             }
-            finally
-            {
-                _lock.Release();
-            }
         }
-        catch { /* best-effort final flush */ }
+        catch (Exception ex)
+        {
+            _logger?.Warning("Persistence", "Exception during final flush", ex);
+        }
 
         _connection?.Dispose();
         _lock.Dispose();
@@ -428,7 +459,7 @@ public sealed class SQLitePersistenceService : IDisposable
         return Task.CompletedTask;
     }
 
-    private static void TryBackupAndDelete(string path)
+    private void TryBackupAndDelete(string path)
     {
         try
         {
@@ -436,12 +467,16 @@ public sealed class SQLitePersistenceService : IDisposable
             {
                 var backup = path + ".corrupt." + DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 File.Move(path, backup, overwrite: true);
+                _logger?.Warning("Persistence", $"Corrupted database renamed to '{backup}' — fresh database will be created");
 
                 // Also remove the WAL/SHM shim files
                 if (File.Exists(path + "-wal"))  File.Delete(path + "-wal");
                 if (File.Exists(path + "-shm"))  File.Delete(path + "-shm");
             }
         }
-        catch { /* best-effort */ }
+        catch (Exception ex)
+        {
+            _logger?.Error("Persistence", $"Failed to rename corrupted database '{path}'", ex);
+        }
     }
 }

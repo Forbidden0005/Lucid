@@ -1177,7 +1177,7 @@ public static class AppServices
         // and before telemetry events begin firing.
         // StartupTimeoutGuard.Run() offloads onto the thread-pool to avoid
         // deadlocking the WinUI sync context while blocking on the async init.
-        var dbService = new SQLitePersistenceService();
+        var dbService = new SQLitePersistenceService(_logger);
         var dbSnapshot = StartupTimeoutGuard.Run(
             "SQLite initialization",
             () => dbService.InitializeAsync(),
@@ -1331,7 +1331,7 @@ public static class AppServices
         // ── Operational history ───────────────────────────────────────────────
         // Initialised before the execution engine so it is ready the moment
         // the first action completes. JSON file created lazily on first write.
-        _operationHistory = new OperationHistoryService();
+        _operationHistory = new OperationHistoryService(_logger);
 
         // ── Remediation execution engine ──────────────────────────────────────
         _executorRegistry = new ActionExecutorRegistry();

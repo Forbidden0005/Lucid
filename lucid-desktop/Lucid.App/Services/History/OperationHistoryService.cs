@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using Lucid.Core.Infrastructure;
 
 namespace Lucid.Services.History;
 
@@ -41,6 +42,7 @@ public sealed class OperationHistoryService : IOperationHistoryService
     private readonly string         _filePath;
     private readonly string         _tempPath;
     private readonly SemaphoreSlim  _lock = new(1, 1);
+    private readonly ILucidLogger?  _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -58,14 +60,19 @@ public sealed class OperationHistoryService : IOperationHistoryService
     /// is performed until the first <see cref="RecordAsync"/> or
     /// <see cref="GetRecentAsync"/> call.
     /// </summary>
-    public OperationHistoryService()
+    public OperationHistoryService(ILucidLogger? logger = null)
     {
+        _logger = logger;
+
         var dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Lucid", "History");
 
         try { Directory.CreateDirectory(dir); }
-        catch { /* best-effort; writes will fail gracefully if the dir is missing */ }
+        catch (Exception ex)
+        {
+            _logger?.Warning("History", $"Could not create history directory '{dir}' — history writes will fail", ex);
+        }
 
         _filePath = Path.Combine(dir, "operation-history.json");
         _tempPath = _filePath + ".tmp";
@@ -88,9 +95,9 @@ public sealed class OperationHistoryService : IOperationHistoryService
 
             await WriteCoreAsync(records).ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex)
         {
-            // History is best-effort — never surface failures to callers.
+            _logger?.Warning("History", $"RecordAsync failed — operation '{record.ActionId}' not persisted", ex);
         }
         finally
         {
@@ -113,8 +120,9 @@ public sealed class OperationHistoryService : IOperationHistoryService
                 .ToList()
                 .AsReadOnly();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger?.Warning("History", "GetRecentAsync failed — returning empty list", ex);
             return [];
         }
         finally
@@ -147,9 +155,9 @@ public sealed class OperationHistoryService : IOperationHistoryService
             if (changed)
                 await WriteCoreAsync(records).ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort — swallow all failures.
+            _logger?.Warning("History", $"MarkRolledBackAsync failed for record '{recordId}'", ex);
         }
         finally
         {
@@ -177,10 +185,11 @@ public sealed class OperationHistoryService : IOperationHistoryService
             return JsonSerializer.Deserialize<List<OperationRecord>>(json, JsonOptions)
                    ?? [];
         }
-        catch
+        catch (Exception ex)
         {
-            // Corrupted or incompatible file — treat as empty so the next
-            // write can rebuild from scratch rather than crashing.
+            _logger?.Warning("History",
+                $"Operation history file '{_filePath}' is unreadable or corrupt — treating as empty. " +
+                "It will be overwritten on the next successful write.", ex);
             return [];
         }
     }
