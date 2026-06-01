@@ -126,7 +126,7 @@ public sealed partial class CompanionOverlayWindow : Window
             ? CompanionOverlayState.Expanded
             : initialState);
 
-        PositionNearTaskbar();
+        RestoreOrDefaultPosition();
 
         // ── Subscribe to state changes ─────────────────────────────────────
         AppServices.CompanionSession.StateChanged += OnSessionStateChanged;
@@ -333,6 +333,9 @@ public sealed partial class CompanionOverlayWindow : Window
 
             if (x != pos.X || y != pos.Y)
                 _appWindow.Move(new PointInt32(x, y));
+
+            // Persist the final snapped position so it is restored on next launch.
+            SavePositionAsync();
         }
         catch
         {
@@ -344,7 +347,59 @@ public sealed partial class CompanionOverlayWindow : Window
         ViewModel.RefreshContextualSuggestions();
     }
 
+    // ── Position persistence ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fire-and-forget: saves the current window position to app settings.
+    /// Called after every drag-end snap so the position survives restarts.
+    /// </summary>
+    private async void SavePositionAsync()
+    {
+        try
+        {
+            var pos     = _appWindow.Position;
+            var updated = AppServices.Settings.Current with
+            {
+                CompanionPositionX = pos.X,
+                CompanionPositionY = pos.Y,
+            };
+            await AppServices.Settings.SaveAsync(updated);
+        }
+        catch
+        {
+            // Best-effort — a failed save is not user-visible.
+        }
+    }
+
     // ── Initial window position ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Restores the last saved companion position from settings, falling back
+    /// to the default bottom-right position near the taskbar if no position has
+    /// been saved yet or if the saved position is no longer on-screen.
+    /// </summary>
+    private void RestoreOrDefaultPosition()
+    {
+        try
+        {
+            var s = AppServices.Settings.Current;
+            if (s.CompanionPositionX.HasValue && s.CompanionPositionY.HasValue)
+            {
+                // Validate the saved position is still on a connected display.
+                var savedPos  = new PointInt32(s.CompanionPositionX.Value, s.CompanionPositionY.Value);
+                var area      = DisplayArea.GetFromPoint(savedPos, DisplayAreaFallback.None);
+                if (area is not null)
+                {
+                    _appWindow.Move(savedPos);
+                    return;
+                }
+                // Saved position is off-screen — fall through to default.
+            }
+        }
+        catch { }
+
+        PositionNearTaskbar();
+    }
 
     private void PositionNearTaskbar()
     {

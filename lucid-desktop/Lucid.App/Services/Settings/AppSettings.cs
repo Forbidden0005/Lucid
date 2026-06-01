@@ -70,4 +70,19 @@ public sealed record AppSettings
     /// Default: <c>"ConfirmBeforeAction"</c>.
     /// </summary>
     public string AutomationMode { get; init; } = "ConfirmBeforeAction";
+
+    // ── Companion overlay ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Last saved X position (screen pixels) of the companion overlay window.
+    /// Null = use the default bottom-right position near the taskbar.
+    /// Additive field — no schema version bump required.
+    /// </summary>
+    public int? CompanionPositionX { get; init; } = null;
+
+    /// <summary>
+    /// Last saved Y position (screen pixels) of the companion overlay window.
+    /// Null = use the default bottom-right position near the taskbar.
+    /// </summary>
+    public int? CompanionPositionY { get; init; } = null;
 }
