@@ -23,7 +23,7 @@ Lucid is a **local-first operational intelligence platform** for Windows. It hel
 - A safe repair and optimization toolkit
 - A local operational intelligence layer
 
-The repo was originally named `ExplainMyPC` — the GitHub URL and namespaces still reflect that. A full rename to `Lucid` is planned but hasn't happened yet (user-visible strings were updated; `ExplainMyPC` still appears in namespaces, folder names, `.csproj`, `.slnx`).
+The repo was originally named `ExplainMyPC`. The rename to `Lucid` is complete — namespaces, project files, solution, folder names, and GitHub repo all use `Lucid` now.
 
 ---
 
@@ -76,7 +76,7 @@ Lucid/
 │       │   ├── Intelligence/          ← 25 insight rules, anomaly detection
 │       │   ├── Narrative/             ← Plain-English system summaries
 │       │   ├── Timeline/              ← Chronological event aggregation
-│       │   ├── Explain/               ← Flagship ExplainMyPC engine
+│       │   ├── Explain/               ← Flagship Explain My PC engine
 │       │   ├── Reasoning/             ← Evidence graph + root cause analysis
 │       │   ├── Workflow/              ← Guided workflow engine
 │       │   ├── Replay/                ← Operational replay (time-travel)
@@ -253,7 +253,7 @@ Latest commits:
 2. **Phase 2 — Operational Intelligence Expansion**: Process graph, advanced forecasting, correlation v2
 3. **Phase 3 — Security Intelligence**: Behavioral heuristics, trust graph, security timeline
 4. **Phase 4 — Explain My PC Flagship**: Natural language operational explanations (the main event)
-5. **Full rename**: `ExplainMyPC` → `Lucid` across namespaces, files, solution, GitHub repo
+5. **Full rename**: ✅ Complete — `Lucid` across namespaces, files, solution, GitHub repo
 
 ---
 

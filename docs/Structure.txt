@@ -1,4 +1,4 @@
-ExplainMyPC/
+Lucid/
 │
 ├── CLAUDE.md
 ├── README.md
@@ -10,8 +10,8 @@ ExplainMyPC/
 │   ├── intelligence-engine.md
 │   └── security-model.md
 │
-├── frontend/
-├── backend/
-├── shared/
-├── installer/
-└── scripts/
+├── lucid-desktop/
+├── lucid-native/
+├── lucid-shared/
+├── docs/
+└── _archive/

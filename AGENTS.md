@@ -65,7 +65,7 @@ This rule prevents that drift and is what separates the platform from discount a
 
 ## CORE DOCTRINE: Execution Resource Governance
 
-ExplainMyPC must never become the reason the PC is slow.
+Lucid must never become the reason the PC is slow.
 
 As the platform grows, these operations can collide without governance:
 - DISM / SFC repair runs
@@ -460,7 +460,7 @@ Warning `NETSDK1206` (version-specific RIDs) is non-critical — it comes from t
 
 ## XamlPreCompile — known CLI limitation
 
-`XamlPreCompile` (the step that produces `obj/x64/Debug/.../intermediatexaml/ExplainMyPC.App.dll`) is
+`XamlPreCompile` (the step that produces `obj/x64/Debug/.../intermediatexaml/Lucid.App.dll`) is
 defined in Visual Studio's `Microsoft.CSharp.CurrentVersion.targets` — **not** in the .NET SDK.
 
 **Consequence:** `dotnet build` silently skips `XamlPreCompile`. This works fine incrementally because
@@ -500,7 +500,7 @@ Full detail in `ROADMAP.md`. Quick reference:
 
 # Git / Session Notes
 
-- Repo is on `main` at `Forbidden0005/ExplainMyPC`
+- Repo is on `main` at `Forbidden0005/Lucid`
 - History is compressed into squash commits — codebase is intact even though log appears thin
 - **Never merge PRs without explicit user confirmation**
 - **Never create or push branches without asking first**

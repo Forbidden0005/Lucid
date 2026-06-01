@@ -1,4 +1,4 @@
-\# ExplainMyPC Architecture
+\# Lucid Architecture
 
 
 
@@ -6,7 +6,7 @@
 
 
 
-ExplainMyPC uses a modular layered architecture designed for:
+Lucid uses a modular layered architecture designed for:
 
 
 

@@ -1,4 +1,4 @@
-\# ExplainMyPC UI Guidelines
+\# Lucid UI Guidelines
 
 
 

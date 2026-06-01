@@ -1,8 +1,8 @@
-# ExplainMyPC Intelligence Engine
+# Lucid Intelligence Engine
 
 # Purpose
 
-The Intelligence Engine is the reasoning layer of ExplainMyPC.
+The Intelligence Engine is the reasoning layer of Lucid.
 
 Its job is to:
 

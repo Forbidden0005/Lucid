@@ -1,7 +1,7 @@
 # CLAUDE_REVIEW_REPORT.md
 
-**Project:** Lucid (ExplainMyPC) — local-first Windows operational intelligence platform
-**Repo:** `C:\Users\tyler\ExplainMyPC` (`Forbidden0005/ExplainMyPC`, branch `main`)
+**Project:** Lucid — local-first Windows operational intelligence platform
+**Repo:** `C:\Users\tyler\Lucid` (`Forbidden0005/Lucid`, branch `main`)
 **Scope:** Repository-wide, risk-prioritized deep review against the CLAUDE_REVIEW.md spec.
 **Methodology:** Multi-pass review — structural mapping → DI surface → executors & rollback → LLM/security boundaries → governance & samplers → persistence → security-language drift → build pipeline. ~430 source files inventoried; ~25 read in full; remainder grep-sampled for the patterns called out in CLAUDE.md / PROJECT_INTEGRITY.md. Every file:line citation re-verified against current source before publication.
 **Verdict:** Substantial, mostly thoughtful work, with a handful of **Critical** safety boundaries that need to land before any external user is touched, and a wider **High** band of fragile fundamentals (service-locator scaling pain, pervasive bare `catch`, silent persistence failure, doctrine drift around AI features).

@@ -1,8 +1,8 @@
-# ExplainMyPC Security Model
+# Lucid Security Model
 
 # Purpose
 
-This document defines the security architecture, trust boundaries, privilege model, and safety principles for ExplainMyPC.
+This document defines the security architecture, trust boundaries, privilege model, and safety principles for Lucid.
 
 The application operates with elevated system visibility and potentially privileged operations.
 
@@ -12,7 +12,7 @@ Security and trust are foundational requirements.
 
 # Security Philosophy
 
-ExplainMyPC should behave like:
+Lucid should behave like:
 
 > a transparent diagnostic platform
 
