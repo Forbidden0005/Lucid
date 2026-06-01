@@ -1593,6 +1593,9 @@ public static class AppServices
         _adaptiveLearningMetrics  = new AdaptiveLearningMetrics();
         _learningDiagnostics      = new LearningDiagnosticsService(_eventBus!);
         _patternIntelligence      = new PatternIntelligenceEngine();
+        // Load cross-session inference history so patterns span multiple sessions.
+        // Fire-and-forget — analysis works immediately with an empty history on cold start.
+        _ = _patternIntelligence.LoadPersistedHistoryAsync();
         _adaptiveBaselines        = new AdaptiveBaselineTracker();
         _effectivenessAnalyzer    = new RecommendationEffectivenessAnalyzer(
             _outcomeTracker!, _learningService!);
