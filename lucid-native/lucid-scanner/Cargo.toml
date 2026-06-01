@@ -1,0 +1,18 @@
+[package]
+name = "lucid-scanner"
+version = "0.1.0"
+edition = "2021"
+description = "Native disk-scanner module for the Lucid operational intelligence platform"
+
+# cdylib = C-compatible shared library (.dll on Windows) callable via P/Invoke
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# windows-sys gives zero-overhead bindings to Win32 APIs we need for
+# fast directory enumeration (FindFirstFileExW / FindNextFileW).
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+] }
+

@@ -14,6 +14,9 @@
 *.nupkg
 **/packages/
 
+# Rust build artifacts
+lucid-native/target/
+
 # OS
 Thumbs.db
 .DS_Store
