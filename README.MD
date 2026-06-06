@@ -1,187 +1,135 @@
 # Lucid
 
-Lucid is a local-first operational intelligence platform for Windows. It helps users understand what their PC is doing, why it is behaving that way, and what they can safely do about it — through explainable diagnostics, evidence-grounded reasoning, and confidence-aware language.
+Lucid is a local-first operational intelligence platform for Windows.
 
-Lucid is not a PC cleaner, not antivirus, and not a "booster." It is a diagnostic and intelligence layer.
+It helps a user understand what their PC is doing, why conditions changed, what evidence supports that interpretation, and what can be safely done next. The product direction is diagnostic, explanatory, and reversible. It is not a PC booster, registry cleaner, antivirus replacement, or cloud telemetry product.
 
----
+Current status: the WinUI application builds, the focused unit test suite passes, and the native Rust scanner workspace exists. The project is not yet production-release ready. The immediate work is professional hardening: repository hygiene, repeatable setup, stronger tests, packaging, diagnostics, safety coverage, and architecture cleanup.
 
-## Vision
+Verified on 2026-06-06:
 
-Most system utilities overwhelm users with cryptic metrics, vague warnings, and aggressive upsells.
+```powershell
+cd lucid-desktop
+dotnet build Lucid.slnx -c Debug -p:Platform=x64 --no-restore
+dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64 --no-restore
 
-Lucid answers a different question:
+cd ..\lucid-native
+cargo test
+```
 
-> "What is happening on my computer, why is it happening, and what can I safely do about it?"
+Results from this audit:
 
-The platform is built on four commitments:
+- `dotnet build`: passed, 0 warnings, 0 errors.
+- `dotnet test`: passed, 53 tests.
+- `cargo test`: passed, 0 Rust tests currently exist.
 
-- **Explainability** — every finding explains why, not just what
-- **Trust** — confidence-aware language, never binary good/bad classification
-- **Reversibility** — rollback protection before any destructive action
-- **Lightweight** — the platform must never become the reason the PC is slow
+## Product Doctrine
 
----
+Lucid has four non-negotiable product commitments:
 
-## What Lucid Is Not
+- **Explainability:** Findings must explain the evidence and reasoning behind them.
+- **Confidence awareness:** The app must avoid absolute security or performance claims.
+- **Reversibility:** Destructive operations require consent, audit logs, and rollback planning.
+- **Lightweight operation:** Lucid must not become the reason the machine feels slow.
 
-- Not antivirus or a replacement for endpoint security
-- Not a registry cleaner or a "speed booster"
-- Not a cloud-dependent service — all analysis is local
-- Not fear-driven — no "YOUR PC IS IN DANGER" copy anywhere
+Preferred language is calm and evidence-grounded: unusual, unexpected, worth reviewing, flagged for inspection, confidence, severity, evidence, impact, rollback, and next step.
 
----
+Avoid fear-based security copy, mystery optimization claims, and hidden remediation.
 
-## Core Features
+## Current Architecture
 
-### Telemetry Engine
-- 6 samplers: CPU, RAM, GPU, Disk, Thermal, Process
-- 30-minute rolling buffer with configurable resolution
-- Welford online algorithm for machine-specific baseline learning
-- Anomaly detection via z-score comparison to learned baseline
+```text
+Lucid/
+  lucid-desktop/
+    Lucid.slnx
+    Lucid.App/        WinUI 3 desktop application
+    Lucid.Tests/      xUnit tests for pure service code
+  lucid-native/
+    Cargo.toml
+    lucid-scanner/    Rust native scanner exported through C ABI
+  docs/               Architecture and feature documentation
+  _archive/           Historical scaffold/orphaned code retained for reference
+```
 
-### Insight Engine
-- 25 insight rules: anomaly detection, forecasting, synthesis
-- Per-process attribution — links resource pressure to specific processes
-- Session context awareness: boot time, sleep/wake cycles, idle periods
+Primary technologies:
 
-### Narrative Engine
-- Deterministic plain-English system summaries
-- Describes current state in human-readable form without exaggeration
-- Outputs that read like a trusted analyst, not a threat scanner
-
-### Evidence Graph
-- Causal chain construction from telemetry, anomaly, drift, and session data
-- Root cause analysis: identifies most probable causes from weighted evidence
-- Investigation workspace: explore the evidence behind any finding
-
-### Operational Tools (28 Action Executors)
-- Disk cleanup, Windows repair (SFC / DISM), startup management
-- Process control, storage cleanup, network stack reset
-- Action execution engine: dry-run mode, rollback, privilege detection
-- Full operation audit log
-
-### Operational Replay
-- Reconstructs historical system state from the telemetry buffer
-- Allows investigation of what the system was doing at a past point in time
-
-### Watchtower
-- 30-minute autonomous degradation detection cycles
-- Proactive surfacing of emerging issues before they become user-visible
-- Runs as a background observer, not an intrusive notification system
-
-### Simulation Engine
-- "What if?" projections with confidence bounds
-- Models the expected impact of proposed changes before execution
-
-### Remediation Learning
-- Before/after effectiveness profiles for executed actions
-- Tracks whether past interventions actually improved the measured condition
-
-### Security Intelligence
-- Persistence scanner: startup analysis, autorun correlation, trust scoring
-- Signature verification for executable files
-- Windows Defender status awareness
-- Behavioral heuristics — patterns, not binary classifications
-
-### Companion Overlay
-- Always-on-top floating panel with snap-to-edge positioning
-- Desktop context awareness: foreground window, File Explorer path, clipboard observation
-- Designed for ambient operational awareness without interrupting workflow
-
-### Conversation Engine
-- Deterministic intent-matching over 22 intent types
-- Evidence-grounded responses — every answer is traceable to data
-- Confidence-scored outputs, no speculative or fabricated diagnostics
-
-### Adaptive Intelligence
-- Cognitive reasoning engine with evidence-weighted inference
-- Unified recommendation service with attention budget and cognitive load estimation
-- Pattern intelligence: recurrence tracking, behavioral drift analysis
-- Longitudinal baseline calibration for improving accuracy over time
-
----
-
-## UI Pages
-
-Dashboard, Insights, Processes, Repairs, Security, Storage, Timeline, Apps, Explain, Settings, Replay, Historical, Investigation, Simulation, Diagnostics, RuntimeGovernance, MachineBehavior, DeviceIntelligence, Watchtower, Privacy
-
----
-
-## Technology Stack
-
-**Frontend**
 - WinUI 3 / Windows App SDK
 - C# / .NET 8
-- MVVM architecture
+- MVVM with CommunityToolkit.Mvvm
+- SQLite through Microsoft.Data.Sqlite
+- Rust native module for performance-sensitive scanning
+- xUnit, FluentAssertions, Moq, and cargo test
 
-**Database**
-- SQLite (local, append-oriented repository pattern)
+## Important Build Notes
 
-**Native Modules** (planned)
-- Rust — filesystem traversal, process monitoring, performance-sensitive analysis
+Always pass a concrete platform:
 
----
-
-## Build Instructions
-
-```
+```powershell
 cd lucid-desktop
 dotnet build Lucid.slnx -c Debug -p:Platform=x64
 ```
 
-The `-p:Platform=x64` flag is required. Omitting it causes a hard build failure because `WindowsAppSDKSelfContained=true` does not support AnyCPU.
+`WindowsAppSDKSelfContained=true` does not support AnyCPU. Builds without `-p:Platform=x64` can fail.
 
-**If XamlCompiler.exe fails after a clean build**, run this once to regenerate the XAML intermediate assembly:
+If a clean build loses the WinUI XAML intermediate output and `XamlCompiler.exe` fails, run the Visual Studio MSBuild reset script:
 
-```
+```powershell
 C:\Users\tyler\build_vs.bat
 ```
 
-This invokes the full VS MSBuild pipeline which handles `XamlPreCompile`. After running it once, `dotnet build` works again.
+That script regenerates the XAML precompile output used by later CLI builds.
 
----
+## Development Rules
 
-## Repository Structure
+Before changing code, read:
 
-```
-Lucid/
-├── lucid-desktop/     → WinUI 3 frontend (C#, .NET 8)
-├── lucid-native/      → Rust native modules (planned)
-├── lucid-shared/      → Shared contracts and models (planned)
-├── docs/              → Architecture and design documentation
-├── ONBOARDING.md      → Developer quick-start guide
-├── ROADMAP.MD         → Full phase roadmap with detailed plans
-├── CLAUDE.md          → Project doctrine, build notes, AI session context
-└── PROJECT_INTEGRITY.md → Code quality governance protocol
-```
+- [PROJECT_INTEGRITY.md](PROJECT_INTEGRITY.md)
+- [ROADMAP.md](ROADMAP.md)
+- [ONBOARDING.md](ONBOARDING.md)
 
----
+Core rules:
 
-## Core Principles
+- Read real files before making architectural claims.
+- Prefer targeted, reversible changes over broad rewrites.
+- Keep UI logic in ViewModels and service logic in services.
+- Keep security and operational language confidence-aware.
+- Add tests for safety, persistence, executor, trust, and parsing logic.
+- Do not launch multiple heavy operations without governance.
+- Do not delete tracked files, archived context, or generated cleanup targets without confirming scope.
 
-- **Local-first** — no cloud dependency, no telemetry upload, no internet requirement
-- **Explainability** — every finding explains why, not just what was detected
-- **Confidence-aware** — probabilistic language throughout; never binary classification
-- **Reversibility** — every destructive action requires a rollback path
-- **Lightweight** — adaptive polling, idle-aware throttling, background work yields to foreground
-- **Modular** — isolated services, composable engines, dependency injection throughout
+## Production-Readiness Gaps
 
----
+This repo is substantial, but production hardening is still required.
 
-## Development Status
+Known work:
 
-Active development — Phase 21.
+- Remove tracked/generated IDE state from source control and keep `.vs/` ignored.
+- Normalize canonical documentation casing to `README.md` and `ROADMAP.md`.
+- Repair stale setup paths that still reference the old `ExplainMyPC` location.
+- Add packaging and release infrastructure; there is no active `Package.appxmanifest` in `Lucid.App`.
+- Expand unit and integration coverage well beyond the current focused 53-test suite.
+- Add Rust scanner tests before expanding native filesystem work.
+- Reduce `Lucid.App.csproj` selective-compilation fragility.
+- Incrementally reduce pressure on `AppServices.cs` without a big-bang DI rewrite.
+- Convert silent best-effort failures into structured diagnostics events.
+- Audit every executor for consent, rollback, privilege, governance, and logging behavior.
 
-The core platform is operational: telemetry, intelligence, evidence graph, operational tools, companion overlay, conversation engine, adaptive intelligence layers, and 20+ UI pages are all built and integrated. Current focus is platform stabilization, resource governance, and SQLite persistence before the next major capability phase.
+See [ROADMAP.md](ROADMAP.md) for the full cleanup and production-hardening plan.
 
-See [ROADMAP.MD](ROADMAP.MD) for the full phase plan.
+## Repository Hygiene
 
----
+The current worktree already contains modified files and staged deletions from previous work. Treat cleanup as a controlled pass:
+
+- Review `git status --short` before editing.
+- Do not revert unrelated user changes.
+- Do not delete archive folders unless the roadmap explicitly calls for archiving or removal and the owner approves.
+- Prefer documentation and audit reports before structural moves.
 
 ## Further Reading
 
-- [ONBOARDING.md](ONBOARDING.md) — how to set up and run the project
-- [ROADMAP.MD](ROADMAP.MD) — phase-by-phase feature and architecture roadmap
-- [CLAUDE.md](CLAUDE.md) — project doctrine, security language rules, build quirks
-- [PROJECT_INTEGRITY.md](PROJECT_INTEGRITY.md) — code quality governance protocol
+- [ONBOARDING.md](ONBOARDING.md): developer orientation and build workflow.
+- [PROJECT_INTEGRITY.md](PROJECT_INTEGRITY.md): mandatory quality gate.
+- [ROADMAP.md](ROADMAP.md): production-hardening roadmap.
+- [docs/architecture.md](docs/architecture.md): architecture notes, pending cleanup.
+- [docs/intelligence-engine.md](docs/intelligence-engine.md): intelligence layer notes.
+- [docs/security-model.md](docs/security-model.md): security model notes.

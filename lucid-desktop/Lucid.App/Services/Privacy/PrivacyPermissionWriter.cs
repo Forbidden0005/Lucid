@@ -44,6 +44,10 @@ public static class PrivacyPermissionWriter
         string appIdentifier,
         bool   allow)
     {
+        if (!IsValidCapabilityName(capabilityName) ||
+            string.IsNullOrWhiteSpace(appIdentifier))
+            return false;
+
         try
         {
             // Open the app-specific subkey with write access.
@@ -63,5 +67,13 @@ public static class PrivacyPermissionWriter
             // Fail silently — the caller will leave the UI in its previous state.
             return false;
         }
+    }
+
+    internal static bool IsValidCapabilityName(string? capabilityName)
+    {
+        if (string.IsNullOrWhiteSpace(capabilityName))
+            return false;
+
+        return capabilityName.IndexOfAny(['\\', '/', ':']) < 0;
     }
 }

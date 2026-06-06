@@ -11,7 +11,7 @@ namespace Lucid.Services.Replay;
 /// those actions had.
 ///
 /// Language rules (from CLAUDE.md security doctrine):
-///   NEVER use: "malicious", "infected", "dangerous", "threat detected"
+///   NEVER use antivirus-style certainty or fear-based security labels.
 ///   ALWAYS use: "unusual", "unexpected", "worth reviewing", confidence-aware framing
 ///   All findings are probabilistic, not absolute.
 /// </summary>

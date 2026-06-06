@@ -4,7 +4,7 @@
 
 /// <summary>
 /// Severity tier shared across anomaly, drift, and early-warning records.
-/// Uses probability-aware, non-alarming language — never "critical" or "dangerous".
+/// Uses probability-aware, non-alarming language without certainty-based security labels.
 /// </summary>
 public enum AnomalyIntelligenceSeverity
 {

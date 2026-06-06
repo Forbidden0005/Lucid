@@ -12,7 +12,7 @@ namespace Lucid.Services.Watchtower;
 ///   • Metric trends worsening beyond threshold
 ///
 /// Philosophy:
-///   NEVER uses alarm language ("critical", "dangerous", "infected").
+///   NEVER uses alarmist security labels or certainty-based warning language.
 ///   ALWAYS uses observation language ("appears to be", "may suggest", "worth reviewing").
 ///
 /// All analysis is deterministic — same inputs produce same outputs.

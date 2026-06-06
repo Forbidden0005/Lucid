@@ -38,14 +38,14 @@ public sealed class TrustIntegrityServiceTests
         var svc = new TrustIntegrityService();
 
         // Pass values matching the defaults — should not trigger recovery on first run.
-        var result = svc.Verify(
+        var act = () => svc.Verify(
             consentMode:    "AskForMediumAndHighRisk",
             automationMode: "ConfirmBeforeAction");
 
-        // On first run (no file) this must be true.
-        // If a file exists from a prior test/run, this may verify or fail depending on
-        // the machine — we only assert the type is bool (no exception).
-        result.Should().BeOneOf(true, false); // defensive: just confirm no exception
+        // If a file exists from a prior run, the result may be true or false
+        // depending on machine-local integrity state. The useful assertion is
+        // that verification is total and returns without throwing.
+        act.Should().NotThrow();
     }
 
     [Fact]

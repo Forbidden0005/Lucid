@@ -9,6 +9,12 @@
     <IsTestProject>true</IsTestProject>
     <!-- Tests run as x64 to match the main project platform -->
     <PlatformTarget>x64</PlatformTarget>
+    <!--
+      WindowsAppSDK 1.5 injects legacy win10-* RIDs transitively from Lucid.App.
+      The .NET 10 SDK portable RID graph rejects those during test builds, so
+      constrain tests to the single portable RID they actually run under.
+    -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,12 +33,42 @@
   </ItemGroup>
 
   <!--
-    Reference the main project so tests can reach the service types directly.
-    The main project is a WinAppSdk unpackaged app — it has no special build
-    constraints that would block unit-test references to its service layer.
+    Link pure service files directly instead of referencing Lucid.App.
+    A ProjectReference pulls WinUI/WindowsAppSDK build targets into the test
+    project, which makes unit tests run packaging/resource tasks they do not
+    need. Keep this list focused on production files covered by tests.
   -->
   <ItemGroup>
-    <ProjectReference Include="..\Lucid.App\Lucid.App.csproj" />
+    <Compile Include="..\Lucid.App\Services\Execution\Validation\ProcessExecutionFingerprint.cs"
+             Link="App\Services\Execution\Validation\ProcessExecutionFingerprint.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\Validation\ProcessIdentityValidator.cs"
+             Link="App\Services\Execution\Validation\ProcessIdentityValidator.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\Validation\VerifiedProcessTarget.cs"
+             Link="App\Services\Execution\Validation\VerifiedProcessTarget.cs" />
+    <Compile Include="..\Lucid.App\Services\Infrastructure\Startup\StartupHealthSnapshot.cs"
+             Link="App\Services\Infrastructure\Startup\StartupHealthSnapshot.cs" />
+    <Compile Include="..\Lucid.App\Services\Infrastructure\Startup\StartupTimeoutGuard.cs"
+             Link="App\Services\Infrastructure\Startup\StartupTimeoutGuard.cs" />
+    <Compile Include="..\Lucid.App\Services\Persistence\Reliability\WriteQueueMetrics.cs"
+             Link="App\Services\Persistence\Reliability\WriteQueueMetrics.cs" />
+    <Compile Include="..\Lucid.App\Services\Privacy\PrivacyPermissionWriter.cs"
+             Link="App\Services\Privacy\PrivacyPermissionWriter.cs" />
+    <Compile Include="..\Lucid.App\Services\Settings\AppSettings.cs"
+             Link="App\Services\Settings\AppSettings.cs" />
+    <Compile Include="..\Lucid.App\Services\Trust\EndpointValidation\EndpointTrustClassification.cs"
+             Link="App\Services\Trust\EndpointValidation\EndpointTrustClassification.cs" />
+    <Compile Include="..\Lucid.App\Services\Trust\EndpointValidation\EndpointValidationResult.cs"
+             Link="App\Services\Trust\EndpointValidation\EndpointValidationResult.cs" />
+    <Compile Include="..\Lucid.App\Services\Trust\EndpointValidation\LocalEndpointValidator.cs"
+             Link="App\Services\Trust\EndpointValidation\LocalEndpointValidator.cs" />
+    <Compile Include="..\Lucid.App\Services\Trust\Integrity\ConsentIntegrityValidator.cs"
+             Link="App\Services\Trust\Integrity\ConsentIntegrityValidator.cs" />
+    <Compile Include="..\Lucid.App\Services\Trust\Integrity\SignedTrustEnvelope.cs"
+             Link="App\Services\Trust\Integrity\SignedTrustEnvelope.cs" />
+    <Compile Include="..\Lucid.App\Services\Trust\Integrity\TrustIntegrityService.cs"
+             Link="App\Services\Trust\Integrity\TrustIntegrityService.cs" />
+    <Compile Include="..\Lucid.App\Services\Trust\Integrity\TrustPostureRecoveryManager.cs"
+             Link="App\Services\Trust\Integrity\TrustPostureRecoveryManager.cs" />
   </ItemGroup>
 
 </Project>

@@ -82,7 +82,7 @@ public sealed class WriteQueueMetricsTests
     }
 
     [Fact]
-    public void Metrics_AreThreadSafe_UnderConcurrentAccess()
+    public async Task Metrics_AreThreadSafe_UnderConcurrentAccess()
     {
         var metrics = new WriteQueueMetrics();
         var tasks   = Enumerable.Range(0, 10)
@@ -95,7 +95,7 @@ public sealed class WriteQueueMetricsTests
                 }
             }));
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         metrics.TotalWriteCount.Should().Be(1000);
         metrics.DroppedWriteCount.Should().Be(1000);

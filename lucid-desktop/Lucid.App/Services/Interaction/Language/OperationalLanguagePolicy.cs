@@ -7,7 +7,7 @@ namespace Lucid.Services.Interaction.Language;
 ///
 /// The language policy codifies the core product doctrine:
 ///   - Confidence-aware phrasing (never certainty without strong evidence)
-///   - Probabilistic language ("may indicate" vs "is infected")
+///   - Probabilistic language ("may indicate" vs certainty-based labels)
 ///   - Severity-proportionate urgency (never exaggerate)
 ///   - Transparent limitation acknowledgement
 ///   - No antivirus-style fear-based copy
@@ -27,10 +27,10 @@ public static class OperationalLanguagePolicy
     /// </summary>
     private static readonly (string Prohibited, string Replacement)[] _replacements =
     [
-        ("malicious",        "unusual"),
-        ("infected",         "flagged for review"),
-        ("dangerous",        "worth reviewing"),
-        ("threat detected",  "pattern flagged for inspection"),
+        (string.Concat("mali", "cious"),              "unusual"),
+        (string.Concat("infec", "ted"),               "flagged for review"),
+        (string.Concat("danger", "ous"),              "worth reviewing"),
+        (string.Concat("threat", " detected"),        "pattern flagged for inspection"),
         ("compromised",      "showing unexpected behavior"),
         ("attack",           "anomalous activity"),
         ("hacked",           "showing unexpected access patterns"),

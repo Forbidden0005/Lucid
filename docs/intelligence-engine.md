@@ -219,7 +219,7 @@ GOOD:
 “Your SSD is nearly full, which may reduce performance during gaming and multitasking.”
 
 GOOD:
-“An unsigned startup application was recently added. This is not always dangerous, but should be reviewed.”
+“An unsigned startup application was recently added. This is not always unusual, but it is worth reviewing.”
 
 ---
 
@@ -229,10 +229,10 @@ BAD:
 “Boot degradation threshold exceeded.”
 
 BAD:
-“Critical error detected.”
+“Alarmist certainty without evidence.”
 
 BAD:
-“Potentially dangerous system anomaly.”
+“Binary security judgment without confidence or context.”
 
 ---
 

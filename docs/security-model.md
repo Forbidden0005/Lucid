@@ -94,7 +94,7 @@ Cloud services should always be:
 * DLL injection
 * process tampering
 * privilege escalation attacks
-* malicious plugin abuse
+* plugin abuse intended to bypass trust boundaries
 
 ## Internal Risks
 

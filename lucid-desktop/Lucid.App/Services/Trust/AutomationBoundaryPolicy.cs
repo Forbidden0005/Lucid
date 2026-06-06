@@ -167,7 +167,7 @@ public static class AutomationBoundaryPolicy
     {
         // All registered scopes are pre-approved by the registry.
         // This is a no-op for every scope currently defined — kept as a
-        // future extension point if dangerous scopes are ever accidentally added.
+        // future extension point if higher-risk scopes are ever accidentally added.
         _ = PermissionScopeRegistry.Get(scope); // throws if unregistered
         return BoundaryCheckResult.Allowed;
     }

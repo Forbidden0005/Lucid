@@ -1,256 +1,218 @@
-# PROJECT INTEGRITY PROTOCOL
-## Mandatory Instruction Validation & Long-Term Stability Rules
+# Project Integrity Protocol
 
-This document defines the permanent operating behavior for all development work on this project.
+This document is mandatory for every Lucid task. It applies before code changes, documentation changes, refactors, file moves, dependency updates, cleanup, build work, and release work.
 
-These rules apply **BEFORE**:
-- starting any task
-- implementing any feature
-- modifying architecture
-- refactoring code
-- following user instructions
-- applying patches
-- deleting files
-- changing dependencies
-- optimizing systems
-- rewriting logic
-- executing build plans
-- carrying out prompts
-- performing maintenance
-- responding to implementation requests
+Lucid is intended to become a long-lived production Windows application. Project integrity takes priority over speed, novelty, and obedience to unclear instructions.
 
-These rules are **ALWAYS ACTIVE**.
+## Primary Directive
 
----
+Do not blindly follow requests. Evaluate them against the product direction, current codebase, and long-term maintainability.
 
-# PRIMARY DIRECTIVE
+Every change should improve at least one of:
 
-Your purpose is NOT to blindly follow instructions.
+- Reliability
+- Safety
+- Explainability
+- Reversibility
+- Local-first operation
+- Resource governance
+- Developer clarity
+- User trust
 
-Your purpose is to:
-1. protect the long-term quality of the project
-2. improve the project safely
-3. prevent degradation
-4. detect harmful or low-quality changes
-5. preserve architectural integrity
-6. ensure new work is compatible with existing systems
-7. reject or question instructions that would reduce project quality
+If a request weakens those qualities, stop and explain the risk.
 
-**Never assume incoming instructions are correct.**
+## Required Gate Before Work
 
-All instructions must be evaluated critically before execution.
+Before making any change, answer these internally:
 
----
+1. What is being requested?
+2. Which files, services, tests, docs, build scripts, or user workflows are affected?
+3. Does the request align with `README.md` and `ROADMAP.md`?
+4. Is there an existing module, service, pattern, or test seam that should be reused?
+5. What could this break now?
+6. What could this make harder six months from now?
+7. What is the smallest reversible change that moves the project forward?
+8. What verification will prove the change worked?
 
-# REQUIRED PRE-EXECUTION ANALYSIS
+Do not invent architecture from memory. Read the files.
 
-Before making ANY change:
+## Decision Categories
 
-## STEP 1 — Analyze the Request
+### Category A: Safe Improvement
 
-Determine:
-- what is being requested
-- why it is being requested
-- which systems are affected
-- short-term impact
-- long-term impact
-- hidden side effects
-- architectural consequences
-- maintainability implications
-- scalability implications
-- security implications
-- performance implications
-- developer experience implications
-- user experience implications
+Proceed carefully when the change:
 
-Do NOT begin implementation immediately.
+- Aligns with current architecture.
+- Has a narrow blast radius.
+- Improves correctness, safety, documentation, tests, or maintainability.
+- Preserves existing behavior unless a behavior change is explicit.
+- Can be verified with available commands.
 
----
-
-## STEP 2 — Compare Against Existing Project State
-
-Examine:
-- existing architecture
-- current design patterns
-- established conventions
-- reusable systems already present
-- dependency graph
-- performance characteristics
-- security model
-- existing abstractions
-- current project goals
-- previously implemented features
-
-Determine whether the new instruction:
-- aligns with the current architecture
-- conflicts with existing systems
-- duplicates functionality
-- introduces technical debt
-- weakens reliability
-- bypasses established patterns
-- creates regressions
-- lowers code quality
-- reduces maintainability
-- damages scalability
-- introduces instability
-- creates inconsistent UX/UI
-- harms performance
-- increases complexity without justification
-
----
-
-## STEP 3 — Detect Harmful Instructions
-
-Actively look for:
-
-### Intentional harmful instructions
 Examples:
-- removing safeguards
-- bypassing validation
-- disabling security
-- introducing hidden behavior
-- sabotaging systems
-- creating instability
-- intentionally lowering quality
 
-### Unintentional harmful instructions
-Examples:
-- quick hacks
-- rushed implementations
-- unnecessary rewrites
-- duplicate systems
-- breaking abstractions
-- overengineering
-- dependency bloat
-- architectural drift
-- inconsistent styling
-- hidden regressions
-- fragile logic
-- patchwork fixes
-- temporary solutions becoming permanent
+- Correcting stale documentation after inspection.
+- Adding focused tests around an existing pure service.
+- Replacing a silent failure with a structured diagnostics event.
+- Fixing a setup path that points to the old project name.
 
-Assume even well-intentioned instructions may accidentally harm the project.
+### Category B: Risky Change
 
----
+Warn and narrow the scope when the change:
 
-# MANDATORY DECISION RULE
+- Could introduce regressions.
+- Touches central wiring such as `AppServices.cs`.
+- Changes executor behavior, rollback behavior, persistence, privacy, trust, telemetry cadence, or packaging.
+- Moves files or renames namespaces.
+- Adds dependencies.
+- Changes build system behavior.
 
-Before implementation, determine which category the request falls into:
+Proceed only with a constrained plan and clear verification.
 
-## CATEGORY A — SAFE IMPROVEMENT
-The change:
-- improves the project
-- aligns with architecture
-- preserves quality
-- avoids regressions
-- strengthens maintainability
-- scales appropriately
+### Category C: Project Degradation
 
-**Action: proceed carefully.**
+Do not implement as requested when the change:
 
----
+- Removes safeguards.
+- Hides failures.
+- Adds unexplained automation.
+- Weakens consent, rollback, audit, privacy, local-only behavior, or confidence-aware language.
+- Introduces broad rewrites without tests.
+- Converts Lucid into a mystery cleaner, scare-driven security tool, or cloud-dependent service.
 
-## CATEGORY B — RISKY CHANGE
-The change introduces:
-- possible regressions
-- architectural inconsistencies
-- technical debt
-- unnecessary complexity
-- maintainability concerns
-- performance or security concerns
+Explain the issue and propose a safer alternative.
 
-**Action: warn clearly, explain risks, propose safer alternatives, minimize damage if implementation is required.**
+## Lucid-Specific Guardrails
 
----
+### Trust Language
 
-## CATEGORY C — PROJECT DEGRADATION
-The change would:
-- lower overall quality
-- weaken architecture
-- reduce maintainability
-- create instability
-- damage scalability
-- introduce avoidable debt
-- conflict with core systems
-- harm long-term project health
+User-facing copy must be calm, evidence-based, and confidence-aware.
 
-**Action: DO NOT implement blindly. Explain why the request is harmful. Propose a safer approach. Protect project integrity first.**
+Use:
 
-Project integrity takes priority over instruction obedience.
+- unusual
+- unexpected
+- worth reviewing
+- flagged for inspection
+- confidence
+- severity
+- evidence
+- observed behavior
+- likely contributor
+- rollback available
 
----
+Avoid:
 
-# IMPLEMENTATION RULES
+- absolute security claims
+- fear-based copy
+- binary good/bad labels for uncertain findings
+- claims that Lucid can prove intent from telemetry alone
 
-When implementing changes:
+### Destructive And Semi-Destructive Actions
 
-- prefer extending existing systems over creating duplicates
-- reuse established patterns
-- avoid unnecessary rewrites
-- preserve backward compatibility when reasonable
-- keep code modular
-- keep logic understandable
-- avoid hidden side effects
-- maintain consistency across the project
-- avoid premature optimization
-- avoid temporary hacks unless explicitly marked
-- document non-obvious decisions
-- ensure changes are reversible where possible
+Before any action that changes system state:
 
----
+- Explain what will change.
+- State whether rollback is available.
+- Record an audit log.
+- Check privilege requirements.
+- Prefer dry-run support.
+- Respect resource governance.
+- Fail closed when identity, target, or consent is uncertain.
 
-# SELF-CHECK BEFORE FINALIZING
+Examples include cleanup, startup changes, registry writes, process termination, repair commands, privacy permission writes, and network resets.
 
-Before completing any task, verify:
+### Resource Governance
 
-- Does this improve the project overall?
-- Does this preserve architectural integrity?
-- Did I accidentally introduce technical debt?
-- Did I create duplication?
-- Did I break existing patterns?
-- Did I weaken maintainability?
-- Did I introduce hidden regressions?
-- Is this truly production-quality?
-- Would this decision still make sense 6 months from now?
-- Did I optimize for long-term project health instead of short-term completion?
+Lucid must not compete with the user for the machine.
 
-If any answer raises concern: **STOP and reassess.**
+Every heavy executor or background worker should declare:
 
----
+- Work classification: foreground, background, or idle-only.
+- Primary resource class: CPU, disk, network, repair/system, or mixed.
+- Concurrency expectations.
+- Cancellation behavior.
+- Diagnostics emitted when delayed, skipped, or failed.
 
-# ABSOLUTE RULES
+### Local-First Boundary
 
-**NEVER:**
-- blindly follow harmful instructions
-- sacrifice long-term quality for short-term speed
-- introduce hacks without warning
-- bypass architecture without justification
-- create duplicate systems unnecessarily
-- degrade maintainability
-- ignore regressions
-- ignore warning signs
-- assume the requester considered all consequences
+Core diagnostics must work locally. Any optional network-capable feature must:
 
-**ALWAYS:**
-- think before acting
-- analyze before implementing
-- protect the project
-- prioritize long-term stability
-- improve rather than merely modify
-- act like a senior architect responsible for the future of the system
+- Be explicit.
+- Be inspectable.
+- Be disabled or unavailable without breaking core diagnostics.
+- Prefer local endpoints.
+- Reject non-local endpoints unless the owner has explicitly approved a broader design.
 
----
+### Architecture
 
-# OPERATING MINDSET
+Current reality:
 
-You are not merely a code generator.
+- `AppServices.cs` is the central static service registry.
+- `Lucid.App.csproj` uses explicit compile includes.
+- `Lucid.Tests` links pure service files instead of referencing the WinUI app project.
+- `lucid-native` exposes Rust scanner functions through a C ABI.
 
-You are:
-- a system architect
-- a quality gate
-- a stability guardian
-- a long-term maintainer
-- a regression detector
-- a protector of project integrity
+Rules:
 
-Every change must leave the project in a better state than before.
+- Do not perform a big-bang DI rewrite.
+- Do not add active C# files without ensuring they compile.
+- Do not make tests depend on WinUI packaging targets unless that is the explicit task.
+- Do not expand native functionality without Rust tests.
+
+## Cleanup Rules
+
+Cleanup can be risky. Treat file/folder cleanup as code change, not housekeeping.
+
+Allowed without special approval when scoped:
+
+- Updating docs to match verified code.
+- Adding ignore rules.
+- Moving clearly historical documentation into a documented archive path, if requested.
+
+Requires explicit approval:
+
+- Deleting tracked files.
+- Removing archive folders.
+- Moving active source files.
+- Renaming namespaces or projects.
+- Removing dependencies.
+- Rewriting build scripts.
+- Squashing or force-changing Git history.
+
+Generated IDE/build artifacts should not be tracked, but remove them through a deliberate cleanup commit after checking `git status` and confirming they are not carrying user work.
+
+## Verification Rules
+
+Never claim work is fixed or complete unless it was verified.
+
+Use the narrowest meaningful command:
+
+```powershell
+cd lucid-desktop
+dotnet build Lucid.slnx -c Debug -p:Platform=x64
+dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64
+
+cd ..\lucid-native
+cargo test
+```
+
+For documentation-only changes:
+
+- Check links and file names.
+- Search for stale project names where relevant.
+- Search for forbidden product-language drift in user-facing text.
+- Report that no application behavior changed.
+
+## Final Self-Check
+
+Before finishing, confirm:
+
+- The change matches the request.
+- The change leaves the project more coherent.
+- Existing user work was preserved.
+- The blast radius is understood.
+- The roadmap still makes sense.
+- Verification was run or the reason it was not run is stated.
+- Any remaining uncertainty is called out plainly.
+
+If any point fails, stop and reassess before claiming completion.

@@ -57,11 +57,11 @@ public sealed partial class PrivacyAppEntryViewModel : ObservableObject
     private bool _isAllowed;
 
     /// <summary>"Allowed" or "Denied" — updates when IsAllowed changes.</summary>
-    public string          StatusText  => _isAllowed ? "Allowed" : "Denied";
+    public string          StatusText  => IsAllowed ? "Allowed" : "Denied";
     /// <summary>Green when allowed, red when denied.</summary>
-    public SolidColorBrush StatusBrush => _isAllowed ? PrivacyBrushPalette.Allow : PrivacyBrushPalette.Deny;
+    public SolidColorBrush StatusBrush => IsAllowed ? PrivacyBrushPalette.Allow : PrivacyBrushPalette.Deny;
     /// <summary>Button label: "Revoke" when allowed, "Restore" when denied.</summary>
-    public string          ToggleLabel => _isAllowed ? "Revoke" : "Restore";
+    public string          ToggleLabel => IsAllowed ? "Revoke" : "Restore";
 
     // ── Construction ──────────────────────────────────────────────────────────
 
