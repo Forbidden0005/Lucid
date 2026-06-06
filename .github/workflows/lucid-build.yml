@@ -70,7 +70,6 @@ jobs:
           dotnet test Lucid.Tests/Lucid.Tests.csproj
           -c ${{ env.BUILD_CONFIGURATION }}
           -p:Platform=x64
-          --no-build
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
 
