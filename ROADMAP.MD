@@ -30,6 +30,39 @@ Verified results:
 - xUnit test suite passes 53 tests.
 - Rust tests pass but currently run 0 tests.
 
+## Completed
+
+This section is the canonical record of work that is done and should no longer be treated as open.
+
+### Verified Baseline Already In Place
+
+- WinUI 3 application scaffold and active solution under `lucid-desktop/Lucid.App` and `lucid-desktop/Lucid.slnx`.
+- xUnit test project under `lucid-desktop/Lucid.Tests`.
+- Rust native workspace under `lucid-native` with `lucid-scanner`.
+- SQLite persistence, runtime governance, diagnostics, trust/integrity, replay, simulation, privacy, and companion-related code paths present in the tree.
+- GitHub Actions workflow for Windows build and test.
+
+### Documentation And Governance Completed
+
+- Root project docs were rewritten to match the inspected codebase and production-hardening direction: `README.md`, `ONBOARDING.md`, `PROJECT_INTEGRITY.md`, and `ROADMAP.md`.
+- `CODEX.md` explicitly requires roadmap review before every task and roadmap maintenance after every completed task.
+
+### Recently Completed Repairs
+
+- CI unit test workflow was corrected so the test job does not assume compiled artifacts from another GitHub runner. The fix removed `--no-build` from the `dotnet test` step in `.github/workflows/lucid-build.yml`.
+
+### Verification Completed
+
+- `dotnet build Lucid.slnx -c Debug -p:Platform=x64 --no-restore`
+- `dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64 --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"`
+- `cargo test`
+
+Current verified outcome:
+
+- Build passes with 0 warnings and 0 errors.
+- 53 C# tests pass.
+- Rust test command passes, but Rust test coverage is still effectively zero.
+
 ## Strategic Direction
 
 Lucid should become a trusted local Windows intelligence layer.
@@ -68,7 +101,7 @@ Current issues:
 
 Required work:
 
-- Normalize documentation names and references.
+- Normalize documentation names and references that remain outside the rewritten root docs.
 - Remove tracked IDE and build state from Git.
 - Decide which root reports remain active and which move to `docs/reports/` or `_archive/`.
 - Add a short `docs/repository-hygiene.md` explaining active vs archived folders.
@@ -189,13 +222,16 @@ Required work:
 
 ### Phase 0: Stabilize The Baseline
 
+Status: in progress
+
 Goal: make the current repo safe to work in.
 
 Work:
 
-- Preserve current user changes.
-- Confirm build and tests pass from a clean restore.
-- Normalize root documentation.
+- [done] Preserve current user changes while making targeted edits.
+- [done] Confirm build and tests pass from a clean restore.
+- [done] Normalize root documentation and align it with the inspected codebase.
+- [done] Record completed work explicitly in this roadmap.
 - Remove tracked IDE state from source control after owner approval.
 - Fix setup script path drift.
 - Add `scripts/verify-dev.ps1`.
@@ -207,6 +243,8 @@ Exit criteria:
 - Build, tests, and cargo tests are one-command verifiable.
 
 ### Phase 1: Repository Hygiene And Canonical Structure
+
+Status: not started
 
 Goal: make the project understandable to a new engineer in under 30 minutes.
 
@@ -226,11 +264,14 @@ Exit criteria:
 
 ### Phase 2: Build, CI, Packaging, And Release
 
+Status: in progress
+
 Goal: produce repeatable developer and release builds.
 
 Work:
 
 - Add clean restore/build/test/native-test workflow.
+- [done] Fix the CI unit test job so it does not depend on missing cross-job binaries.
 - Add Release x64 build verification.
 - Decide packaged vs unpackaged distribution.
 - Add MSIX manifest or document why unpackaged release is the first target.
@@ -244,6 +285,8 @@ Exit criteria:
 - Packaging requirements are explicit and tested.
 
 ### Phase 3: Test Expansion And Safety Nets
+
+Status: not started
 
 Goal: protect the parts of Lucid that can harm trust.
 
@@ -265,6 +308,8 @@ Exit criteria:
 
 ### Phase 4: Architecture Hardening
 
+Status: not started
+
 Goal: reduce long-term fragility without destabilizing the app.
 
 Work:
@@ -282,6 +327,8 @@ Exit criteria:
 - Failures become inspectable diagnostics, not invisible behavior.
 
 ### Phase 5: Trust, Privacy, And Governance Completion
+
+Status: not started
 
 Goal: make safety guarantees consistent across the platform.
 
@@ -302,6 +349,8 @@ Exit criteria:
 
 ### Phase 6: Product Polish And UX Readiness
 
+Status: not started
+
 Goal: make Lucid feel like a trustworthy Windows application rather than an engineering cockpit.
 
 Work:
@@ -320,6 +369,8 @@ Exit criteria:
 - No page relies on placeholder copy or unexplained metrics.
 
 ### Phase 7: Production Operations
+
+Status: not started
 
 Goal: prepare Lucid for real users.
 
