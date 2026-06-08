@@ -42,6 +42,8 @@ public sealed class ActionExecutorRegistry
     {
         ArgumentNullException.ThrowIfNull(executor);
 
+        ValidateMetadataContract(executor);
+
         if (_executors.ContainsKey(executor.ActionId))
             throw new InvalidOperationException(
                 $"An executor for action '{executor.ActionId}' is already registered. " +
@@ -88,4 +90,41 @@ public sealed class ActionExecutorRegistry
 
     /// <summary>Number of executors currently registered.</summary>
     public int Count => _executors.Count;
+
+    private static void ValidateMetadataContract(IActionExecutor executor)
+    {
+        var metadata = ActionExecutionMetadataCatalog.GetRequired(executor.ActionId);
+
+        if (metadata.RequiredPrivilege != executor.RequiredPrivilege)
+            throw new InvalidOperationException(
+                $"Executor '{executor.ActionId}' declares privilege '{executor.RequiredPrivilege}' " +
+                $"but metadata declares '{metadata.RequiredPrivilege}'.");
+
+        if (metadata.RequiresConfirmation != executor.RequiresConfirmation)
+            throw new InvalidOperationException(
+                $"Executor '{executor.ActionId}' declares RequiresConfirmation={executor.RequiresConfirmation} " +
+                $"but metadata declares {metadata.RequiresConfirmation}.");
+
+        if (metadata.SupportsDryRun != executor.SupportsDryRun)
+            throw new InvalidOperationException(
+                $"Executor '{executor.ActionId}' declares SupportsDryRun={executor.SupportsDryRun} " +
+                $"but metadata declares {metadata.SupportsDryRun}.");
+
+        if (metadata.SupportsRollback != executor.SupportsRollback)
+            throw new InvalidOperationException(
+                $"Executor '{executor.ActionId}' declares SupportsRollback={executor.SupportsRollback} " +
+                $"but metadata declares {metadata.SupportsRollback}.");
+
+        if (string.IsNullOrWhiteSpace(metadata.ConsentNote))
+            throw new InvalidOperationException(
+                $"Executor '{executor.ActionId}' is missing consent metadata.");
+
+        if (string.IsNullOrWhiteSpace(metadata.FailureModeSummary))
+            throw new InvalidOperationException(
+                $"Executor '{executor.ActionId}' is missing failure-mode metadata.");
+
+        if (string.IsNullOrWhiteSpace(metadata.DiagnosticsCategory))
+            throw new InvalidOperationException(
+                $"Executor '{executor.ActionId}' is missing diagnostics-category metadata.");
+    }
 }

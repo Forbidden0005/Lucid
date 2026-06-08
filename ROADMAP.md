@@ -1,6 +1,6 @@
 # Lucid Roadmap
 
-This roadmap is based on repository inspection and verification on 2026-06-06. It separates what exists from what is required before Lucid can be treated as a professional production Windows application.
+This roadmap is based on repository inspection and verification on 2026-06-07. It separates what exists from what is required before Lucid can be treated as a professional production Windows application.
 
 ## Current Verified Baseline
 
@@ -46,22 +46,50 @@ This section is the canonical record of work that is done and should no longer b
 
 - Root project docs were rewritten to match the inspected codebase and production-hardening direction: `README.md`, `ONBOARDING.md`, `PROJECT_INTEGRITY.md`, and `ROADMAP.md`.
 - `CODEX.md` explicitly requires roadmap review before every task and roadmap maintenance after every completed task.
+- `.gitignore` now excludes generated `TestResults` artifacts from local verification runs.
+- Historical root reports were moved under `docs/reports/`, and `docs/repository-hygiene.md` now documents which files stay active at the root.
+- Git-tracked root doc casing is now normalized to `README.md` and `ROADMAP.md`.
+- Active stale-name cleanup is complete. Remaining `ExplainMyPC` references are historical only and live in `_archive/` or `docs/reports/`.
 
 ### Recently Completed Repairs
 
 - CI unit test workflow was corrected so the test job does not assume compiled artifacts from another GitHub runner. The fix removed `--no-build` from the `dotnet test` step in `.github/workflows/lucid-build.yml`.
+- `setup.ps1` now resolves the solution and launch paths from the repo location instead of the stale `ExplainMyPC` path.
+- `scripts/verify-dev.ps1` was added as a one-command local verification entrypoint for restore, build, C# tests, and Rust tests.
+- `scripts/check-app-source-includes.ps1` now verifies that active C# files under `ViewModels`, `Services`, and `Core` are either explicitly compiled or intentionally documented as exclusions.
+- `docs/active-file-inventory.md` now records the active application file counts and the current intentional non-compiled files.
+- Release verification now exists through `scripts/verify-dev.ps1 -Configuration Release -PublishApp` and `scripts/verify-release.ps1`.
+- CI now proves Debug and Release lanes separately and uploads an unpackaged self-contained `win-x64` publish artifact.
+- `docs/release-packaging.md` now records the current packaging decision: unpackaged self-contained `win-x64` first, MSIX deferred until packaging metadata, signing, and upgrade behavior are designed and verified.
+- Rust scanner tests now cover missing-root failure, file-root rejection, directory/file/byte counting, top-file ordering, FFI argument validation, version reporting, and owned-string cleanup.
+- Rust scanner root validation now rejects nonexistent or non-directory roots instead of silently returning empty success results.
+- Execution engine safety tests now cover pre-flight elevation and confirmation gates, synthetic dry-run behavior, rollback support gating, and exception containment for execution and rollback paths.
+- `DeleteLargeFileExecutor` tests now cover missing-path failure, rollback token issuance after staged deletion, successful restore from staging, and safe rollback failure when the original path is already occupied by newer data.
+- Shared `CleanupScanner` rollback tests now cover missing staging, missing manifests, successful staged-file restoration with staging cleanup, and partial restore behavior when some staged files are missing.
+- `TempFileCleanupExecutor` rollback tests now cover missing-manifest failure, successful staged-file restoration with staging cleanup, and mid-rollback cancellation that preserves remaining staged data for retry.
+- `WindowsUpdateCacheExecutor` rollback tests now cover missing-manifest failure, successful staged-file restoration with staging cleanup, and mid-rollback cancellation that preserves remaining staged data for retry.
+- `WindowsUpdateCacheExecutor` now has a narrow runtime seam for cache path resolution, staging, per-file removal, and service control, plus live cleanup tests for partial success, cancellation rollback, and unconditional restart behavior without touching machine state.
+- `SQLitePersistenceService` now has a deterministic internal constructor for explicit database paths and optional timer startup, plus persistence tests for schema initialization, queued flush behavior, batch-size limits, and final flush on dispose.
+- `SQLitePersistenceService.FlushQueueAsync` no longer drops one queued write at the flush batch boundary; the dequeue loop now respects `MaxFlushBatchSize` before removing work from the queue.
+- `PrivacyPermissionWriter` now has an internal registry-root/path seam for deterministic tests, plus coverage for allow writes, deny-based revocation writes, and the non-creation contract when an app permission key does not already exist.
+- Guided storage workflow copy no longer claims downloads are "safe to delete"; it now frames deletion as a reviewed candidate action.
+- Operational language policy tests now cover prohibited-term compliance, sanitization, and an active-source audit over user-facing literals in Services, ViewModels, and Views.
+- `RecycleBinCleanupExecutor` now has a narrow shell-runtime seam, plus tests for dry-run preview, already-empty success, tolerated shell reset behavior, explicit shell failure, and non-reversible rollback refusal.
+- `SQLitePersistenceService` now has migration-path tests for legacy schema version `0` databases and idempotent initialization of current-schema databases.
+- Action executor metadata is now explicit in `ActionExecutionMetadataCatalog`, validated at registry registration time, and audited by tests against executor source and linked runtime declarations.
 
 ### Verification Completed
 
 - `dotnet build Lucid.slnx -c Debug -p:Platform=x64 --no-restore`
 - `dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64 --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"`
+- `dotnet publish Lucid.App\Lucid.App.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true -p:WindowsPackageType=None`
 - `cargo test`
 
 Current verified outcome:
 
 - Build passes with 0 warnings and 0 errors.
-- 53 C# tests pass.
-- Rust test command passes, but Rust test coverage is still effectively zero.
+- 102 C# tests pass.
+- Rust test command passes with 9 tests.
 
 ## Strategic Direction
 
@@ -93,33 +121,24 @@ Lucid should not drift into:
 
 Current issues:
 
-- Visual Studio `.vs` files are staged as deleted, which means they were previously tracked or staged in the index.
-- `.gitignore` ignores `.vs/`, but the repository needs a deliberate cleanup commit to remove historical IDE state.
-- Root docs used mixed casing (`README.MD`, `ROADMAP.MD`) while internal references expected `README.md` and `ROADMAP.md`.
-- There are historical review and tidying files at the root that should either move under `docs/reports/` or `_archive/` after owner approval.
 - `_archive/` contains useful historical context, but it should be documented as archive-only so it is not mistaken for active code.
 
 Required work:
 
-- Normalize documentation names and references that remain outside the rewritten root docs.
-- Remove tracked IDE and build state from Git.
-- Decide which root reports remain active and which move to `docs/reports/` or `_archive/`.
-- Add a short `docs/repository-hygiene.md` explaining active vs archived folders.
+- Confirm the Git index stays free of tracked IDE state.
+- Extend repository hygiene notes if additional root files change role.
 
 ### Setup And Developer Experience
 
 Current issues:
 
-- `setup.ps1` still references `C:\Users\tyler\ExplainMyPC`.
 - Build instructions must always include `-p:Platform=x64`.
 - XAML precompile behavior depends on Visual Studio MSBuild when the intermediate DLL is missing.
 - The test project intentionally links pure production files instead of referencing `Lucid.App`; this is valid but fragile and must be documented.
 
 Required work:
 
-- Update setup scripts to resolve paths relative to the repo root.
 - Add setup verification steps for .NET, Visual Studio Build Tools, Windows App SDK, Rust, and Ollama if local chat remains enabled.
-- Add a quick `scripts/verify-dev.ps1` that runs build, tests, and native tests.
 - Document the XAML build pipeline limitation in one canonical place.
 
 ### Build, CI, And Release
@@ -133,9 +152,8 @@ Current issues:
 
 Required work:
 
-- Add release-mode build verification.
 - Add artifact packaging for unpackaged and packaged distributions.
-- Create or intentionally defer MSIX packaging with documented rationale.
+- Build installer/signing policy on top of the current unpackaged release artifact path.
 - Add version stamping and release notes generation.
 - Add smoke-test checklist for launch, navigation, telemetry, persistence, executor dry-run, and shutdown.
 
@@ -143,16 +161,14 @@ Required work:
 
 Current issues:
 
-- 53 C# tests pass, but coverage is thin compared with the application surface.
-- Rust scanner has no tests.
+- 99 C# tests pass, but coverage is still thin compared with the application surface.
 - Executor safety, rollback, privilege gates, persistence durability, language policy, local-only endpoint enforcement, and setup scripts need deeper tests.
-
 Required work:
 
-- Add tests around destructive executor preconditions and rollback metadata.
+- Expand executor coverage beyond rollback paths into live temp cleanup, Windows Update cache cleanup, recycle bin, and repair executors with partial-success and cancellation behavior.
 - Add tests for operation history, SQLite queue behavior, final flush, and schema migration.
 - Add tests for language policy so security copy stays confidence-aware.
-- Add Rust unit tests for path validation, inaccessible directories, top-file ordering, and returned memory ownership behavior.
+- Expand Rust tests further for inaccessible-directory handling and any additional FFI edge cases that emerge.
 - Add integration tests where pure service boundaries allow them without dragging WinUI targets into test execution.
 
 ### Architecture And Maintainability
@@ -167,7 +183,7 @@ Current issues:
 Required work:
 
 - Keep `AppServices` stable short term, but introduce small service-provider seams around new or heavily touched modules.
-- Add a script or test that detects source files under active folders that are not included in the project file.
+- Keep the source-inclusion guard and intentional exclusion registry current as active folders change.
 - Split only modules that are already being touched for production hardening.
 - Create architecture decision records for the static registry, linked test source strategy, native scanner boundary, and local LLM boundary.
 
@@ -232,9 +248,9 @@ Work:
 - [done] Confirm build and tests pass from a clean restore.
 - [done] Normalize root documentation and align it with the inspected codebase.
 - [done] Record completed work explicitly in this roadmap.
+- [done] Fix setup script path drift.
+- [done] Add `scripts/verify-dev.ps1`.
 - Remove tracked IDE state from source control after owner approval.
-- Fix setup script path drift.
-- Add `scripts/verify-dev.ps1`.
 
 Exit criteria:
 
@@ -244,7 +260,7 @@ Exit criteria:
 
 ### Phase 1: Repository Hygiene And Canonical Structure
 
-Status: not started
+Status: in progress
 
 Goal: make the project understandable to a new engineer in under 30 minutes.
 
@@ -252,9 +268,11 @@ Work:
 
 - Define active folders: `lucid-desktop`, `lucid-native`, `docs`, `.github`.
 - Define archive folders: `_archive` and historical reports.
-- Move historical reports under `docs/reports/` or `_archive/` after approval.
-- Add active-file inventory for views, services, tests, and native modules.
-- Add stale-name audit for `ExplainMyPC` references, separating product phrase from obsolete namespace/path usage.
+- [done] Move historical root reports under `docs/reports/`.
+- [done] Add `docs/repository-hygiene.md` to document active vs archived material.
+- [done] Normalize the Git-tracked casing of `README.md` and `ROADMAP.md`.
+- [done] Add active-file inventory for views, services, tests, and native modules.
+- [done] Complete the stale-name audit for `ExplainMyPC` references and confine remaining hits to historical material.
 
 Exit criteria:
 
@@ -270,13 +288,13 @@ Goal: produce repeatable developer and release builds.
 
 Work:
 
-- Add clean restore/build/test/native-test workflow.
+- [done] Add a clean local restore/build/test/native-test workflow through `scripts/verify-dev.ps1`.
 - [done] Fix the CI unit test job so it does not depend on missing cross-job binaries.
-- Add Release x64 build verification.
-- Decide packaged vs unpackaged distribution.
-- Add MSIX manifest or document why unpackaged release is the first target.
+- [done] Add Release x64 build verification.
+- [done] Decide packaged vs unpackaged distribution.
+- [done] Document why unpackaged release is the first target and MSIX is deferred.
 - Add signing and versioning plan.
-- Add release artifact generation in CI.
+- [done] Add release artifact generation in CI.
 
 Exit criteria:
 
@@ -286,18 +304,30 @@ Exit criteria:
 
 ### Phase 3: Test Expansion And Safety Nets
 
-Status: not started
+Status: in progress
 
 Goal: protect the parts of Lucid that can harm trust.
 
 Work:
 
-- Executor safety and rollback tests.
+- [done] Execution engine safety gate tests.
+- [done] First executor-specific rollback safety tests (`DeleteLargeFileExecutor`).
+- [done] Shared cleanup rollback helper tests (`CleanupScanner`).
+- [done] Temp cleanup executor rollback tests.
+- [done] Windows Update cache executor rollback tests.
+- [done] Windows Update cache executor live cleanup seam and safety tests.
+- [done] SQLite persistence durability tests for schema initialization, queue flushing, batch limits, and final flush.
+- [done] SQLite persistence migration tests for legacy schema upgrade and idempotent current-schema initialization.
+- [done] Privacy permission write-back tests for grant, revocation, and non-creation behavior.
+- [done] Operational language policy tests and source-audit guard for user-facing literals.
+- [done] Recycle Bin cleanup executor tests for shell behavior and rollback refusal.
+- [done] Executor metadata contract and registration-time validation.
+- Additional executor-specific safety and rollback tests.
 - Persistence durability and migration tests.
 - Privacy consent/write-back tests.
 - Local endpoint enforcement tests.
 - Operational language policy tests.
-- Rust scanner tests.
+- [done] Rust scanner tests.
 - Build-inclusion tests for explicitly included C# files.
 
 Exit criteria:
@@ -395,8 +425,6 @@ High priority:
 
 - Fix `setup.ps1` hard-coded old repo paths.
 - Remove tracked `.vs` files from Git.
-- Add Rust scanner tests.
-- Add project-file inclusion guard for active C# files.
 - Add Release build to CI.
 - Add packaging decision and manifest path.
 - Add executor metadata audit.

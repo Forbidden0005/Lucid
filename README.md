@@ -104,8 +104,6 @@ This repo is substantial, but production hardening is still required.
 Known work:
 
 - Remove tracked/generated IDE state from source control and keep `.vs/` ignored.
-- Normalize canonical documentation casing to `README.md` and `ROADMAP.md`.
-- Repair stale setup paths that still reference the old `ExplainMyPC` location.
 - Add packaging and release infrastructure; there is no active `Package.appxmanifest` in `Lucid.App`.
 - Expand unit and integration coverage well beyond the current focused 53-test suite.
 - Add Rust scanner tests before expanding native filesystem work.

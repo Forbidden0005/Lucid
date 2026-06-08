@@ -30,6 +30,17 @@ namespace Lucid.Services.Execution.Executors;
 /// </summary>
 internal sealed class RecycleBinCleanupExecutor : IActionExecutor
 {
+    private readonly IRecycleBinRuntime _runtime;
+
+    public RecycleBinCleanupExecutor() : this(new DefaultRecycleBinRuntime())
+    {
+    }
+
+    internal RecycleBinCleanupExecutor(IRecycleBinRuntime runtime)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+    }
+
     // ── Identity ──────────────────────────────────────────────────────────────
 
     public string               ActionId             => "action.disk.empty-recycle-bin";
@@ -63,6 +74,7 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
     private const uint SHERB_NOCONFIRMATION = 0x00000001; // no "are you sure?" dialog
     private const uint SHERB_NOPROGRESSUI   = 0x00000002; // no progress window
     private const uint SHERB_NOSOUND        = 0x00000004; // no delete sound
+    private const int ShellUnexpectedResult = unchecked((int)0x8000FFFF);
 
     // ── IActionExecutor.ExecuteAsync ──────────────────────────────────────────
 
@@ -84,8 +96,7 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
         context.Log.Info(
             "Querying Recycle Bin — preview mode, no changes will be made.");
 
-        var info = new SHQUERYRBINFO { cbSize = Marshal.SizeOf<SHQUERYRBINFO>() };
-        var hr   = SHQueryRecycleBin(null, ref info);
+        var (hr, sizeBytes, itemCount) = _runtime.Query();
 
         sw.Stop();
 
@@ -97,7 +108,7 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
                 ActionId, msg, sw.Elapsed, context.Log.Build());
         }
 
-        if (info.i64NumItems == 0)
+        if (itemCount == 0)
         {
             var msg = "The Recycle Bin is already empty.";
             context.Log.Info(msg);
@@ -106,8 +117,8 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
         }
 
         var previewMsg =
-            $"Preview: {info.i64NumItems} item(s), " +
-            $"{CleanupScanner.FormatBytes(info.i64Size)} would be freed.";
+            $"Preview: {itemCount} item(s), " +
+            $"{CleanupScanner.FormatBytes(sizeBytes)} would be freed.";
         context.Log.Info(previewMsg);
         return ActionExecutionResult.DryRunCompleted(
             ActionId, previewMsg, sw.Elapsed, context.Log.Build());
@@ -122,10 +133,9 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
         context.Log.Info("Querying Recycle Bin size before emptying…");
 
         // Snapshot the size before so we can report how much was freed.
-        var before = new SHQUERYRBINFO { cbSize = Marshal.SizeOf<SHQUERYRBINFO>() };
-        SHQueryRecycleBin(null, ref before);
+        var (_, beforeSizeBytes, beforeItemCount) = _runtime.Query();
 
-        if (before.i64NumItems == 0)
+        if (beforeItemCount == 0)
         {
             context.Log.Info("The Recycle Bin is already empty.");
             sw.Stop();
@@ -136,17 +146,17 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
 
         context.Log.Info(
             $"Emptying Recycle Bin — " +
-            $"{before.i64NumItems} item(s), " +
-            $"{CleanupScanner.FormatBytes(before.i64Size)}…");
+            $"{beforeItemCount} item(s), " +
+            $"{CleanupScanner.FormatBytes(beforeSizeBytes)}…");
 
-        var flags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND;
-        var hr    = SHEmptyRecycleBin(IntPtr.Zero, null, flags);
+        var hr = _runtime.Empty(
+            SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
 
         sw.Stop();
 
         // S_OK (0) = success. E_UNEXPECTED (0x8000FFFF) can be returned when
         // the bin was already empty or the shell is resetting — treat as success.
-        if (hr != 0 && hr != unchecked((int)0x8000FFFF))
+        if (hr != 0 && hr != ShellUnexpectedResult)
         {
             var msg = $"SHEmptyRecycleBin failed with HRESULT 0x{hr:X8}.";
             context.Log.Error(msg);
@@ -156,8 +166,8 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
 
         var doneMsg =
             $"Recycle Bin emptied — " +
-            $"{before.i64NumItems} item(s), " +
-            $"{CleanupScanner.FormatBytes(before.i64Size)} freed.";
+            $"{beforeItemCount} item(s), " +
+            $"{CleanupScanner.FormatBytes(beforeSizeBytes)} freed.";
         context.Log.Info(doneMsg);
         return ActionExecutionResult.Succeeded(
             ActionId, doneMsg, sw.Elapsed, context.Log.Build());
@@ -179,5 +189,23 @@ internal sealed class RecycleBinCleanupExecutor : IActionExecutor
             ActionId,
             "This action does not support rollback.",
             TimeSpan.Zero, context.Log.Build()));
+    }
+
+    internal interface IRecycleBinRuntime
+    {
+        (int HResult, long SizeBytes, long ItemCount) Query();
+        int Empty(uint flags);
+    }
+
+    private sealed class DefaultRecycleBinRuntime : IRecycleBinRuntime
+    {
+        public (int HResult, long SizeBytes, long ItemCount) Query()
+        {
+            var info = new SHQUERYRBINFO { cbSize = Marshal.SizeOf<SHQUERYRBINFO>() };
+            var hr = SHQueryRecycleBin(null, ref info);
+            return (hr, info.i64Size, info.i64NumItems);
+        }
+
+        public int Empty(uint flags) => SHEmptyRecycleBin(IntPtr.Zero, null, flags);
     }
 }

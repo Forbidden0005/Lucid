@@ -40,6 +40,7 @@ public sealed class SQLitePersistenceService : IDisposable
 
     private readonly string         _dbPath;
     private readonly ILucidLogger?  _logger;
+    private readonly bool           _startFlushTimer;
     private          SqliteConnection? _connection;
     private readonly SemaphoreSlim  _lock   = new(1, 1);
     private readonly ConcurrentQueue<Action<SqliteConnection>> _writeQueue = new();
@@ -65,20 +66,32 @@ public sealed class SQLitePersistenceService : IDisposable
     // ── Construction ──────────────────────────────────────────────────────────
 
     public SQLitePersistenceService(ILucidLogger? logger = null)
+        : this(
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Lucid", "Data", "explainmypc.db"),
+            logger,
+            startFlushTimer: true)
+    {
+    }
+
+    internal SQLitePersistenceService(
+        string dbPath,
+        ILucidLogger? logger = null,
+        bool startFlushTimer = true)
     {
         _logger = logger;
-
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Lucid", "Data");
+        _startFlushTimer = startFlushTimer;
+        _dbPath = dbPath ?? throw new ArgumentNullException(nameof(dbPath));
+        var dir = Path.GetDirectoryName(_dbPath);
+        if (string.IsNullOrWhiteSpace(dir))
+            throw new ArgumentException("Database path must include a parent directory.", nameof(dbPath));
 
         try { Directory.CreateDirectory(dir); }
         catch (Exception ex)
         {
             _logger?.Warning("Persistence", $"Could not create data directory '{dir}' — writes will fail", ex);
         }
-
-        _dbPath = Path.Combine(dir, "explainmypc.db");
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -124,7 +137,7 @@ public sealed class SQLitePersistenceService : IDisposable
         }
 
         // Start flush timer only when healthy
-        if (_healthy)
+        if (_healthy && _startFlushTimer)
         {
             _flushTimer = new Timer(
                 async _ => await FlushQueueAsync().ConfigureAwait(false),
@@ -236,7 +249,8 @@ public sealed class SQLitePersistenceService : IDisposable
             using var tx = _connection.BeginTransaction();
             int count = 0;
 
-            while (_writeQueue.TryDequeue(out var action) && count < MaxFlushBatchSize)
+            while (count < MaxFlushBatchSize &&
+                   _writeQueue.TryDequeue(out var action))
             {
                 try
                 {

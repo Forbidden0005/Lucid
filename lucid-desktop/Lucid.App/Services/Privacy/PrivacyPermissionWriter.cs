@@ -10,7 +10,7 @@ namespace Lucid.Services.Privacy;
 ///      \{capabilityName}\{appIdentifier}\Value  (REG_SZ: "Allow" | "Deny")
 ///
 /// Safety:
-///   Only writes the "Value" key of an existing app subkey — never creates new registry
+///   Only writes the "Value" key of an existing app subkey and never creates new registry
 ///   keys or modifies the system-wide capability toggle.
 ///   Returns false silently if the target key is absent or access is denied.
 ///
@@ -42,8 +42,27 @@ public static class PrivacyPermissionWriter
     public static bool TrySetAppPermission(
         string capabilityName,
         string appIdentifier,
-        bool   allow)
+        bool allow) =>
+        TrySetAppPermission(
+            Registry.CurrentUser,
+            ConsentStorePath,
+            capabilityName,
+            appIdentifier,
+            allow);
+
+    internal static bool TrySetAppPermission(
+        RegistryKey registryRoot,
+        string consentStorePath,
+        string capabilityName,
+        string appIdentifier,
+        bool allow)
     {
+        if (registryRoot is null)
+            throw new ArgumentNullException(nameof(registryRoot));
+
+        if (string.IsNullOrWhiteSpace(consentStorePath))
+            throw new ArgumentException("Consent store path must not be empty.", nameof(consentStorePath));
+
         if (!IsValidCapabilityName(capabilityName) ||
             string.IsNullOrWhiteSpace(appIdentifier))
             return false;
@@ -51,12 +70,13 @@ public static class PrivacyPermissionWriter
         try
         {
             // Open the app-specific subkey with write access.
-            // This key must already exist — we never create new subkeys.
-            using var key = Registry.CurrentUser.OpenSubKey(
-                $@"{ConsentStorePath}\{capabilityName}\{appIdentifier}",
+            // This key must already exist and we never create new subkeys.
+            using var key = registryRoot.OpenSubKey(
+                $@"{consentStorePath}\{capabilityName}\{appIdentifier}",
                 writable: true);
 
-            if (key is null) return false;
+            if (key is null)
+                return false;
 
             key.SetValue("Value", allow ? "Allow" : "Deny", RegistryValueKind.String);
             return true;
@@ -64,7 +84,7 @@ public static class PrivacyPermissionWriter
         catch
         {
             // Registry access denied, key locked, or Group Policy is overriding.
-            // Fail silently — the caller will leave the UI in its previous state.
+            // Fail silently so the caller can keep the previous UI state.
             return false;
         }
     }

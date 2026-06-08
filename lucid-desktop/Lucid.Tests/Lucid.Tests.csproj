@@ -29,6 +29,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="FluentAssertions"           Version="6.12.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite"      Version="8.0.0" />
     <PackageReference Include="Moq"                        Version="4.20.72" />
   </ItemGroup>
 
@@ -39,6 +40,32 @@
     need. Keep this list focused on production files covered by tests.
   -->
   <ItemGroup>
+    <Compile Include="..\Lucid.App\Services\Cleanup\CleanupScanner.cs"
+             Link="App\Services\Cleanup\CleanupScanner.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\ActionExecutionContext.cs"
+             Link="App\Services\Execution\ActionExecutionContext.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\ActionExecutionEngine.cs"
+             Link="App\Services\Execution\ActionExecutionEngine.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\ActionExecutionLog.cs"
+             Link="App\Services\Execution\ActionExecutionLog.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\ActionExecutionMetadata.cs"
+             Link="App\Services\Execution\ActionExecutionMetadata.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\ActionExecutionResult.cs"
+             Link="App\Services\Execution\ActionExecutionResult.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\ActionExecutorRegistry.cs"
+             Link="App\Services\Execution\ActionExecutorRegistry.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\IActionExecutionEngine.cs"
+             Link="App\Services\Execution\IActionExecutionEngine.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\IActionExecutor.cs"
+             Link="App\Services\Execution\IActionExecutor.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\Executors\DeleteLargeFileExecutor.cs"
+             Link="App\Services\Execution\Executors\DeleteLargeFileExecutor.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\Executors\RecycleBinCleanupExecutor.cs"
+             Link="App\Services\Execution\Executors\RecycleBinCleanupExecutor.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\Executors\TempFileCleanupExecutor.cs"
+             Link="App\Services\Execution\Executors\TempFileCleanupExecutor.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\Executors\WindowsUpdateCacheExecutor.cs"
+             Link="App\Services\Execution\Executors\WindowsUpdateCacheExecutor.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Validation\ProcessExecutionFingerprint.cs"
              Link="App\Services\Execution\Validation\ProcessExecutionFingerprint.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Validation\ProcessIdentityValidator.cs"
@@ -49,8 +76,14 @@
              Link="App\Services\Infrastructure\Startup\StartupHealthSnapshot.cs" />
     <Compile Include="..\Lucid.App\Services\Infrastructure\Startup\StartupTimeoutGuard.cs"
              Link="App\Services\Infrastructure\Startup\StartupTimeoutGuard.cs" />
+    <Compile Include="..\Lucid.App\Services\Interaction\Language\OperationalLanguagePolicy.cs"
+             Link="App\Services\Interaction\Language\OperationalLanguagePolicy.cs" />
+    <Compile Include="..\Lucid.App\Services\Persistence\SQLitePersistenceService.cs"
+             Link="App\Services\Persistence\SQLitePersistenceService.cs" />
     <Compile Include="..\Lucid.App\Services\Persistence\Reliability\WriteQueueMetrics.cs"
              Link="App\Services\Persistence\Reliability\WriteQueueMetrics.cs" />
+    <Compile Include="..\Lucid.App\Core\Infrastructure\ILucidLogger.cs"
+             Link="App\Core\Infrastructure\ILucidLogger.cs" />
     <Compile Include="..\Lucid.App\Services\Privacy\PrivacyPermissionWriter.cs"
              Link="App\Services\Privacy\PrivacyPermissionWriter.cs" />
     <Compile Include="..\Lucid.App\Services\Settings\AppSettings.cs"

@@ -7,13 +7,11 @@ on:
     branches: [ main ]
 
 env:
-  DOTNET_VERSION: '8.0.x'
-  BUILD_CONFIGURATION: Debug
+  DOTNET_VERSION: "8.0.x"
 
 jobs:
-  # ── Build ────────────────────────────────────────────────────────────────────
-  build:
-    name: Build (x64)
+  build-debug:
+    name: Build Debug (x64)
     runs-on: windows-latest
 
     steps:
@@ -29,27 +27,21 @@ jobs:
         working-directory: lucid-desktop
         run: dotnet restore Lucid.slnx -p:Platform=x64
 
-      - name: Build Lucid.App
+      - name: Check Lucid.App source inclusion policy
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/check-app-source-includes.ps1
+
+      - name: Build solution
         working-directory: lucid-desktop
         run: >
-          dotnet build Lucid.App/Lucid.App.csproj
-          -c ${{ env.BUILD_CONFIGURATION }}
+          dotnet build Lucid.slnx
+          -c Debug
           -p:Platform=x64
           --no-restore
 
-      - name: Build Lucid.Tests
-        working-directory: lucid-desktop
-        run: >
-          dotnet build Lucid.Tests/Lucid.Tests.csproj
-          -c ${{ env.BUILD_CONFIGURATION }}
-          -p:Platform=x64
-          --no-restore
-
-  # ── Tests ────────────────────────────────────────────────────────────────────
-  test:
-    name: Unit Tests (x64)
+  test-debug:
+    name: Unit Tests Debug (x64)
     runs-on: windows-latest
-    needs: build
+    needs: build-debug
 
     steps:
       - name: Checkout
@@ -68,7 +60,7 @@ jobs:
         working-directory: lucid-desktop
         run: >
           dotnet test Lucid.Tests/Lucid.Tests.csproj
-          -c ${{ env.BUILD_CONFIGURATION }}
+          -c Debug
           -p:Platform=x64
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
@@ -77,12 +69,116 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: test-results-debug
           path: lucid-desktop/Lucid.Tests/TestResults/
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report
+          name: coverage-report-debug
           path: "lucid-desktop/Lucid.Tests/TestResults/**/coverage.cobertura.xml"
+
+  build-release:
+    name: Build Release (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore NuGet packages
+        working-directory: lucid-desktop
+        run: dotnet restore Lucid.slnx -p:Platform=x64
+
+      - name: Check Lucid.App source inclusion policy
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/check-app-source-includes.ps1
+
+      - name: Build solution
+        working-directory: lucid-desktop
+        run: >
+          dotnet build Lucid.slnx
+          -c Release
+          -p:Platform=x64
+          --no-restore
+
+  test-release:
+    name: Unit Tests Release (x64)
+    runs-on: windows-latest
+    needs: build-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore NuGet packages
+        working-directory: lucid-desktop
+        run: dotnet restore Lucid.slnx -p:Platform=x64
+
+      - name: Run tests
+        working-directory: lucid-desktop
+        run: >
+          dotnet test Lucid.Tests/Lucid.Tests.csproj
+          -c Release
+          -p:Platform=x64
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-release
+          path: lucid-desktop/Lucid.Tests/TestResults/
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-release
+          path: "lucid-desktop/Lucid.Tests/TestResults/**/coverage.cobertura.xml"
+
+  publish-release:
+    name: Publish Release Artifact (win-x64)
+    runs-on: windows-latest
+    needs: test-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore NuGet packages
+        working-directory: lucid-desktop
+        run: dotnet restore Lucid.slnx -p:Platform=x64
+
+      - name: Publish unpackaged self-contained app
+        working-directory: lucid-desktop
+        run: >
+          dotnet publish Lucid.App/Lucid.App.csproj
+          -c Release
+          -p:Platform=x64
+          -r win-x64
+          --self-contained true
+          -p:WindowsPackageType=None
+          --no-restore
+
+      - name: Upload unpackaged release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lucid-release-win-x64-unpackaged
+          path: lucid-desktop/Lucid.App/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/publish/

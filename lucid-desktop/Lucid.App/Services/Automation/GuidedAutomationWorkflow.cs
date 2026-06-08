@@ -110,7 +110,7 @@ public sealed class GuidedAutomationWorkflow
                 Id           = AutomationStep.NewId(),
                 Title        = "Open Downloads folder",
                 Narration    = "Opening your Downloads folder — it's often the biggest source of recoverable disk space.",
-                Rationale    = "Downloads folders accumulate installers, archives, and large files that are safe to delete once reviewed.",
+                Rationale    = "Downloads folders often accumulate installers, archives, and large files that may be good candidates for deletion once reviewed.",
                 ActionId     = "automation.explorer.downloads",
                 Risk         = AutomationRiskLevel.None,
                 RequiresConfirmation = false,
