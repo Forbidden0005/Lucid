@@ -85,7 +85,7 @@ cargo test
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
 - 160 passing C# tests (verified 2026-06-10 via `dotnet test`)
-- 9 Rust tests passing (verified 2026-06-10 via `cargo test`)
+- 19 Rust tests passing (verified 2026-06-10 via `cargo test`)
 - 28 action executors implementing `IActionExecutor`
 
 **Known active issues (not yet fixed):**
@@ -98,7 +98,7 @@ cargo test
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
 - `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
 - 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
-- Rust scanner has 0 tests and is absent from CI entirely
+- Rust scanner now has 19 tests but is still absent from CI entirely
 - `NETSDK1206` warning during build — expected, non-critical, from Windows App SDK NuGet
 
 ---
@@ -183,7 +183,10 @@ copying `lucid_scanner.dll` when missing — a broken native build is undetectab
 **Fix:** See Testing Plan. Make Release copy step a hard error when DLL is missing.
 
 - [ ] Executor safety contract suite (all 28 executors)
-- [ ] Rust unit tests + `cargo test/clippy/fmt` CI job
+- [x] Rust unit tests — done 2026-06-10: 19 tests covering FFI argument/UTF-8 validation,
+      long-path `\\?\` traversal, junction-cycle termination, path-form handling
+- [ ] `cargo test/clippy/fmt` CI job — blocked on human review (CI changes are an
+      autonomous hard stop)
 - [ ] Make missing DLL a hard build error for Release configuration
 
 ### C7 — 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls (P1)
@@ -338,6 +341,21 @@ Do not add items here that have not been verified.
   WAL-mode connection; stale-shim assertions now check post-close state
 - Verified: x64 Debug build clean (0 warnings), 160/160 C# tests, 9/9 Rust tests
 
+### Session 2026-06-10 (autonomous, third run)
+- Closed Phase 3 / C6 item: Rust unit tests for path handling, long-path `\\?\` behavior,
+  junction/symlink cycles, FFI null/invalid inputs — 10 new tests (9 → 19), test-only change,
+  no production code touched
+- New scanner tests: verbatim `\\?\` root parity with plain roots, traversal of trees beyond
+  the 260-char legacy MAX_PATH limit, junction-cycle termination via `mklink /J` (skipped, not
+  counted, no infinite recursion), trailing-separator root handling
+- New FFI tests: per-out-param null rejection, non-UTF-8 path rejection without panicking
+  across the C boundary, `n > 1000` cap enforcement with untouched out-params, null-argument
+  rejection for `lucid_scan_top_files`, missing-root I/O error, `lucid_free(null)` no-op
+- Remaining C6 sub-items unchanged: Rust CI job and Release hard-error for missing DLL are
+  blocked on human review (CI/build-config = autonomous hard stop)
+- Verified: 19/19 Rust tests (`cargo test`), x64 Debug build clean (0 warnings, 0 errors),
+  160/160 C# tests (`dotnet test`)
+
 
 ---
 
@@ -437,9 +455,9 @@ Goal: protect the parts of Lucid that can harm trust.
 - [x] Executor metadata contract and registration-time validation
 - [x] Automation consent gate tests (all paths including denial and cancellation)
 - [x] Local endpoint enforcement tests
-- [x] Rust scanner tests (9 tests)
+- [x] Rust scanner tests (19 tests)
 - [ ] Executor safety contract suite across all 28 executors (dry-run purity, rollback metadata, hostile-path inputs) (C6)
-- [ ] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6)
+- [x] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6) — done 2026-06-10, all 19 passing
 - [ ] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6)
 - [ ] Make missing `lucid_scanner.dll` a hard build error for Release (C6)
 - [x] Persistence durability tests: queue-overflow back-pressure, corrupt-DB backup/recreate,
@@ -642,8 +660,8 @@ This is the highest-value test investment — it mechanizes the safety doctrine.
 - Schema migration paths — covered (existing migration tests)
 
 **P1: Rust tests + CI job**
-- Path handling, long-path `\\?\` behavior, junction/symlink cycles
-- FFI surface: null/invalid UTF-16 inputs must not panic across the boundary (panic across FFI is UB)
+- Path handling, long-path `\\?\` behavior, junction/symlink cycles — done 2026-06-10 (19 tests total)
+- FFI surface: null/invalid inputs must not panic across the boundary (panic across FFI is UB) — done 2026-06-10
 - Add `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` to CI
 - Publish DLL as CI artifact consumed by publish job
 

@@ -258,4 +258,113 @@ mod tests {
 
         std::fs::remove_dir_all(root).expect("cleanup ffi test root");
     }
+
+    #[test]
+    fn directory_scan_rejects_each_null_out_param() {
+        // Every out-param is individually guarded; a single null must fail fast
+        // with -1 rather than dereferencing across the FFI boundary.
+        let path = CString::new(
+            std::env::temp_dir()
+                .to_str()
+                .expect("temp path unicode")
+                .to_owned(),
+        )
+        .expect("cstring");
+        let mut total_bytes = 0_u64;
+        let mut file_count = 0_u64;
+        let mut dir_count = 0_u64;
+
+        unsafe {
+            assert_eq!(
+                lucid_scan_directory(path.as_ptr(), ptr::null_mut(), &mut file_count, &mut dir_count),
+                -1
+            );
+            assert_eq!(
+                lucid_scan_directory(path.as_ptr(), &mut total_bytes, ptr::null_mut(), &mut dir_count),
+                -1
+            );
+            assert_eq!(
+                lucid_scan_directory(path.as_ptr(), &mut total_bytes, &mut file_count, ptr::null_mut()),
+                -1
+            );
+        }
+    }
+
+    #[test]
+    fn directory_scan_rejects_non_utf8_path() {
+        // 0xFF is never valid UTF-8. The FFI layer must report bad arguments (-1)
+        // instead of panicking — a panic across the C boundary is undefined behaviour.
+        let invalid: [u8; 3] = [0xFF, 0xFE, 0x00];
+        let mut total_bytes = 0_u64;
+        let mut file_count = 0_u64;
+        let mut dir_count = 0_u64;
+
+        let rc = unsafe {
+            lucid_scan_directory(
+                invalid.as_ptr() as *const c_char,
+                &mut total_bytes,
+                &mut file_count,
+                &mut dir_count,
+            )
+        };
+
+        assert_eq!(rc, -1);
+    }
+
+    #[test]
+    fn top_files_scan_rejects_n_above_documented_cap() {
+        // The documented contract is 0 < n ≤ 1000; 1001 must be rejected before
+        // any filesystem work happens.
+        let path = CString::new("C:\\").expect("cstring");
+        let mut count = 7_u32;
+        let mut entries: [*mut c_char; 1] = [ptr::null_mut(); 1];
+
+        let rc = unsafe {
+            lucid_scan_top_files(path.as_ptr(), 1001, entries.as_mut_ptr(), &mut count)
+        };
+
+        assert_eq!(rc, -1);
+        assert_eq!(count, 7, "out_count must be untouched on argument rejection");
+    }
+
+    #[test]
+    fn top_files_scan_rejects_null_arguments() {
+        let path = CString::new("C:\\").expect("cstring");
+        let mut count = 0_u32;
+        let mut entries: [*mut c_char; 1] = [ptr::null_mut(); 1];
+
+        unsafe {
+            assert_eq!(
+                lucid_scan_top_files(ptr::null(), 1, entries.as_mut_ptr(), &mut count),
+                -1
+            );
+            assert_eq!(
+                lucid_scan_top_files(path.as_ptr(), 1, ptr::null_mut(), &mut count),
+                -1
+            );
+            assert_eq!(
+                lucid_scan_top_files(path.as_ptr(), 1, entries.as_mut_ptr(), ptr::null_mut()),
+                -1
+            );
+        }
+    }
+
+    #[test]
+    fn top_files_scan_reports_missing_root_as_io_error() {
+        let path = CString::new("C:\\definitely-missing-lucid-top-files-root").expect("cstring");
+        let mut count = 0_u32;
+        let mut entries: [*mut c_char; 1] = [ptr::null_mut(); 1];
+
+        let rc = unsafe {
+            lucid_scan_top_files(path.as_ptr(), 1, entries.as_mut_ptr(), &mut count)
+        };
+
+        assert_eq!(rc, -2);
+    }
+
+    #[test]
+    fn free_handles_null_pointer_as_noop() {
+        // Documented contract: lucid_free(null) is a safe no-op.
+        unsafe { lucid_free(ptr::null_mut()) };
+    }
 }

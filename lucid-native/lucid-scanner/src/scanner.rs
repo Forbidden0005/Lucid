@@ -275,4 +275,91 @@ mod tests {
 
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
     }
+
+    #[test]
+    fn scan_directory_accepts_verbatim_prefixed_root() {
+        // C# callers may hand us \\?\-prefixed (extended-length) roots. The walker
+        // builds child paths by string concatenation, so the prefix must propagate
+        // through the whole traversal and produce identical results to a plain root.
+        let dir = TestDir::new();
+        dir.create_dir("alpha");
+        dir.write_file("alpha\\child.bin", &[0; 6]);
+        dir.write_file("root.txt", &[1, 2]);
+
+        let plain = scan_directory(dir.path_str()).expect("plain root scan");
+        let verbatim_root = format!("\\\\?\\{}", dir.path_str());
+        let verbatim = scan_directory(&verbatim_root).expect("verbatim root scan");
+
+        assert_eq!(verbatim.file_count, plain.file_count);
+        assert_eq!(verbatim.dir_count, plain.dir_count);
+        assert_eq!(verbatim.total_bytes, plain.total_bytes);
+    }
+
+    #[test]
+    fn scan_directory_counts_files_beyond_legacy_max_path() {
+        // Trees deeper than the 260-char legacy MAX_PATH exist in real user profiles
+        // (node_modules, nested backups). std::fs creates them fine because Rust's
+        // standard library converts long paths to extended-length form internally;
+        // the Win32 walker only traverses them when given the \\?\ prefix explicitly.
+        let dir = TestDir::new();
+
+        let segment = "long-path-segment-x";
+        let deep: Vec<&str> = std::iter::repeat(segment).take(16).collect();
+        let deep = deep.join("\\");
+        dir.write_file(&format!("{deep}\\leaf.bin"), &[0; 5]);
+
+        let deepest = dir.path.join(&deep);
+        assert!(
+            deepest.to_str().expect("unicode path").len() > 260,
+            "test tree must exceed legacy MAX_PATH for this test to be meaningful"
+        );
+
+        let verbatim_root = format!("\\\\?\\{}", dir.path_str());
+        let result = scan_directory(&verbatim_root).expect("verbatim long-path scan");
+
+        assert_eq!(result.file_count, 1);
+        assert_eq!(result.dir_count, 16);
+        assert_eq!(result.total_bytes, 5);
+    }
+
+    #[test]
+    fn scan_directory_skips_junction_cycles_and_terminates() {
+        // A junction inside the tree pointing back at the root is the classic
+        // infinite-recursion trap. The walker must skip reparse points entirely:
+        // the scan terminates, and the junction is neither counted nor traversed.
+        let dir = TestDir::new();
+        dir.create_dir("real");
+        dir.write_file("real\\file.txt", &[0; 4]);
+
+        let link = dir.path.join("real").join("cycle");
+        let status = std::process::Command::new("cmd")
+            .arg("/C")
+            .arg("mklink")
+            .arg("/J")
+            .arg(&link)
+            .arg(&dir.path)
+            .status()
+            .expect("spawn cmd for mklink");
+        assert!(status.success(), "mklink /J should succeed without elevation");
+
+        let result = scan_directory(dir.path_str()).expect("scan with junction cycle");
+
+        assert_eq!(result.file_count, 1, "only the real file is counted");
+        assert_eq!(result.dir_count, 1, "junction is skipped, not counted as a directory");
+        assert_eq!(result.total_bytes, 4);
+    }
+
+    #[test]
+    fn scan_directory_handles_trailing_separator_root() {
+        // Roots arriving from UI/file pickers often carry a trailing separator.
+        // The walker special-cases this when building the find pattern.
+        let dir = TestDir::new();
+        dir.write_file("root.txt", &[1, 2, 3]);
+
+        let with_sep = format!("{}\\", dir.path_str());
+        let result = scan_directory(&with_sep).expect("trailing-separator scan");
+
+        assert_eq!(result.file_count, 1);
+        assert_eq!(result.total_bytes, 3);
+    }
 }
