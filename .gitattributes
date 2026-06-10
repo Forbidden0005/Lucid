@@ -1,0 +1,32 @@
+# Lucid line-ending policy (ROADMAP C2).
+# Repository blobs store LF for all text files; working-tree endings are
+# controlled per-extension below. This kills the CRLF/LF whole-file diff churn
+# that made `git blame` and review diffs unusable.
+
+# Default: auto-detect text, normalize to LF in the repository.
+* text=auto
+
+# Windows-executed scripts and solution files: force CRLF in the working tree.
+# .bat/.cmd genuinely require CRLF (label parsing bugs under LF);
+# .ps1/.slnx are kept CRLF for consistency with Windows tooling.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+*.slnx text eol=crlf
+
+# Binary assets: never apply text conversion.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.dll   binary
+*.exe   binary
+*.pdb   binary
+*.zip   binary
+*.db    binary
+*.sqlite binary

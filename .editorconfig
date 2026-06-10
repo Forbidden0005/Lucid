@@ -1,0 +1,23 @@
+# Lucid editor configuration (ROADMAP C2).
+# Intentionally minimal: encoding, indentation, and whitespace hygiene only.
+# C# naming/style analyzer rules are a separate, later step (see ROADMAP
+# "Tooling and Standards") so they can be introduced with their own review.
+
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{xml,xaml,csproj,props,targets,slnx,json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+# Trailing spaces are significant in Markdown (hard line breaks).
+trim_trailing_whitespace = false
+
+[*.{ps1,psm1,bat,cmd}]
+end_of_line = crlf
