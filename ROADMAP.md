@@ -356,6 +356,22 @@ Do not add items here that have not been verified.
 - Verified: 19/19 Rust tests (`cargo test`), x64 Debug build clean (0 warnings, 0 errors),
   160/160 C# tests (`dotnet test`)
 
+### Session 2026-06-10 (autonomous, fourth run)
+- Discovered and repaired truncation of this file: the tail (final rows of the Tooling table plus
+  sections Documentation State, Dependency Review, Deferred Work, Definition of Professional
+  Quality) was lost to a truncated write committed unnoticed in `e1f52fa` and carried through all
+  subsequent commits. Reconstructed from `AUDIT_ROADMAP.md` with an inline reconstruction note;
+  the ToC's "Engineering Professionalization Roadmap" discrepancy is flagged there for human review
+- Diagnosed and dismissed phantom repo corruption: the agent sandbox's filesystem mount served
+  stale/partial views of committed files and `.git` internals (apparent mid-file truncations,
+  "index file corrupt" / "improper chunk offset" errors). Native Windows `git status` and
+  `git fsck` confirmed the repository is healthy and the working tree matches HEAD apart from the
+  known human-review-pending files. Operational note for future sessions: verify repo state with
+  native Windows git before trusting sandbox-mount git output
+- No production code touched; documentation-only session
+- Verified after repair: x64 Debug build clean (0 warnings, 0 errors), 160/160 C# tests,
+  19/19 Rust tests
+
 
 ---
 
@@ -685,4 +701,96 @@ This is the highest-value test investment — it mechanizes the safety doctrine.
 | Analyzers | Default only | Enable `AnalysisLevel=latest`, `EnforceCodeStyleInBuild=true`, `BannedApiAnalyzers` |
 | Warnings | 0 today | `TreatWarningsAsErrors=true` in `Directory.Build.props` — cheapest moment is now |
 | Package versions | Inline in csproj ×2 | `Directory.Packages.props` central package management |
-| Rust tooling | No fmt/clippy config; no CI | `cargo fmt --chec
+| Rust tooling | No fmt/clippy config; no CI | `cargo fmt --check` + `cargo clippy -D warnings` + `cargo test` CI job |
+| Commit hooks | None | Optional lightweight pre-commit running `dotnet format` on staged files — skip if it adds friction |
+| CI duplication | 4 jobs repeat restore/validate verbatim | Composite action or `workflow_call`; `concurrency:` group with cancel-in-progress; NuGet caching |
+
+> **Reconstruction note (2026-06-10):** everything from the final three rows of the table above
+> through the end of this file was reconstructed after the original tail of this document was lost
+> to a truncated write — the truncation was committed unnoticed in `e1f52fa` and carried through
+> every subsequent commit. Sources for the reconstruction: `AUDIT_ROADMAP.md` (the 2026-06-10 audit
+> this file consolidates) and the surviving body of this document. One known discrepancy is left
+> for human review rather than guessed at: the Table of Contents lists an
+> "Engineering Professionalization Roadmap" section, but no such heading exists in the surviving
+> body (the professionalization phases live under Product Roadmap).
+
+---
+
+## Documentation State
+
+**Good and current:** `README.md` (honest, verified-on date, doctrine summary), `docs/architecture.md`,
+`docs/security-model.md`, `docs/ui-guidelines.md`, `docs/release-packaging.md`, release checklists,
+`ONBOARDING.md`, `PROJECT_INTEGRITY.md`.
+
+**Problems (tracked as C8):**
+- `CLAUDE.md` / `AGENTS.md` / `CODEX.md` are near-identical ~14 KB copies — single-source them;
+  reduce the other two to one-paragraph pointers
+- `CURRENT_STATE.md` counts rot within days of writing — delete it; this file plus CI are the live state
+- `REMAINING_WORK.md` content was folded into this roadmap — retire the file
+- `docs/reports/` mixes living docs with dead audit artifacts — move to `docs/history/` with dated
+  filenames; `NEW_ROADMAP.md` must not coexist with this file unmarked
+- `docs/Structure.txt` and `docs/active-file-inventory.md` are stale by construction — delete
+
+**Missing:**
+- `LICENSE` — decide proprietary notice vs. OSS license; currently legally ambiguous
+- `CHANGELOG.md` — squash-commit history makes this more important, since `git log` carries less narrative
+- `scripts/README.md` — 17 scripts with no index of when each runs
+- In-repo documentation of the `XamlPreCompile` + `build_vs.bat` quirk (currently only in `CLAUDE.md`;
+  `build_vs.bat` lives outside the repo at `C:\Users\tyler\` — move it into `scripts/`)
+- README quick-start (clone → setup → build → run), prerequisites (VS components, Rust toolchain),
+  and a link map of the doc set
+
+---
+
+## Dependency Review
+
+| Package | Version | Status |
+|---|---|---|
+| Microsoft.WindowsAppSDK | 1.5.240802000 | Behind current (1.6/1.7 line). Major upgrade deliberately deferred; schedule as an isolated pass with smoke testing |
+| Microsoft.Windows.SDK.BuildTools | 10.0.26100.1742 | Fine |
+| CommunityToolkit.Mvvm | 8.2.2 | Minor updates available; low risk |
+| Microsoft.Data.Sqlite | 8.0.0 | Take 8.0.x patches; defer 9.x/10.x to the next .NET upgrade |
+| System.* (PerformanceCounter, Management, ServiceController) | 8.0.0 | Aligned with TFM; fine |
+| xunit / runner / coverlet / FluentAssertions / Moq | current-ish | FluentAssertions 7+ changed licensing — staying on 6.12.1 is a deliberate, reasonable choice; document it |
+| windows-sys (Rust) | 0.59 | Fine; pinned via committed `Cargo.lock` |
+
+Hygiene: no unused dependencies detected; dev-only packages correctly `PrivateAssets=all`.
+Recommended additions: central package management (`Directory.Packages.props`); Dependabot/Renovate
+scoped to patch/minor only, so upgrades become visible PRs instead of background drift.
+
+---
+
+## Deferred Work
+
+Deliberately not scheduled. Do not pick these up without revisiting the rationale recorded here.
+
+- **MSIX packaged distribution** — deferred until the unpackaged path is stable (Phase 2)
+- **Windows App SDK 1.6/1.7 major upgrade** — isolated pass with smoke testing; not during stabilization
+- **Microsoft.Data.Sqlite 9.x/10.x** — patches only on 8.0.x; majors ride the next .NET upgrade
+- **FluentAssertions 7+** — licensing change; staying on 6.12.1 is deliberate
+- **`Lucid.Core` library extraction** — after C5 lands (moving files is cheap once globbing is default)
+- **Execution Priority Queue** — Phase 5 governance work; concurrency restraint is convention-only until then
+- **Repo-wide line-ending renormalization (C2 final step)** — blocked until the pending CI/script
+  changes are human-reviewed and committed, so the renormalize commit stays isolated
+- **Pre-commit hooks** — optional; skip if friction outweighs value
+
+---
+
+## Definition of Professional Quality
+
+Lucid is professionally maintained when all of the following are simultaneously true:
+
+1. A fresh `git clone` on a clean Windows machine reaches green build + green tests using only
+   README instructions.
+2. `git status` is empty after any completed work session; nothing load-bearing is untracked.
+3. CI fails on: build warnings, formatting drift, failed tests (C# *and* Rust), missing native
+   artifact in Release, unverified release feed.
+4. Every destructive executor has contract tests proving dry-run purity and rollback behavior
+   (or an explicit non-rollbackable classification).
+5. No empty catch blocks without a written justification; all diagnostics flow through
+   `IOperationalLogger`.
+6. One composition idiom: constructor injection from a single registry; `AppServices` static
+   surface is frozen and shrinking.
+7. Documentation contains no claims contradicted by the repository (counts, structure, commands),
+   and exactly one source of truth exists per topic.
+8. Releases are signed (fail-closed), changelogged, tagged, and reproducible from CI.
