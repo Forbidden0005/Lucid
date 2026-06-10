@@ -37,7 +37,7 @@
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
 | Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 39 test files, 143 passing tests |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 40 test files, 160 passing tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -84,7 +84,7 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 153 passing C# tests (verified 2026-06-10 via `dotnet test`)
+- 160 passing C# tests (verified 2026-06-10 via `dotnet test`)
 - 9 Rust tests passing (verified 2026-06-10 via `cargo test`)
 - 28 action executors implementing `IActionExecutor`
 
@@ -323,6 +323,21 @@ Do not add items here that have not been verified.
 - Deliberately left uncommitted pending human review: modified CI workflow, 15 release scripts,
   `installer/`, `Directory.Build.props`, `release/*.json`, `verify-dev.ps1`, `AUDIT_ROADMAP.md`
 
+### Session 2026-06-10 (autonomous, second run)
+- Completed and committed `SQLitePersistenceDurabilityTests` (7 tests), found untracked from a
+  prior interrupted session: queue-overflow back-pressure visibility (drop metrics + callback),
+  post-drain write acceptance, corrupt-DB backup/recreate with preserved evidence, poison-write
+  batch isolation, pre-init/post-dispose write gating, query-failure degradation
+- The corruption test exposed a real recovery bug: `InitializeAsync` never disposed the failed
+  connection before renaming the corrupt file. SQLite's Windows VFS opens without
+  `FILE_SHARE_DELETE`, so the backup rename failed while the handle was alive and recovery
+  re-opened the same corrupt file and gave up. Fixed by disposing the failed connection before
+  `TryBackupAndDelete` and opening with `Pooling=false` (one lifetime connection; pooled handles
+  survive Dispose and would also block the rename)
+- Corrected one test over-specification: live `-wal`/`-shm` files are legitimate for an open
+  WAL-mode connection; stale-shim assertions now check post-close state
+- Verified: x64 Debug build clean (0 warnings), 160/160 C# tests, 9/9 Rust tests
+
 
 ---
 
@@ -427,7 +442,9 @@ Goal: protect the parts of Lucid that can harm trust.
 - [ ] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6)
 - [ ] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6)
 - [ ] Make missing `lucid_scanner.dll` a hard build error for Release (C6)
-- [ ] Persistence durability tests: queue overflow, flush-on-shutdown, corrupt DB recovery
+- [x] Persistence durability tests: queue-overflow back-pressure, corrupt-DB backup/recreate,
+      poison-write batch isolation, lifecycle write gating — done 2026-06-10
+      (flush-on-shutdown was already covered by existing dispose final-flush tests)
 - [ ] Build-inclusion tests for explicitly included C# files (retire after C5)
 - [ ] Coverage visibility: surface summary in CI job; set ratcheting floor
 
@@ -600,7 +617,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 ## Testing Plan
 
 ### Current Status
-- 39 test files / 143 test methods — good structure, real assertions, Moq + FluentAssertions
+- 40 test files / 160 test methods — good structure, real assertions, Moq + FluentAssertions
 - ~25% of test files are untracked (C1) — commit first
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
 - Rust: 9 tests; no CI job
@@ -618,11 +635,11 @@ Parameterized test over all 28 executors asserting doctrine invariants:
 - Metadata contract validation passes
 This is the highest-value test investment — it mechanizes the safety doctrine.
 
-**P1: Persistence durability tests**
-- Queue overflow behavior
-- Flush-on-shutdown
-- Corrupt DB recovery
-- Schema migration paths
+**P1: Persistence durability tests — done 2026-06-10**
+- Queue overflow behavior — covered (back-pressure metrics, drop callback, post-drain recovery)
+- Flush-on-shutdown — covered (existing dispose final-flush tests)
+- Corrupt DB recovery — covered (backup evidence, WAL/SHM hygiene, recreate + migrate)
+- Schema migration paths — covered (existing migration tests)
 
 **P1: Rust tests + CI job**
 - Path handling, long-path `\\?\` behavior, junction/symlink cycles

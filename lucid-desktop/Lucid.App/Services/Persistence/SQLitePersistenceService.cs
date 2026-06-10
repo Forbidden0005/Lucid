@@ -112,7 +112,17 @@ public sealed class SQLitePersistenceService : IDisposable
         }
         catch (Exception ex)
         {
-            // Corruption recovery — rename and recreate
+            // Corruption recovery — rename and recreate.
+            //
+            // The failed connection may still hold an open handle to the corrupt
+            // file: sqlite3_open is lazy, so a non-database file "opens" fine and
+            // only fails at the first PRAGMA. SQLite's Windows VFS opens without
+            // FILE_SHARE_DELETE, so the backup rename below fails while that
+            // handle is alive — the handle must be released first, or recovery
+            // re-opens the same corrupt file and fails permanently.
+            _connection?.Dispose();
+            _connection = null;
+
             TryBackupAndDelete(_dbPath);
             try
             {
@@ -341,6 +351,14 @@ public sealed class SQLitePersistenceService : IDisposable
             DataSource = path,
             Mode       = SqliteOpenMode.ReadWriteCreate,
             Cache      = SqliteCacheMode.Private,
+
+            // This service holds ONE connection for the application lifetime, so
+            // pooling adds nothing — and it actively breaks corruption recovery:
+            // a pooled connection keeps its file handle open after Dispose(),
+            // which blocks the backup rename and can hand the recovery path a
+            // recycled handle to the corrupt file. Deterministic open/close is
+            // worth more here than pool reuse.
+            Pooling    = false,
         }.ToString();
 
         var conn = new SqliteConnection(cs);
