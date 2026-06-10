@@ -21,6 +21,17 @@ namespace Lucid.Services.Execution.Executors;
 /// </summary>
 internal sealed class FlushDnsExecutor : IActionExecutor
 {
+    private readonly IFlushDnsRuntime _runtime;
+
+    public FlushDnsExecutor() : this(new DefaultFlushDnsRuntime())
+    {
+    }
+
+    internal FlushDnsExecutor(IFlushDnsRuntime runtime)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+    }
+
     // ── Identity ──────────────────────────────────────────────────────────────
 
     private const string Id = "action.network.flush-dns";
@@ -81,13 +92,12 @@ internal sealed class FlushDnsExecutor : IActionExecutor
 
         var outputLines = new List<string>();
 
-        var result = ProcessExecutionHelper.Run(
-            exe:       "ipconfig.exe",
+        var result = _runtime.Run(
+            exe: "ipconfig.exe",
             arguments: "/flushdns",
-            log:       context.Log,
-            ct:        ct,
-            progressLineCallback: line => outputLines.Add(line),
-            lineFilter: CommandOutputParser.IsInterestingLine);
+            log: context.Log,
+            ct: ct,
+            outputLines: outputLines);
 
         sw.Stop();
 
@@ -122,5 +132,32 @@ internal sealed class FlushDnsExecutor : IActionExecutor
         return Task.FromResult(ActionExecutionResult.Succeeded(
             ActionId, "No rollback needed — DNS cache self-heals.",
             TimeSpan.Zero, context.Log.Build()));
+    }
+
+    internal interface IFlushDnsRuntime
+    {
+        ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines);
+    }
+
+    private sealed class DefaultFlushDnsRuntime : IFlushDnsRuntime
+    {
+        public ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines) =>
+            ProcessExecutionHelper.Run(
+                exe: exe,
+                arguments: arguments,
+                log: log,
+                ct: ct,
+                progressLineCallback: line => outputLines.Add(line),
+                lineFilter: CommandOutputParser.IsInterestingLine);
     }
 }

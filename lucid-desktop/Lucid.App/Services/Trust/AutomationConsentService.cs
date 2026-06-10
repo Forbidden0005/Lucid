@@ -9,7 +9,7 @@ namespace Lucid.Services.Trust;
 /// All automation actions that could modify system state must pass through
 /// <see cref="RequestConsentAsync"/> before executing. This service:
 ///
-///   1. Checks the action against <see cref="AutomationBoundaryPolicy"/> —
+///   1. Checks the action against <see cref="AutomationBoundaryPolicy"/> â€”
 ///      hard-blocked actions are rejected immediately, before any consent UI is shown.
 ///
 ///   2. Evaluates the current <see cref="TrustConsentMode"/> and <see cref="TrustRiskLevel"/>
@@ -22,10 +22,10 @@ namespace Lucid.Services.Trust;
 ///      the <see cref="OperationalTrustManager"/> for trust-posture adaptation.
 ///
 /// CRITICAL SAFETY RULES:
-///   • Consent mode can ONLY be changed by an explicit user gesture (from Settings UI).
-///   • The boundary policy check CANNOT be bypassed regardless of consent mode.
-///   • Approve() / Deny() callbacks must be called from the UI thread.
-///   • This service is NOT re-entrant — only one consent request at a time is supported.
+///   â€¢ Consent mode can ONLY be changed by an explicit user gesture (from Settings UI).
+///   â€¢ The boundary policy check CANNOT be bypassed regardless of consent mode.
+///   â€¢ Approve() / Deny() callbacks must be called from the UI thread.
+///   â€¢ This service is NOT re-entrant â€” only one consent request at a time is supported.
 ///
 /// Threading:
 ///   <see cref="RequestConsentAsync"/> runs on the calling thread.
@@ -34,19 +34,43 @@ namespace Lucid.Services.Trust;
 /// </summary>
 public sealed class AutomationConsentService
 {
-    // ── Dependencies ──────────────────────────────────────────────────────────
+    internal interface IUiDispatcher
+    {
+        bool HasThreadAccess { get; }
+        void TryEnqueue(Action action);
+    }
+
+    private sealed class DispatcherQueueAdapter : IUiDispatcher
+    {
+        private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
+
+        public DispatcherQueueAdapter(Microsoft.UI.Dispatching.DispatcherQueue dispatcher)
+        {
+            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        }
+
+        public bool HasThreadAccess => _dispatcher.HasThreadAccess;
+
+        public void TryEnqueue(Action action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+            _dispatcher.TryEnqueue(() => action());
+        }
+    }
+
+    // â”€â”€ Dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private readonly ITimelineAggregationService  _timeline;
     private readonly AutomationAuditService       _audit;
     private readonly ConsentExplanationService    _explanations;
     private readonly AutomationTransparencyEngine _transparency;
-    private readonly Microsoft.UI.Dispatching.DispatcherQueue _uiDispatcher;
+    private readonly IUiDispatcher _uiDispatcher;
 
-    // ── State ─────────────────────────────────────────────────────────────────
+    // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private TrustConsentMode _mode = TrustConsentMode.AskForMediumAndHighRisk;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
+    // â”€â”€ Constructor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public AutomationConsentService(
         ITimelineAggregationService  timeline,
@@ -54,6 +78,21 @@ public sealed class AutomationConsentService
         ConsentExplanationService    explanations,
         AutomationTransparencyEngine transparency,
         Microsoft.UI.Dispatching.DispatcherQueue uiDispatcher)
+        : this(
+            timeline,
+            audit,
+            explanations,
+            transparency,
+            new DispatcherQueueAdapter(uiDispatcher))
+    {
+    }
+
+    internal AutomationConsentService(
+        ITimelineAggregationService  timeline,
+        AutomationAuditService       audit,
+        ConsentExplanationService    explanations,
+        AutomationTransparencyEngine transparency,
+        IUiDispatcher uiDispatcher)
     {
         _timeline     = timeline;
         _audit        = audit;
@@ -62,7 +101,7 @@ public sealed class AutomationConsentService
         _uiDispatcher = uiDispatcher;
     }
 
-    // ── Mode management ───────────────────────────────────────────────────────
+    // â”€â”€ Mode management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /// <summary>Current consent mode. Default: AskForMediumAndHighRisk.</summary>
     public TrustConsentMode CurrentMode => _mode;
@@ -84,7 +123,7 @@ public sealed class AutomationConsentService
     /// <summary>Raised when a consent card needs to be shown in the companion overlay.</summary>
     public event EventHandler<ConsentCardEventArgs>? ConsentRequired;
 
-    // ── Core consent gate ─────────────────────────────────────────────────────
+    // â”€â”€ Core consent gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /// <summary>
     /// Evaluates whether the given step requires consent, requests it if needed,
@@ -93,8 +132,8 @@ public sealed class AutomationConsentService
     /// Called by <see cref="AutomationOrchestrator"/> before each step's execution gate.
     ///
     /// Returns:
-    ///   true  — step is approved (either auto-approved or user-confirmed)
-    ///   false — step was denied, blocked, or timed out
+    ///   true  â€” step is approved (either auto-approved or user-confirmed)
+    ///   false â€” step was denied, blocked, or timed out
     /// </summary>
     public async Task<bool> RequestConsentAsync(
         AutomationStep   step,
@@ -103,7 +142,7 @@ public sealed class AutomationConsentService
         string?          attributedProcess = null,
         CancellationToken ct = default)
     {
-        // ── 1. Boundary policy check (unconditional) ──────────────────────────
+        // â”€â”€ 1. Boundary policy check (unconditional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var boundaryCheck = AutomationBoundaryPolicy.CheckActionId(step.ActionId);
         if (boundaryCheck.IsBlocked)
         {
@@ -117,27 +156,27 @@ public sealed class AutomationConsentService
             return false;
         }
 
-        // ── 2. Determine scope & risk ─────────────────────────────────────────
+        // â”€â”€ 2. Determine scope & risk â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var scope = MapActionIdToScope(step.ActionId, step.Risk);
         var risk  = MapAutomationRiskToTrust(step.Risk);
 
-        // ── 3. Check if consent is required ───────────────────────────────────
+        // â”€â”€ 4. Observe-only / guided: always deny execution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        if (_mode == TrustConsentMode.ObserveOnly || _mode == TrustConsentMode.GuidedOnly)
+        {
+            _audit.RecordDenied(step, workflowId, scope,
+                reason: $"Consent mode is '{_mode}' â€” action was described but not executed.");
+            return false;
+        }
+
+        // consent gate after observe-only / guided hard-stop
         if (!RequiresConsent(risk))
         {
-            // Auto-approved — log for audit trail but no UI interaction needed
+            // Auto-approved - log for audit trail but no UI interaction needed
             _audit.RecordAutoApproved(step, workflowId, scope);
             return true;
         }
 
-        // ── 4. Observe-only / guided: always deny execution ───────────────────
-        if (_mode == TrustConsentMode.ObserveOnly || _mode == TrustConsentMode.GuidedOnly)
-        {
-            _audit.RecordDenied(step, workflowId, scope,
-                reason: $"Consent mode is '{_mode}' — action was described but not executed.");
-            return false;
-        }
-
-        // ── 5. Build consent request ──────────────────────────────────────────
+        // consent request build
         var definition = PermissionScopeRegistry.Get(scope);
         var whySuggested = _transparency.ExplainWhySuggested(step, activeInsight, attributedProcess);
 
@@ -156,7 +195,7 @@ public sealed class AutomationConsentService
             RequestedAt       = DateTimeOffset.Now,
         };
 
-        // ── 6. Show consent card and wait ─────────────────────────────────────
+        // â”€â”€ 6. Show consent card and wait â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         using var gate = new SemaphoreSlim(0, 1);
         bool approved = false;
 
@@ -184,15 +223,23 @@ public sealed class AutomationConsentService
         DispatchToUI(() => ConsentRequired?.Invoke(this, eventArgs));
 
         // Wait up to 10 minutes for the user to respond
-        bool gotResponse = await gate.WaitAsync(TimeSpan.FromMinutes(10), ct).ConfigureAwait(false);
+        bool gotResponse;
+        try
+        {
+            gotResponse = await gate.WaitAsync(TimeSpan.FromMinutes(10), ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            gotResponse = false;
+        }
 
         if (!gotResponse || ct.IsCancellationRequested)
         {
-            // Timed out or cancelled — treat as denial
+            // Timed out or cancelled â€” treat as denial
             approved = false;
         }
 
-        // ── 7. Record response and publish timeline event ─────────────────────
+        // â”€â”€ 7. Record response and publish timeline event â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var response = new ConsentResponse
         {
             RequestId    = request.Id,
@@ -231,7 +278,7 @@ public sealed class AutomationConsentService
     /// <summary>Raised when the user denies a consent request.</summary>
     public event EventHandler<ConsentResponse>? ConsentDenied;
 
-    // ── RequiresConsent logic ─────────────────────────────────────────────────
+    // â”€â”€ RequiresConsent logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /// <summary>
     /// Returns true if the given risk level requires a consent card under the current mode.
@@ -243,10 +290,10 @@ public sealed class AutomationConsentService
         TrustConsentMode.AskAlways               => true,    // always ask
         TrustConsentMode.AskForMediumAndHighRisk => risk >= TrustRiskLevel.Medium,
         TrustConsentMode.AskHighRiskOnly         => risk >= TrustRiskLevel.High,
-        _                                        => true,    // unknown mode → always ask
+        _                                        => true,    // unknown mode â†’ always ask
     };
 
-    // ── Scope / risk mapping ──────────────────────────────────────────────────
+    // â”€â”€ Scope / risk mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static PermissionScope MapActionIdToScope(string actionId, AutomationRiskLevel automationRisk)
     {
@@ -296,7 +343,7 @@ public sealed class AutomationConsentService
         _                          => TrustRiskLevel.High,
     };
 
-    // ── Timeline / dispatch ───────────────────────────────────────────────────
+    // â”€â”€ Timeline / dispatch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void PublishTimelineEvent(
         Timeline.TimelineEventType  type,
@@ -320,7 +367,7 @@ public sealed class AutomationConsentService
         if (_uiDispatcher.HasThreadAccess)
             action();
         else
-            _uiDispatcher.TryEnqueue(() => action());
+            _uiDispatcher.TryEnqueue(action);
     }
 }
 

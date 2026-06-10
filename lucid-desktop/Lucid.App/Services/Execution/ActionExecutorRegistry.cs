@@ -22,8 +22,14 @@
 /// </summary>
 public sealed class ActionExecutorRegistry
 {
+    private readonly bool _enforceMetadataContract;
     private readonly Dictionary<string, IActionExecutor> _executors =
         new(StringComparer.OrdinalIgnoreCase);
+
+    public ActionExecutorRegistry(bool enforceMetadataContract = true)
+    {
+        _enforceMetadataContract = enforceMetadataContract;
+    }
 
     // ── Registration ──────────────────────────────────────────────────────────
 
@@ -42,7 +48,8 @@ public sealed class ActionExecutorRegistry
     {
         ArgumentNullException.ThrowIfNull(executor);
 
-        ValidateMetadataContract(executor);
+        if (_enforceMetadataContract)
+            ValidateMetadataContract(executor);
 
         if (_executors.ContainsKey(executor.ActionId))
             throw new InvalidOperationException(

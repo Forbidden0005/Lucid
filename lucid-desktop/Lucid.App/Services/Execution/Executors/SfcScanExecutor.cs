@@ -32,6 +32,17 @@ namespace Lucid.Services.Execution.Executors;
 /// </summary>
 internal sealed class SfcScanExecutor : IActionExecutor
 {
+    private readonly ISfcScanRuntime _runtime;
+
+    public SfcScanExecutor() : this(new DefaultSfcScanRuntime())
+    {
+    }
+
+    internal SfcScanExecutor(ISfcScanRuntime runtime)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+    }
+
     // ── Identity ──────────────────────────────────────────────────────────────
 
     private const string Id = "action.repair.sfc-scannow";
@@ -100,30 +111,20 @@ internal sealed class SfcScanExecutor : IActionExecutor
         int lastPctLogged = -1;
         var outputLines   = new List<string>();
 
-        var result = ProcessExecutionHelper.Run(
-            exe:       "sfc.exe",
+        var result = _runtime.Run(
+            exe: "sfc.exe",
             arguments: "/scannow",
-            log:       context.Log,
-            ct:        ct,
-            progressLineCallback: line =>
+            log: context.Log,
+            ct: ct,
+            outputLines: outputLines,
+            onProgress: pct =>
             {
-                // Capture every line for result classification.
-                outputLines.Add(line);
-
-                // Log progress updates at 10-percent intervals.
-                if (CommandOutputParser.TryParseSfcProgress(line, out int pct))
+                if (pct - lastPctLogged >= 10 || pct == 100)
                 {
-                    if (pct - lastPctLogged >= 10 || pct == 100)
-                    {
-                        context.Log.Info($"  Scan progress: {pct}%");
-                        lastPctLogged = pct;
-                    }
+                    context.Log.Info($"  Scan progress: {pct}%");
+                    lastPctLogged = pct;
                 }
-            },
-            // Suppress the raw progress lines — we log sampled progress above.
-            lineFilter: line =>
-                !CommandOutputParser.TryParseSfcProgress(line, out _) &&
-                CommandOutputParser.IsInterestingLine(line));
+            });
 
         sw.Stop();
 
@@ -208,5 +209,42 @@ internal sealed class SfcScanExecutor : IActionExecutor
         return Task.FromResult(ActionExecutionResult.Failed(
             ActionId, "SFC does not support rollback.",
             TimeSpan.Zero, context.Log.Build()));
+    }
+
+    internal interface ISfcScanRuntime
+    {
+        ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines,
+            Action<int> onProgress);
+    }
+
+    private sealed class DefaultSfcScanRuntime : ISfcScanRuntime
+    {
+        public ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines,
+            Action<int> onProgress) =>
+            ProcessExecutionHelper.Run(
+                exe: exe,
+                arguments: arguments,
+                log: log,
+                ct: ct,
+                progressLineCallback: line =>
+                {
+                    outputLines.Add(line);
+
+                    if (CommandOutputParser.TryParseSfcProgress(line, out int pct))
+                        onProgress(pct);
+                },
+                lineFilter: line =>
+                    !CommandOutputParser.TryParseSfcProgress(line, out _) &&
+                    CommandOutputParser.IsInterestingLine(line));
     }
 }

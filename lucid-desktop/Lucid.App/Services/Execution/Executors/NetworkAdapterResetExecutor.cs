@@ -33,6 +33,17 @@ namespace Lucid.Services.Execution.Executors;
 /// </summary>
 internal sealed class NetworkAdapterResetExecutor : IActionExecutor
 {
+    private readonly INetworkRepairRuntime _runtime;
+
+    public NetworkAdapterResetExecutor() : this(new DefaultNetworkRepairRuntime())
+    {
+    }
+
+    internal NetworkAdapterResetExecutor(INetworkRepairRuntime runtime)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+    }
+
     // ── Identity ──────────────────────────────────────────────────────────────
 
     private const string Id = "action.network.reset-adapter";
@@ -139,14 +150,24 @@ internal sealed class NetworkAdapterResetExecutor : IActionExecutor
                 $"Step {i + 1}/{s_steps.Count}: {step.DisplayName}" +
                 $"  ({step.Exe} {step.Arguments})");
 
-            var result = ProcessExecutionHelper.Run(
-                exe:       step.Exe,
+            var result = _runtime.Run(
+                exe: step.Exe,
                 arguments: step.Arguments,
-                log:       context.Log,
-                ct:        ct,
-                lineFilter: CommandOutputParser.IsInterestingLine);
+                log: context.Log,
+                ct: ct);
 
-            bool stepOk = result.ExitCode == 0 && !result.WasCancelled;
+            if (result.WasCancelled)
+            {
+                var cancelMsg =
+                    $"Network reset cancelled during step {i + 1} of {s_steps.Count} " +
+                    $"({step.DisplayName}). The changes made so far are in effect — " +
+                    $"a restart may help if connectivity is disrupted.";
+                context.Log.Warn(cancelMsg);
+                return ActionExecutionResult.Cancelled(
+                    ActionId, cancelMsg, sw.Elapsed, context.Log.Build());
+            }
+
+            bool stepOk = result.ExitCode == 0;
 
             if (stepOk)
             {
@@ -216,5 +237,29 @@ internal sealed class NetworkAdapterResetExecutor : IActionExecutor
         return Task.FromResult(ActionExecutionResult.Failed(
             ActionId, "Network stack reset does not support rollback.",
             TimeSpan.Zero, context.Log.Build()));
+    }
+
+    internal interface INetworkRepairRuntime
+    {
+        ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct);
+    }
+
+    private sealed class DefaultNetworkRepairRuntime : INetworkRepairRuntime
+    {
+        public ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct) =>
+            ProcessExecutionHelper.Run(
+                exe: exe,
+                arguments: arguments,
+                log: log,
+                ct: ct,
+                lineFilter: CommandOutputParser.IsInterestingLine);
     }
 }

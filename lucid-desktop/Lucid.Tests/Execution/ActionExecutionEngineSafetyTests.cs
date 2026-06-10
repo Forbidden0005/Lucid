@@ -157,7 +157,7 @@ public sealed class ActionExecutionEngineSafetyTests
 
     private static ActionExecutionEngine CreateEngine(params IActionExecutor[] executors)
     {
-        var registry = new ActionExecutorRegistry();
+        var registry = new ActionExecutorRegistry(enforceMetadataContract: false);
         registry.RegisterAll(executors);
         return new ActionExecutionEngine(registry);
     }

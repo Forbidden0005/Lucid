@@ -57,15 +57,31 @@ public static class PrivacyPermissionScanner
     ///
     /// Falls back to HKLM if the HKCU key is absent or inaccessible.
     /// </summary>
-    public static IReadOnlyList<PrivacyCategoryRecord> Scan()
+    public static IReadOnlyList<PrivacyCategoryRecord> Scan() =>
+        Scan(Registry.CurrentUser, ConsentStorePath, Registry.LocalMachine, ConsentStorePath);
+
+    internal static IReadOnlyList<PrivacyCategoryRecord> Scan(
+        RegistryKey primaryRoot,
+        string primaryConsentStorePath,
+        RegistryKey? fallbackRoot,
+        string fallbackConsentStorePath)
     {
+        if (primaryRoot is null)
+            throw new ArgumentNullException(nameof(primaryRoot));
+
+        if (string.IsNullOrWhiteSpace(primaryConsentStorePath))
+            throw new ArgumentException("Consent store path must not be empty.", nameof(primaryConsentStorePath));
+
+        if (fallbackRoot is not null && string.IsNullOrWhiteSpace(fallbackConsentStorePath))
+            throw new ArgumentException("Fallback consent store path must not be empty.", nameof(fallbackConsentStorePath));
+
         var results = new List<PrivacyCategoryRecord>();
 
         RegistryKey? store = null;
         try
         {
-            store = Registry.CurrentUser.OpenSubKey(ConsentStorePath, writable: false)
-                 ?? Registry.LocalMachine.OpenSubKey(ConsentStorePath, writable: false);
+            store = primaryRoot.OpenSubKey(primaryConsentStorePath, writable: false)
+                 ?? fallbackRoot?.OpenSubKey(fallbackConsentStorePath, writable: false);
 
             if (store is null) return results;
 
@@ -115,33 +131,30 @@ public static class PrivacyPermissionScanner
         {
             try
             {
+                if (string.Equals(appKeyName, "NonPackaged", StringComparison.OrdinalIgnoreCase))
+                {
+                    using var nonPackagedRoot = capKey.OpenSubKey(appKeyName, writable: false);
+                    if (nonPackagedRoot is null) continue;
+
+                    foreach (var desktopEntryName in nonPackagedRoot.GetSubKeyNames())
+                    {
+                        try
+                        {
+                            using var desktopEntry = nonPackagedRoot.OpenSubKey(desktopEntryName, writable: false);
+                            if (desktopEntry is null) continue;
+
+                            AddAppRecord(apps, capName, $@"NonPackaged\{desktopEntryName}", desktopEntry);
+                        }
+                        catch { /* skip malformed desktop app entries */ }
+                    }
+
+                    continue;
+                }
+
                 using var appKey = capKey.OpenSubKey(appKeyName, writable: false);
                 if (appKey is null) continue;
 
-                var appValue  = appKey.GetValue("Value") as string ?? "Allow";
-                var isAllowed = !string.Equals(appValue, "Deny", StringComparison.OrdinalIgnoreCase);
-
-                // LastUsedTimeStop is a REG_QWORD FILETIME (100-ns intervals since 1601-01-01 UTC).
-                // A value of zero means the permission was granted but never actually exercised.
-                DateTimeOffset? lastUsed = null;
-                if (appKey.GetValue("LastUsedTimeStop") is long ft && ft > 0)
-                {
-                    try { lastUsed = DateTimeOffset.FromFileTime(ft); }
-                    catch { /* invalid FILETIME — ignore */ }
-                }
-
-                var isPackaged   = !appKeyName.StartsWith("NonPackaged", StringComparison.OrdinalIgnoreCase);
-                var appName      = ExtractDisplayName(appKeyName, isPackaged);
-
-                apps.Add(new PrivacyPermissionRecord
-                {
-                    PermissionType = capName,
-                    AppDisplayName = appName,
-                    AppIdentifier  = appKeyName,
-                    IsAllowed      = isAllowed,
-                    IsPackaged     = isPackaged,
-                    LastUsed       = lastUsed,
-                });
+                AddAppRecord(apps, capName, appKeyName, appKey);
             }
             catch { /* skip individual malformed app entries */ }
         }
@@ -164,6 +177,38 @@ public static class PrivacyPermissionScanner
             GloballyEnabled = globallyEnabled,
             Apps            = apps,
         };
+    }
+
+    private static void AddAppRecord(
+        List<PrivacyPermissionRecord> apps,
+        string capabilityName,
+        string appIdentifier,
+        RegistryKey appKey)
+    {
+        var appValue  = appKey.GetValue("Value") as string ?? "Allow";
+        var isAllowed = !string.Equals(appValue, "Deny", StringComparison.OrdinalIgnoreCase);
+
+        // LastUsedTimeStop is a REG_QWORD FILETIME (100-ns intervals since 1601-01-01 UTC).
+        // A value of zero means the permission was granted but never actually exercised.
+        DateTimeOffset? lastUsed = null;
+        if (appKey.GetValue("LastUsedTimeStop") is long ft && ft > 0)
+        {
+            try { lastUsed = DateTimeOffset.FromFileTime(ft); }
+            catch { /* invalid FILETIME — ignore */ }
+        }
+
+        var isPackaged = !appIdentifier.StartsWith("NonPackaged", StringComparison.OrdinalIgnoreCase);
+        var appName    = ExtractDisplayName(appIdentifier, isPackaged);
+
+        apps.Add(new PrivacyPermissionRecord
+        {
+            PermissionType = capabilityName,
+            AppDisplayName = appName,
+            AppIdentifier  = appIdentifier,
+            IsAllowed      = isAllowed,
+            IsPackaged     = isPackaged,
+            LastUsed       = lastUsed,
+        });
     }
 
     /// <summary>

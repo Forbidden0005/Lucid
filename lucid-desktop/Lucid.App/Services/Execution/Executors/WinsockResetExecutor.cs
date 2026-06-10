@@ -30,6 +30,17 @@ namespace Lucid.Services.Execution.Executors;
 /// </summary>
 internal sealed class WinsockResetExecutor : IActionExecutor
 {
+    private readonly IWinsockResetRuntime _runtime;
+
+    public WinsockResetExecutor() : this(new DefaultWinsockResetRuntime())
+    {
+    }
+
+    internal WinsockResetExecutor(IWinsockResetRuntime runtime)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+    }
+
     // ── Identity ──────────────────────────────────────────────────────────────
 
     private const string Id = "action.network.winsock-reset";
@@ -97,13 +108,12 @@ internal sealed class WinsockResetExecutor : IActionExecutor
 
         var outputLines = new List<string>();
 
-        var result = ProcessExecutionHelper.Run(
-            exe:       "netsh.exe",
+        var result = _runtime.Run(
+            exe: "netsh.exe",
             arguments: "winsock reset",
-            log:       context.Log,
-            ct:        ct,
-            progressLineCallback: line => outputLines.Add(line),
-            lineFilter: CommandOutputParser.IsInterestingLine);
+            log: context.Log,
+            ct: ct,
+            outputLines: outputLines);
 
         sw.Stop();
 
@@ -149,5 +159,32 @@ internal sealed class WinsockResetExecutor : IActionExecutor
         return Task.FromResult(ActionExecutionResult.Failed(
             ActionId, "Winsock reset does not support rollback.",
             TimeSpan.Zero, context.Log.Build()));
+    }
+
+    internal interface IWinsockResetRuntime
+    {
+        ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines);
+    }
+
+    private sealed class DefaultWinsockResetRuntime : IWinsockResetRuntime
+    {
+        public ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines) =>
+            ProcessExecutionHelper.Run(
+                exe: exe,
+                arguments: arguments,
+                log: log,
+                ct: ct,
+                progressLineCallback: line => outputLines.Add(line),
+                lineFilter: CommandOutputParser.IsInterestingLine);
     }
 }

@@ -1,101 +1,51 @@
 # Lucid Roadmap
 
-This roadmap is based on repository inspection and verification on 2026-06-07. It separates what exists from what is required before Lucid can be treated as a professional production Windows application.
+> Last audited: 2026-06-10. This is the single source of truth for project state, priorities,
+> completed work, and engineering direction. All other roadmap and state documents are retired
+> into `docs/history/`. Update this file after every completed task.
 
-## Current Verified Baseline
+---
 
-Lucid currently has:
+## Table of Contents
 
-- A WinUI 3 application under `lucid-desktop/Lucid.App`.
-- A test project under `lucid-desktop/Lucid.Tests`.
-- A Rust workspace under `lucid-native` with the `lucid-scanner` native module.
-- SQLite persistence code, runtime governance code, diagnostics code, trust/integrity code, operational intelligence services, storage analysis, replay, simulation, privacy, companion overlay, and many UI pages.
-- 27 XAML view files, 41 ViewModel files, and 436 C# files under `Lucid.App/Services`.
-- A GitHub Actions workflow for Windows build and tests.
+1. [Project Identity](#project-identity)
+2. [Strategic Direction](#strategic-direction)
+3. [Current Verified Baseline](#current-verified-baseline)
+4. [Critical Issues — Act First](#critical-issues--act-first)
+5. [Completed Work](#completed-work)
+6. [Product Roadmap](#product-roadmap)
+7. [Engineering Professionalization Roadmap](#engineering-professionalization-roadmap)
+8. [Architecture Review](#architecture-review)
+9. [Code Quality Backlog](#code-quality-backlog)
+10. [Testing Plan](#testing-plan)
+11. [Tooling and Standards](#tooling-and-standards)
+12. [Documentation State](#documentation-state)
+13. [Dependency Review](#dependency-review)
+14. [Deferred Work](#deferred-work)
+15. [Definition of Professional Quality](#definition-of-professional-quality)
 
-Verified commands:
+---
 
-```powershell
-cd lucid-desktop
-dotnet build Lucid.slnx -c Debug -p:Platform=x64 --no-restore
-dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64 --no-restore
+## Project Identity
 
-cd ..\lucid-native
-cargo test
-```
+| Attribute | Value |
+|---|---|
+| Project name | Lucid |
+| Project type | Windows desktop application — local-first operational intelligence platform |
+| Languages | C# (~90,700 LOC), Rust (539 LOC native module), PowerShell (17 ops scripts), XAML |
+| Frameworks | WinUI 3 / Windows App SDK 1.5, .NET 8 (`net8.0-windows10.0.19041.0`), CommunityToolkit.Mvvm 8.2.2 |
+| Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
+| Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
+| Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 39 test files, 143 passing tests |
+| CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
+| Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
-Verified results:
-
-- WinUI solution build passes with 0 warnings and 0 errors.
-- xUnit test suite passes 53 tests.
-- Rust tests pass but currently run 0 tests.
-
-## Completed
-
-This section is the canonical record of work that is done and should no longer be treated as open.
-
-### Verified Baseline Already In Place
-
-- WinUI 3 application scaffold and active solution under `lucid-desktop/Lucid.App` and `lucid-desktop/Lucid.slnx`.
-- xUnit test project under `lucid-desktop/Lucid.Tests`.
-- Rust native workspace under `lucid-native` with `lucid-scanner`.
-- SQLite persistence, runtime governance, diagnostics, trust/integrity, replay, simulation, privacy, and companion-related code paths present in the tree.
-- GitHub Actions workflow for Windows build and test.
-
-### Documentation And Governance Completed
-
-- Root project docs were rewritten to match the inspected codebase and production-hardening direction: `README.md`, `ONBOARDING.md`, `PROJECT_INTEGRITY.md`, and `ROADMAP.md`.
-- `CODEX.md` explicitly requires roadmap review before every task and roadmap maintenance after every completed task.
-- `.gitignore` now excludes generated `TestResults` artifacts from local verification runs.
-- Historical root reports were moved under `docs/reports/`, and `docs/repository-hygiene.md` now documents which files stay active at the root.
-- Git-tracked root doc casing is now normalized to `README.md` and `ROADMAP.md`.
-- Active stale-name cleanup is complete. Remaining `ExplainMyPC` references are historical only and live in `_archive/` or `docs/reports/`.
-
-### Recently Completed Repairs
-
-- CI unit test workflow was corrected so the test job does not assume compiled artifacts from another GitHub runner. The fix removed `--no-build` from the `dotnet test` step in `.github/workflows/lucid-build.yml`.
-- `setup.ps1` now resolves the solution and launch paths from the repo location instead of the stale `ExplainMyPC` path.
-- `scripts/verify-dev.ps1` was added as a one-command local verification entrypoint for restore, build, C# tests, and Rust tests.
-- `scripts/check-app-source-includes.ps1` now verifies that active C# files under `ViewModels`, `Services`, and `Core` are either explicitly compiled or intentionally documented as exclusions.
-- `docs/active-file-inventory.md` now records the active application file counts and the current intentional non-compiled files.
-- Release verification now exists through `scripts/verify-dev.ps1 -Configuration Release -PublishApp` and `scripts/verify-release.ps1`.
-- CI now proves Debug and Release lanes separately and uploads an unpackaged self-contained `win-x64` publish artifact.
-- `docs/release-packaging.md` now records the current packaging decision: unpackaged self-contained `win-x64` first, MSIX deferred until packaging metadata, signing, and upgrade behavior are designed and verified.
-- Rust scanner tests now cover missing-root failure, file-root rejection, directory/file/byte counting, top-file ordering, FFI argument validation, version reporting, and owned-string cleanup.
-- Rust scanner root validation now rejects nonexistent or non-directory roots instead of silently returning empty success results.
-- Execution engine safety tests now cover pre-flight elevation and confirmation gates, synthetic dry-run behavior, rollback support gating, and exception containment for execution and rollback paths.
-- `DeleteLargeFileExecutor` tests now cover missing-path failure, rollback token issuance after staged deletion, successful restore from staging, and safe rollback failure when the original path is already occupied by newer data.
-- Shared `CleanupScanner` rollback tests now cover missing staging, missing manifests, successful staged-file restoration with staging cleanup, and partial restore behavior when some staged files are missing.
-- `TempFileCleanupExecutor` rollback tests now cover missing-manifest failure, successful staged-file restoration with staging cleanup, and mid-rollback cancellation that preserves remaining staged data for retry.
-- `WindowsUpdateCacheExecutor` rollback tests now cover missing-manifest failure, successful staged-file restoration with staging cleanup, and mid-rollback cancellation that preserves remaining staged data for retry.
-- `WindowsUpdateCacheExecutor` now has a narrow runtime seam for cache path resolution, staging, per-file removal, and service control, plus live cleanup tests for partial success, cancellation rollback, and unconditional restart behavior without touching machine state.
-- `SQLitePersistenceService` now has a deterministic internal constructor for explicit database paths and optional timer startup, plus persistence tests for schema initialization, queued flush behavior, batch-size limits, and final flush on dispose.
-- `SQLitePersistenceService.FlushQueueAsync` no longer drops one queued write at the flush batch boundary; the dequeue loop now respects `MaxFlushBatchSize` before removing work from the queue.
-- `PrivacyPermissionWriter` now has an internal registry-root/path seam for deterministic tests, plus coverage for allow writes, deny-based revocation writes, and the non-creation contract when an app permission key does not already exist.
-- Guided storage workflow copy no longer claims downloads are "safe to delete"; it now frames deletion as a reviewed candidate action.
-- Operational language policy tests now cover prohibited-term compliance, sanitization, and an active-source audit over user-facing literals in Services, ViewModels, and Views.
-- `RecycleBinCleanupExecutor` now has a narrow shell-runtime seam, plus tests for dry-run preview, already-empty success, tolerated shell reset behavior, explicit shell failure, and non-reversible rollback refusal.
-- `SQLitePersistenceService` now has migration-path tests for legacy schema version `0` databases and idempotent initialization of current-schema databases.
-- Action executor metadata is now explicit in `ActionExecutionMetadataCatalog`, validated at registry registration time, and audited by tests against executor source and linked runtime declarations.
-
-### Verification Completed
-
-- `dotnet build Lucid.slnx -c Debug -p:Platform=x64 --no-restore`
-- `dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64 --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"`
-- `dotnet publish Lucid.App\Lucid.App.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained true -p:WindowsPackageType=None`
-- `cargo test`
-
-Current verified outcome:
-
-- Build passes with 0 warnings and 0 errors.
-- 102 C# tests pass.
-- Rust test command passes with 9 tests.
+---
 
 ## Strategic Direction
 
-Lucid should become a trusted local Windows intelligence layer.
-
-Every roadmap item must strengthen at least one of these pillars:
+Lucid is a trusted local Windows intelligence layer. Every roadmap item must strengthen at least one of:
 
 - Explainability
 - Reversibility
@@ -106,7 +56,7 @@ Every roadmap item must strengthen at least one of these pillars:
 - Deterministic behavior
 - User consent and auditability
 
-Lucid should not drift into:
+Lucid must never drift into:
 
 - Mystery optimization
 - Fear-based security UX
@@ -115,336 +65,568 @@ Lucid should not drift into:
 - Background work that competes with the user
 - Large rewrites that destabilize working systems
 
-## Immediate Audit Findings
+---
 
-### Repository And File Hygiene
+## Current Verified Baseline
 
-Current issues:
+Verified 2026-06-10 from repository inspection.
 
-- `_archive/` contains useful historical context, but it should be documented as archive-only so it is not mistaken for active code.
+**Build commands (verified passing):**
+```powershell
+# From lucid-desktop/
+dotnet build Lucid.slnx -c Debug -p:Platform=x64 --no-restore
+dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64 --no-restore
 
-Required work:
+# From lucid-native/
+cargo test
+```
 
-- Confirm the Git index stays free of tracked IDE state.
-- Extend repository hygiene notes if additional root files change role.
+**Verified counts:**
+- ~480 compiled C# production files across 33 service domains
+- 27 XAML view files, 41 ViewModel files
+- 39 test files, 143 passing C# tests
+- 9 Rust tests passing
+- 28 action executors implementing `IActionExecutor`
 
-### Setup And Developer Experience
+**Known active issues (not yet fixed):**
+- ~30 untracked source files including 14 release scripts CI depends on
+- 613-file CRLF/LF churn diff — no `.gitattributes`
+- ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
+- `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
+- `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
+- 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
+- Rust scanner has 0 tests and is absent from CI entirely
+- `NETSDK1206` warning during build — expected, non-critical, from Windows App SDK NuGet
 
-Current issues:
+---
 
-- Build instructions must always include `-p:Platform=x64`.
-- XAML precompile behavior depends on Visual Studio MSBuild when the intermediate DLL is missing.
-- The test project intentionally links pure production files instead of referencing `Lucid.App`; this is valid but fragile and must be documented.
+## Critical Issues — Act First
 
-Required work:
+These block professional quality and must be resolved before any new feature work.
 
-- Add setup verification steps for .NET, Visual Studio Build Tools, Windows App SDK, Rust, and Ollama if local chat remains enabled.
-- Document the XAML build pipeline limitation in one canonical place.
+### C1 — Untracked source files that committed code depends on (P0)
+CI invokes `scripts/validate-release-metadata.ps1`, `validate-release-operations.ps1`, and
+`check-app-source-includes.ps1` — all untracked. A fresh clone of `main` fails CI today.
+~25% of the test suite exists only on this machine. `Directory.Build.props`, the entire
+`installer/` directory, 10 test files, and 4 docs are also untracked.
 
-### Build, CI, And Release
+**Fix:** Commit all untracked source after C2 is in place (so endings land normalized).
+Verify with a scratch clone + CI run.
 
-Current issues:
+- [ ] Commit `.gitattributes` + `.editorconfig` first (C2)
+- [ ] Stage and commit: `scripts/` (14 untracked), `installer/`, `Directory.Build.props`, test files, docs
+- [ ] Confirm CI green from clean checkout
 
-- Build and unit tests pass locally.
-- CI exists but only covers basic build/test.
-- `EnableMsixTooling=true` exists, but `Lucid.App/Package.appxmanifest` is not present.
-- There is no clear release packaging path, signing story, installer story, crash dump policy, versioning policy, or update policy.
+### C2 — No `.gitattributes`; line-ending churn poisons every diff (P0)
+613 modified files showing ~113k insertions / ~112k deletions — almost entirely CRLF↔LF.
+Real changes are invisible inside whole-file diffs. `git blame` is destroyed on every touched file.
 
-Required work:
+**Fix:** Add `.gitattributes` (`* text=auto`, explicit `eol=crlf` for `.ps1/.bat/.slnx` if desired),
+add `.editorconfig`, then run a one-time `git add --renormalize .` commit — isolated from any
+functional change.
 
-- Add artifact packaging for unpackaged and packaged distributions.
-- Build installer/signing policy on top of the current unpackaged release artifact path.
-- Add version stamping and release notes generation.
-- Add smoke-test checklist for launch, navigation, telemetry, persistence, executor dry-run, and shutdown.
+- [ ] Add `.gitattributes` and `.editorconfig`
+- [ ] Run `git add --renormalize .`
+- [ ] Commit as `chore: normalize line endings` with no functional changes mixed in
 
-### Test Coverage
+### C3 — `release/` (740 MB) not in `.gitignore` (P0)
+One careless `git add .` permanently bloats history. Also makes `git status` noise normal —
+which is how C1 happened.
 
-Current issues:
+**Fix:** Add `release/` to `.gitignore`. `installer/` is source — commit it.
 
-- 99 C# tests pass, but coverage is still thin compared with the application surface.
-- Executor safety, rollback, privilege gates, persistence durability, language policy, local-only endpoint enforcement, and setup scripts need deeper tests.
-Required work:
+- [x] Add `release/` to `.gitignore` — done 2026-06-10 as `release/*` with carve-outs for the two
+      repo-tracked contract files (`release-metadata.json`, `release-operations.json`) that
+      `scripts/validate-release-*.ps1` and 10 other release scripts consume. A bare `release/` rule
+      would have prevented git from ever descending into the directory, blocking those negations.
+- [x] Confirm `git status` ignores it — verified: `git check-ignore` matches all artifact
+      subdirectories; only the two contract JSONs remain visible as untracked (intentional, for C1)
 
-- Expand executor coverage beyond rollback paths into live temp cleanup, Windows Update cache cleanup, recycle bin, and repair executors with partial-success and cancellation behavior.
-- Add tests for operation history, SQLite queue behavior, final flush, and schema migration.
-- Add tests for language policy so security copy stays confidence-aware.
-- Expand Rust tests further for inaccessible-directory handling and any additional FFI edge cases that emerge.
-- Add integration tests where pure service boundaries allow them without dragging WinUI targets into test execution.
+### C4 — `AppServices.cs`: 2,052-line static service locator (P1)
+~100 `public static` service properties; 32 ViewModel/View files reach into it directly.
+Meanwhile page-level ViewModels use constructor injection. Two competing DI idioms in one app.
+15-parameter constructors are the same disease from the other side.
 
-### Architecture And Maintainability
+**Fix:** Incremental strangler migration — not a big-bang rewrite. See Architecture Review.
 
-Current issues:
+- [ ] Introduce `IServiceRegistry` shim behind `AppServices` statics (zero consumer changes)
+- [ ] Freeze the locator: ban new `AppServices.*` references via analyzer (grandfather existing 32 files)
+- [ ] Migrate one page end-to-end as the template
+- [ ] Continue one page per session
 
-- `AppServices.cs` is a central static registry and a scaling pressure point.
-- `Lucid.App.csproj` uses explicit compile includes after broad removals; files can exist but not compile.
-- Several service namespaces are large enough that ownership boundaries need review.
-- Some docs say dependency injection is used, but the current app relies on a static service registry.
+### C5 — 633-line manual compile whitelist in `Lucid.App.csproj` (P1)
+481 explicit `<Compile Include>` entries. Only 9 files remain excluded. The original reason
+(excluding future scaffolding) no longer applies. Every new file requires a csproj edit.
 
-Required work:
+**Fix:** Delete or archive the 9 orphans, remove the Remove/Include machinery, return to default globbing,
+retire `check-app-source-includes.ps1`.
 
-- Keep `AppServices` stable short term, but introduce small service-provider seams around new or heavily touched modules.
-- Keep the source-inclusion guard and intentional exclusion registry current as active folders change.
-- Split only modules that are already being touched for production hardening.
-- Create architecture decision records for the static registry, linked test source strategy, native scanner boundary, and local LLM boundary.
+- [ ] Identify the 9 excluded orphan files — determine: delete vs. keep vs. move to branch
+- [ ] Remove `<Compile Remove>` globs and all 481 `<Compile Include>` entries
+- [ ] Confirm build output identical; retire guard script from CI
 
-### Safety, Trust, And Privacy
+### C6 — Test depth: 143 tests for 480 files; Rust at zero; Rust absent from CI (P1)
+Coverage concentrated in Cleanup/Execution/Persistence/Trust. 28 executors exist; destructive-path
+and rollback coverage is partial. Rust scanner has 0 tests and no CI job. The build silently skips
+copying `lucid_scanner.dll` when missing — a broken native build is undetectable until runtime.
 
-Current issues:
+**Fix:** See Testing Plan. Make Release copy step a hard error when DLL is missing.
 
-- Safety systems exist, but each executor needs a consistent production contract.
-- Rollback coverage is uneven.
-- Privacy write-back and automation boundaries are under active development.
-- Local LLM/Ollama support must remain optional, explicit, and local-only.
+- [ ] Executor safety contract suite (all 28 executors)
+- [ ] Rust unit tests + `cargo test/clippy/fmt` CI job
+- [ ] Make missing DLL a hard build error for Release configuration
 
-Required work:
+### C7 — 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls (P1)
+Silent failure directly contradicts the explainability doctrine. A platform that explains the system
+to users must not hide its own failures.
 
-- Require every executor to declare resource class, privilege requirement, reversibility, consent copy, dry-run behavior, diagnostics events, and failure mode.
-- Create a non-rollbackable action registry for actions where rollback is not technically honest.
-- Audit all outward network paths and enforce local-only validation by default.
-- Add privacy consent and revocation tests.
-- Add security-language tests for UI-facing strings and generated operational narratives.
+**Fix:** Sweep each `catch { }` into `IOperationalLogger` event, a justified `// best-effort: <why>`
+comment, or removal. Route all `Debug/Console.WriteLine` through the operational logger.
+Enforce via `BannedApiAnalyzers`.
 
-### Performance And Resource Governance
+- [ ] Audit and sweep all 48 empty catches
+- [ ] Replace all 33 debug/console prints with `IOperationalLogger`
+- [ ] Add banned-API analyzer rule to prevent recurrence
 
-Current issues:
+### C8 — Doc sprawl: triplicated agent instructions; stale state snapshots (P2)
+`CLAUDE.md` / `AGENTS.md` / `CODEX.md` are near-identical ~14 KB copies — drift is inevitable.
+`CURRENT_STATE.md` counts are stale. `docs/reports/` contains `NEW_ROADMAP.md` competing with this file.
+`docs/Structure.txt` and `docs/active-file-inventory.md` cannot describe a 500-file app.
 
-- Runtime governance and adaptive scheduling code exists.
-- Heavy operations still need cross-executor validation.
-- Native scanning can improve throughput but must not starve foreground work.
+**Fix:** Single-source agent instructions. Retire stale docs. See Documentation State.
 
-Required work:
+- [ ] Reduce `AGENTS.md` and `CODEX.md` to one-paragraph pointers to `CLAUDE.md`
+- [ ] Delete `CURRENT_STATE.md` (this file + CI are the live state)
+- [ ] Retire `REMAINING_WORK.md` (folded into this roadmap)
+- [ ] Move `docs/reports/` → `docs/history/` with dated filenames
+- [ ] Delete `docs/Structure.txt` and `docs/active-file-inventory.md`
 
-- Classify all background and executor work as foreground, background, or idle-only.
-- Enforce concurrency budgets for disk-bound, CPU-bound, network-bound, and repair operations.
-- Add diagnostics for queue depth, dropped work, over-budget operations, and shutdown flush time.
-- Add performance baselines for telemetry idle CPU, memory use, storage scan throughput, and app startup time.
+### C9 — `_archive/` committed to main (39 tracked files) (P2)
+Git history already preserves deleted code. Tracked archives rot, participate in repo-wide operations,
+and confuse search. 36 of the 613 line-ending-churned files are in `_archive/`.
 
-### UI And Product Polish
+**Fix:** Tag current state (e.g. `archive/intelligence-v1`), then `git rm -r _archive/`.
 
-Current issues:
+- [ ] Tag current commit before deletion
+- [ ] `git rm -r _archive/`
+- [ ] Confirm no live code referenced anything in it
 
-- The app has a broad surface area and many pages.
-- Production polish requires consistency across navigation, empty states, error states, loading states, accessibility, and text tone.
-- Some docs still describe old page counts and old phase labels.
 
-Required work:
+---
 
-- Audit every page for empty/error/loading states.
-- Verify text does not use fear-based security language.
-- Add accessibility pass for keyboard navigation, focus order, contrast, and screen reader labels.
-- Create a UI inventory: active pages, owning ViewModels, backing services, and status.
+## Completed Work
 
-## Professionalization Roadmap
+This section is the canonical record of everything done. Do not re-open completed items.
+Do not add items here that have not been verified.
 
-### Phase 0: Stabilize The Baseline
+### Verified Baseline
+- WinUI 3 application scaffold and active solution under `lucid-desktop/Lucid.App` and `lucid-desktop/Lucid.slnx`
+- xUnit test project under `lucid-desktop/Lucid.Tests`
+- Rust native workspace under `lucid-native` with `lucid-scanner`
+- SQLite persistence, runtime governance, diagnostics, trust/integrity, replay, simulation, privacy, and companion code paths
+- GitHub Actions CI for Windows build and test
 
-Status: in progress
+### Documentation and Governance
+- Root docs rewritten to match inspected codebase: `README.md`, `ONBOARDING.md`, `PROJECT_INTEGRITY.md`, `ROADMAP.md`
+- `CODEX.md` requires roadmap review before every task and roadmap maintenance after every completed task
+- `.gitignore` excludes generated `TestResults` artifacts
+- Historical root reports moved under `docs/reports/`; `docs/repository-hygiene.md` documents active vs archived material
+- Git-tracked root doc casing normalized to `README.md` and `ROADMAP.md`
+- Stale-name cleanup complete — remaining `ExplainMyPC` references are historical only, in `_archive/` or `docs/reports/`
+
+### Repository and Setup Repairs
+- CI unit test workflow corrected — test job no longer assumes compiled artifacts from another runner
+- `setup.ps1` resolves solution and launch paths from repo location instead of stale `ExplainMyPC` path
+- `scripts/verify-dev.ps1` added as one-command local verification entrypoint
+- `scripts/check-app-source-includes.ps1` verifies active C# files are either compiled or documented as intentional exclusions
+- `docs/active-file-inventory.md` records active file counts and current intentional non-compiled files
+
+### Build, CI, and Release Pipeline
+- Release verification via `scripts/verify-dev.ps1 -Configuration Release -PublishApp` and `scripts/verify-release.ps1`
+- CI proves Debug and Release lanes separately, uploads unpackaged self-contained `win-x64` publish artifact
+- `docs/release-packaging.md` documents unpackaged self-contained `win-x64` as first distribution path; MSIX deferred
+- `Directory.Build.props`, `release/release-metadata.json`, and `docs/releases/0.1.0-preview.md` define version, assembly stamping, and signing mode
+- `scripts/validate-release-metadata.ps1` enforces version/signing metadata consistency in local verification and CI
+- `scripts/prepare-release-artifact.ps1` validates publish outputs, copies smoke checklist, generates `RELEASE-SHA256.txt` and `release-artifact-manifest.json`
+- `scripts/verify-release-artifact.ps1` verifies file counts, byte totals, per-file SHA-256, checksum-file consistency, manifest metadata, and signing-mode enforcement
+- `scripts/run-release-smoke.ps1` launches published `Lucid.App.exe`, requires it to stay alive through startup threshold, records outcome in `release-smoke-result.json`
+- `scripts/sign-release-artifact.ps1` provides Authenticode signing entrypoint; skips in `unsigned-ci-artifact` mode; requires cert/timestamp inputs when `authenticode-required`
+- `scripts/package-release-artifact.ps1` produces versioned unpackaged distribution zip + zip-level SHA-256 under `release/packages/`
+- `scripts/verify-release-package.ps1` verifies packaged zip checksum and required release entries
+- `installer/Install-Lucid.ps1` and `Uninstall-Lucid.ps1` provide deterministic unpackaged installer targeting `LocalAppData\Programs\Lucid`
+- `scripts/verify-installer-roundtrip.ps1` verifies install/uninstall flow without touching real user profile
+- Unpackaged installer has explicit upgrade behavior, blocks downgrade attempts by default
+- `scripts/verify-installer-roundtrip.ps1` verifies multi-version install state, downgrade blocking, and allowed downgrade behavior
+- `installer/Migrate-LucidData.ps1` normalizes legacy data files into canonical `Data/` and `History/` paths with migration history and backup
+- `scripts/generate-release-update-manifest.ps1` generates package-level update descriptor for verified release zip
+- `scripts/verify-release-update-manifest.ps1` verifies update descriptor against packaged zip checksum, size, and support-script path
+- `scripts/generate-release-update-feed.ps1` generates publishable `feeds/index.json` and `feeds/<channel>.json` discovery tree
+- `scripts/verify-release-update-feed.ps1` verifies current release is discoverable through that feed
+- `release/release-operations.json` defines repo-tracked channel ownership, rollout posture, symbol handling, and support-intake policy
+- `scripts/validate-release-operations.ps1` enforces that contract during local and CI verification
+- `installer/Export-LucidSupportBundle.ps1` exports support bundle; `scripts/verify-support-bundle-export.ps1` verifies it
+
+### Safety and Executor Tests
+- Execution engine safety gate tests (pre-flight elevation, confirmation gates, dry-run, rollback gating, exception containment)
+- `DeleteLargeFileExecutor` rollback tests (missing-path failure, staging, restore, safe rollback failure)
+- Shared `CleanupScanner` rollback tests (missing staging/manifests, partial restore)
+- `TempFileCleanupExecutor` rollback tests (missing manifest, restore, mid-rollback cancellation)
+- `WindowsUpdateCacheExecutor` rollback tests and live cleanup seam (partial success, cancellation rollback, unconditional restart)
+- `RecycleBinCleanupExecutor` tests (shell behavior, dry-run, rollback refusal)
+- `NetworkAdapterResetExecutor` tests (multi-step behavior, cancellation, rollback refusal)
+- `WinsockResetExecutor` tests (restart-gated repair, cancellation, rollback refusal)
+- `DismRestoreHealthExecutor` tests (output-classified repair, cancellation, rollback refusal)
+- `SfcScanExecutor` tests (output-classified repair, partial success, cancellation, rollback refusal)
+- `WindowsStoreResetExecutor` tests (timeout-sensitive launch, cancellation, launch failure, rollback semantics)
+- `FlushDnsExecutor` tests (command result, cache-self-healing rollback)
+- Action executor metadata contract and registration-time validation in `ActionExecutionMetadataCatalog`
+
+### Persistence and Privacy Tests
+- `SQLitePersistenceService` tests: schema initialization, queue flushing, batch limits, final flush on dispose
+- `SQLitePersistenceService` migration tests: legacy schema v0 upgrade, idempotent current-schema initialization
+- Off-by-one bug fixed: `FlushQueueAsync` now correctly respects `MaxFlushBatchSize` without dropping a queued write
+- `PrivacyPermissionWriter` tests: allow writes, deny-based revocation, non-creation contract
+- `PrivacyPermissionScanner` tests: fallback resolution, Win32 `NonPackaged` handling, category ordering, empty-capability suppression
+
+### Trust and Consent Tests
+- `AutomationConsentService` trust-gate tests: hard boundary blocking, low-risk auto-approval, observe-only denial, explicit approval
+- `AutomationConsentService` outcome tests: denial, cancellation-as-denial, consent-request and consent-denied timeline
+- Fixed: `AutomationConsentService` no longer auto-approves in `ObserveOnly` or `GuidedOnly` mode
+- Fixed: consent wait cancellation treated as clean denial instead of leaking `OperationCanceledException`
+
+### Language Policy and Network Enforcement
+- Operational language policy tests and source-audit guard for user-facing literals in Services, ViewModels, and Views
+- Fixed: guided storage workflow no longer claims downloads are "safe to delete"
+- `OllamaClient` validates originally supplied endpoint before falling back to localhost
+- Local endpoint enforcement tests: constructor behavior, private-LAN/remote fallback, blank endpoint rejection, default-model fallback
+
+### Rust
+- Rust scanner tests: missing-root failure, file-root rejection, directory/file/byte counting, top-file ordering, FFI argument validation, version reporting, owned-string cleanup
+- Rust scanner root validation now rejects nonexistent or non-directory roots
+
+
+---
+
+## Product Roadmap
+
+### Phase 0 — Stabilize the Baseline
+**Status: Complete**
 
 Goal: make the current repo safe to work in.
 
-Work:
+- [x] Preserve current user changes while making targeted edits
+- [x] Confirm build and tests pass from a clean restore
+- [x] Normalize root documentation and align with the inspected codebase
+- [x] Record completed work explicitly in this roadmap
+- [x] Fix setup script path drift
+- [x] Add `scripts/verify-dev.ps1`
+- [ ] Remove tracked IDE state from source control after owner approval
 
-- [done] Preserve current user changes while making targeted edits.
-- [done] Confirm build and tests pass from a clean restore.
-- [done] Normalize root documentation and align it with the inspected codebase.
-- [done] Record completed work explicitly in this roadmap.
-- [done] Fix setup script path drift.
-- [done] Add `scripts/verify-dev.ps1`.
-- Remove tracked IDE state from source control after owner approval.
+**Exit criteria:**
+- Root docs agree with the codebase
+- `git status` contains only intentional changes
+- Build, tests, and cargo tests are one-command verifiable
 
-Exit criteria:
+---
 
-- Root docs agree with the codebase.
-- `git status` contains only intentional changes.
-- Build, tests, and cargo tests are one-command verifiable.
-
-### Phase 1: Repository Hygiene And Canonical Structure
-
-Status: in progress
+### Phase 1 — Repository Hygiene and Canonical Structure
+**Status: In progress**
 
 Goal: make the project understandable to a new engineer in under 30 minutes.
 
-Work:
+- [x] Move historical root reports under `docs/reports/`
+- [x] Add `docs/repository-hygiene.md`
+- [x] Normalize Git-tracked casing of `README.md` and `ROADMAP.md`
+- [x] Complete stale-name audit for `ExplainMyPC` references
+- [ ] Add `.gitattributes` and normalize line endings (C2)
+- [ ] Commit all untracked source (C1)
+- [x] Add `release/` to `.gitignore` (C3) — done 2026-06-10, verified via `git check-ignore`
+- [ ] Delete `_archive/` after tagging (C9)
+- [ ] Consolidate triplicated agent instruction docs (C8)
+- [ ] Retire stale `CURRENT_STATE.md` and `REMAINING_WORK.md` (C8)
 
-- Define active folders: `lucid-desktop`, `lucid-native`, `docs`, `.github`.
-- Define archive folders: `_archive` and historical reports.
-- [done] Move historical root reports under `docs/reports/`.
-- [done] Add `docs/repository-hygiene.md` to document active vs archived material.
-- [done] Normalize the Git-tracked casing of `README.md` and `ROADMAP.md`.
-- [done] Add active-file inventory for views, services, tests, and native modules.
-- [done] Complete the stale-name audit for `ExplainMyPC` references and confine remaining hits to historical material.
+**Exit criteria:**
+- No tracked generated IDE/build artifacts
+- No stale root clutter
+- Fresh clone passes CI
 
-Exit criteria:
+---
 
-- No tracked generated IDE/build artifacts.
-- No stale root clutter.
-- Old project names remain only where historically intentional.
+### Phase 2 — Build, CI, Packaging, and Release
+**Status: In progress (core pipeline complete; signing and live deployment deferred)**
 
-### Phase 2: Build, CI, Packaging, And Release
+- [x] Clean local restore/build/test/native-test workflow
+- [x] Fix CI unit test job cross-job binary dependency
+- [x] Release and Debug x64 build verification
+- [x] Unpackaged distribution decision and documentation
+- [x] Signing and versioning plan
+- [x] Repo-tracked release metadata validation and release-notes baseline
+- [x] Release artifact generation in CI with checksums, manifest, smoke checklist
+- [x] Release artifact verification for manifest, checksums, signing-mode
+- [x] Executed release launch smoke gate with recorded results
+- [x] Operational release signing hook ready for certificate-backed inputs
+- [x] Versioned unpackaged release packaging with zip-level verification
+- [x] Deterministic unpackaged installer/uninstaller with workspace round-trip verification
+- [x] Installer upgrade behavior with downgrade blocking and multi-version verification
+- [x] Repo-side update-manifest generation and verified support-bundle export
+- [x] Installer-managed data migration with canonical-path normalization and backup
+- [x] Repo-side update-feed generation and discovery verification
+- [x] Repo-tracked release-operations policy and validation
+- [ ] Remove csproj compile whitelist (C5)
+- [ ] Real certificate-backed signing inputs — flip release metadata to `authenticode-required`
+- [ ] Expand launch smoke gate into deeper navigation and telemetry assertions
+- [ ] Define hosted update publication/discovery rules
+- [ ] Crash/support operational ownership for customer-facing distribution
+- [ ] Packaged-distribution parity (MSIX — deferred until after unpackaged path is stable)
 
-Status: in progress
+**Exit criteria:**
+- CI proves Debug and Release builds
+- Release artifacts produced deterministically
+- Packaging requirements explicit and tested
 
-Goal: produce repeatable developer and release builds.
+---
 
-Work:
-
-- [done] Add a clean local restore/build/test/native-test workflow through `scripts/verify-dev.ps1`.
-- [done] Fix the CI unit test job so it does not depend on missing cross-job binaries.
-- [done] Add Release x64 build verification.
-- [done] Decide packaged vs unpackaged distribution.
-- [done] Document why unpackaged release is the first target and MSIX is deferred.
-- Add signing and versioning plan.
-- [done] Add release artifact generation in CI.
-
-Exit criteria:
-
-- CI proves Debug and Release builds.
-- Release artifacts are produced deterministically.
-- Packaging requirements are explicit and tested.
-
-### Phase 3: Test Expansion And Safety Nets
-
-Status: in progress
+### Phase 3 — Test Expansion and Safety Nets
+**Status: In progress**
 
 Goal: protect the parts of Lucid that can harm trust.
 
-Work:
+- [x] Execution engine safety gate tests
+- [x] Executor-specific rollback safety tests (Delete, TempCleanup, WinUpdateCache, RecycleBin, NetworkReset, Winsock, DISM, SFC, StoreReset, FlushDns)
+- [x] Shared cleanup rollback helper tests (`CleanupScanner`)
+- [x] SQLite persistence durability tests
+- [x] SQLite persistence migration tests
+- [x] Privacy permission write-back and scanner tests
+- [x] Operational language policy tests and source-audit guard
+- [x] Executor metadata contract and registration-time validation
+- [x] Automation consent gate tests (all paths including denial and cancellation)
+- [x] Local endpoint enforcement tests
+- [x] Rust scanner tests (9 tests)
+- [ ] Executor safety contract suite across all 28 executors (dry-run purity, rollback metadata, hostile-path inputs) (C6)
+- [ ] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6)
+- [ ] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6)
+- [ ] Make missing `lucid_scanner.dll` a hard build error for Release (C6)
+- [ ] Persistence durability tests: queue overflow, flush-on-shutdown, corrupt DB recovery
+- [ ] Build-inclusion tests for explicitly included C# files (retire after C5)
+- [ ] Coverage visibility: surface summary in CI job; set ratcheting floor
 
-- [done] Execution engine safety gate tests.
-- [done] First executor-specific rollback safety tests (`DeleteLargeFileExecutor`).
-- [done] Shared cleanup rollback helper tests (`CleanupScanner`).
-- [done] Temp cleanup executor rollback tests.
-- [done] Windows Update cache executor rollback tests.
-- [done] Windows Update cache executor live cleanup seam and safety tests.
-- [done] SQLite persistence durability tests for schema initialization, queue flushing, batch limits, and final flush.
-- [done] SQLite persistence migration tests for legacy schema upgrade and idempotent current-schema initialization.
-- [done] Privacy permission write-back tests for grant, revocation, and non-creation behavior.
-- [done] Operational language policy tests and source-audit guard for user-facing literals.
-- [done] Recycle Bin cleanup executor tests for shell behavior and rollback refusal.
-- [done] Executor metadata contract and registration-time validation.
-- Additional executor-specific safety and rollback tests.
-- Persistence durability and migration tests.
-- Privacy consent/write-back tests.
-- Local endpoint enforcement tests.
-- Operational language policy tests.
-- [done] Rust scanner tests.
-- Build-inclusion tests for explicitly included C# files.
+**Exit criteria:**
+- Every destructive executor has tests for consent, dry-run, failure, and audit behavior
+- Rust scanner has meaningful coverage before feature expansion
+- CI blocks common trust regressions
 
-Exit criteria:
+---
 
-- Every destructive or semi-destructive executor has tests for consent, dry-run, failure, and audit behavior.
-- Rust scanner has meaningful tests before feature expansion.
-- CI blocks common trust regressions.
-
-### Phase 4: Architecture Hardening
-
-Status: not started
+### Phase 4 — Architecture Hardening
+**Status: Not started**
 
 Goal: reduce long-term fragility without destabilizing the app.
 
-Work:
+- [ ] AppServices strangler: introduce `IServiceRegistry` shim behind statics (C4)
+- [ ] Freeze `AppServices.*` references with analyzer ban + grandfather list (C4)
+- [ ] Migrate one page end-to-end as the template (C4)
+- [ ] Continue page-by-page migration (one per session)
+- [ ] Extract `Lucid.Core` class library; replace 57 file-linked tests with project reference
+- [ ] Module boundary docs for each of the 33 service domains
+- [ ] ADRs for: static registry, linked test source strategy, native scanner boundary, local LLM boundary
+- [ ] Replace silent `catch { }` blocks with structured diagnostics (C7)
+- [ ] Route all `Debug/Console.WriteLine` to `IOperationalLogger` (C7)
+- [ ] Add banned-API analyzer rule for debug prints and (post-migration) `AppServices` (C7)
+- [ ] Enable `.NET analyzers` + `TreatWarningsAsErrors` + `dotnet format` CI check
+- [ ] Audit 12 `async void` occurrences — acceptable only for UI event handlers
+- [ ] Fix 9 `.Result`/`.Wait()` sync-over-async patterns
+- [ ] Refactor `CompanionOverlayWindow.xaml.cs` (879 lines) into VM + window-interop helper
+- [ ] Decompose `SimulationViewModel` (1,182 lines) and `InsightsPageViewModel` (851 lines)
+- [ ] Add diagnostics event contracts for service failures
+- [ ] Replace silent best-effort catches with structured diagnostics where user trust or data integrity is affected
 
-- Add small service-provider seams around new work.
-- Document and gradually reduce `AppServices` centralization.
-- Add module boundary docs for telemetry, intelligence, execution, persistence, trust, privacy, storage, companion, and native scanning.
-- Add diagnostics event contracts for service failures.
-- Replace silent best-effort catches with structured diagnostics where user trust or data integrity is affected.
+**Exit criteria:**
+- New services can be tested without WinUI packaging targets
+- Service boundaries documented and enforced by tests or review checklists
+- Failures become inspectable diagnostics, not invisible behavior
 
-Exit criteria:
+---
 
-- New services can be tested without WinUI packaging targets.
-- Service boundaries are documented and enforced by tests or review checklists.
-- Failures become inspectable diagnostics, not invisible behavior.
+### Phase 5 — Trust, Privacy, and Governance Completion
+**Status: Not started**
 
-### Phase 5: Trust, Privacy, And Governance Completion
+Goal: make safety guarantees consistent across the entire platform.
 
-Status: not started
+- [ ] Require every executor to declare: resource class, privilege requirement, reversibility, consent copy, dry-run behavior, diagnostics events, failure mode
+- [ ] Create non-rollbackable action registry for actions where rollback is not technically honest
+- [ ] Classify all background and executor work as Foreground, Background, or Idle-only
+- [ ] Enforce concurrency budgets for disk-bound, CPU-bound, network-bound, and repair operations
+- [ ] Add diagnostics for queue depth, dropped work, over-budget operations, and shutdown flush time
+- [ ] Add performance baselines for idle CPU, memory use, storage scan throughput, and app startup time
+- [ ] Audit all outward network paths and enforce local-only validation by default
+- [ ] Extend privacy coverage from registry read/write into page/viewmodel workflow
+- [ ] Add privacy consent revocation workflow
+- [ ] Verify local-only behavior for local LLM and any sync/distributed code
 
-Goal: make safety guarantees consistent across the platform.
+**Exit criteria:**
+- Every action explains impact, confidence, reversibility, privilege, and audit trail
+- Background work yields under pressure
+- Privacy-sensitive features are opt-in and revocable
 
-Work:
+---
 
-- Create executor metadata contract.
-- Audit rollback coverage.
-- Add non-rollbackable action disclosures.
-- Enforce resource classification for all heavy work.
-- Add privacy consent revocation workflow.
-- Verify local-only behavior for local LLM and any sync/distributed code.
-
-Exit criteria:
-
-- Every action explains impact, confidence, reversibility, privilege, and audit trail.
-- Background work yields under pressure.
-- Privacy-sensitive features are opt-in and revocable.
-
-### Phase 6: Product Polish And UX Readiness
-
-Status: not started
+### Phase 6 — Product Polish and UX Readiness
+**Status: Not started**
 
 Goal: make Lucid feel like a trustworthy Windows application rather than an engineering cockpit.
 
-Work:
+- [ ] Page-by-page UI audit: empty states, error states, loading states
+- [ ] Verify no page uses fear-based or absolute-certainty security language
+- [ ] Accessibility pass: keyboard navigation, focus order, contrast, screen reader labels
+- [ ] Navigation and information architecture cleanup
+- [ ] Operational copy review for confidence-aware language throughout
+- [ ] First-run experience and settings defaults
+- [ ] UI inventory: active pages, owning ViewModels, backing services, and status
+- [ ] Consistent empty/loading/error state treatment across all pages
 
-- Page-by-page UI audit.
-- Consistent empty, loading, and error states.
-- Accessibility pass.
-- Navigation and information architecture cleanup.
-- Operational copy review.
-- First-run experience and settings defaults.
+**Exit criteria:**
+- A new user can understand what Lucid is observing and why
+- The app communicates uncertainty clearly
+- No page relies on placeholder copy or unexplained metrics
 
-Exit criteria:
+---
 
-- A new user can understand what Lucid is observing and why.
-- The app communicates uncertainty clearly.
-- No page relies on placeholder copy or unexplained metrics.
-
-### Phase 7: Production Operations
-
-Status: not started
+### Phase 7 — Production Operations
+**Status: Not started**
 
 Goal: prepare Lucid for real users.
 
-Work:
+- [ ] Crash logging policy
+- [ ] Local diagnostics export bundle
+- [ ] User data location and retention policy
+- [ ] Upgrade and migration policy
+- [ ] Release checklist
+- [ ] Support triage guide
+- [ ] Staged rollout implementation beyond manual full-channel publication
+- [ ] Public symbol publication
+- [ ] Customer-facing crash intake flow
+- [ ] CI DRY: composite action, `concurrency:` group with cancel-in-progress, NuGet caching
+- [ ] Wire `verify-release-update-feed.ps1` as a release-blocking CI gate
+- [ ] Secret-scan step in CI (e.g. gitleaks)
+- [ ] Document update-channel trust model in `docs/security-model.md` (key custody, feed integrity, downgrade protection)
+- [ ] Central package management (`Directory.Packages.props`)
+- [ ] Dependabot/Renovate config scoped to patch/minor only
 
-- Crash logging policy.
-- Local diagnostics export bundle.
-- User data location and retention policy.
-- Upgrade and migration policy.
-- Release checklist.
-- Support triage guide.
+**Exit criteria:**
+- Releases are repeatable
+- User data is local, inspectable, and bounded
+- Failures can be diagnosed without violating privacy
 
-Exit criteria:
 
-- Releases are repeatable.
-- User data is local, inspectable, and bounded.
-- Failures can be diagnosed without violating privacy.
+---
 
-## Refactor And Repair Backlog
+## Architecture Review
 
-High priority:
+### Layered Shape (Correct — Preserve)
+Views → ViewModels → Services (33 domains) → Native/Persistence. Matches `docs/architecture.md`.
+The architecture problem is not the layers — it is composition and assembly boundaries.
 
-- Fix `setup.ps1` hard-coded old repo paths.
-- Remove tracked `.vs` files from Git.
-- Add Release build to CI.
-- Add packaging decision and manifest path.
-- Add executor metadata audit.
+### Concern 1: Dual DI Idioms (C4)
+`AppServices.cs` is a static service locator consumed by 32 files. Page-level ViewModels use
+constructor injection. Two competing idioms. The strangler plan:
 
-Medium priority:
+1. Introduce `IServiceRegistry` (or `Microsoft.Extensions.DependencyInjection` — zero extra weight on .NET 8)
+   and have `AppServices.Initialize()` populate it. Static properties become thin delegating reads.
+   No consumer changes yet. Zero behavioral risk.
+2. Freeze the locator — new code may not reference `AppServices.*` (banned-symbol analyzer with
+   grandfather list of the existing 32 files).
+3. Migrate per page — construct each ViewModel from the registry in one factory, removing
+   `AppServices` reads from that feature. One page per session keeps regression risk near zero.
+4. Endgame — `AppServices` shrinks to lifecycle orchestration (start order, shutdown flush),
+   which is its legitimate remaining job.
 
-- Move old root reports out of the root.
-- Add ADRs for static service registry, linked test source files, native scanner boundary, and local LLM.
-- Expand persistence tests for SQLite queue and schema reliability.
-- Add language-policy tests for all user-facing security copy.
-- Audit hidden network assumptions in distributed and local LLM services.
+### Concern 2: No Library Boundary (Test Linking Is the Symptom)
+`Lucid.Tests` links 57 production files by path because referencing the WinUI exe drags in
+packaging targets. The fix is `Lucid.Core`: a plain `net8.0-windows` class library holding pure
+services (Cleanup, Automation models, Persistence, Trust, Intelligence rules). App and Tests both
+reference it; file-linking disappears; the csproj whitelist problem also shrinks. Do this after C5
+— moving files is cheap once globbing is default.
 
-Deferred:
+### Concern 3: Execution Priority Queue Missing
+28 executors follow `IActionExecutor` with dry-run/rollback — good. Missing: a formal Execution
+Priority Queue (Foreground/Background/Idle-only classes). Until built, concurrent heavy operations
+are prevented only by convention. Belongs in Phase 5.
 
-- Big-bang dependency injection migration.
-- Broad UI redesign.
-- Distributed multi-device intelligence.
-- Large dependency upgrades.
-- Native hashing expansion.
+### Concern 4: Native Boundary Is Silently Optional
+The csproj copies `lucid_scanner.dll` if present and logs "skipping" if not. Release builds must
+fail loudly — make the copy step `Error` severity for Release/publish. Add Rust build+test to CI.
 
-## Working Rule For Future Agents
+---
 
-Do not add more features until the current production-hardening phases are under control. If a requested feature bypasses build reliability, safety, rollback, diagnostics, or trust language, treat it as a risky change and propose a smaller path.
+## Code Quality Backlog
+
+| Issue | Evidence | Action | Priority |
+|---|---|---|---|
+| God composition root | `AppServices.cs` 2,052 lines / ~100 statics | Strangler migration | P1 |
+| Silent failures | 48 `catch { }` | Sweep → logger events or justified comments | P1 |
+| Debug prints | 33 `Debug/Console.WriteLine` | Route to `IOperationalLogger`; ban via analyzer | P1 |
+| Oversized ViewModels | `SimulationViewModel` 1,182; `InsightsPageViewModel` 851; `DashboardViewModel` 813 | Extract presentation sub-services; decompose per feature | P2 |
+| Oversized code-behind | `CompanionOverlayWindow.xaml.cs` 879 lines | Move logic into VM + window-interop helper | P2 |
+| Constructor bloat | `DashboardViewModel` 15 params | Group into 2–3 cohesive facades after DI migration | P2 |
+| `async void` | 12 occurrences | Audit — acceptable only for UI event handlers; wrap bodies in try/catch | P1 |
+| Sync-over-async | 9 `.Result`/`.Wait()` | Replace with await or document why safe | P1 |
+| Dead code | 9 excluded files incl. `MockTelemetryService.cs`, `ShellViewModel.cs`, 3 controls, 3 models | Delete (git preserves them) | P1 |
+| Loose service files | 5 telemetry files at `Services/` root | Relocate to `Services/Telemetry/` | P2 |
+| TFM mismatch | App targets `19041.0`, Tests target `22621.0` | Align or document why tests target newer SDK | P2 |
+
+---
+
+## Testing Plan
+
+### Current Status
+- 39 test files / 143 test methods — good structure, real assertions, Moq + FluentAssertions
+- ~25% of test files are untracked (C1) — commit first
+- No coverage threshold or report rendering; Cobertura XML uploaded then ignored
+- Rust: 9 tests; no CI job
+- No integration tests of SQLite persistence against real files beyond unit scope
+
+### Improvement Plan (ordered)
+
+**P0:** Commit the untracked test files (part of C1)
+
+**P1: Executor safety contract suite**
+Parameterized test over all 28 executors asserting doctrine invariants:
+- Dry-run never mutates state
+- Destructive executors declare rollback metadata or are explicitly non-rollbackable
+- Rollback after execute restores state where testable
+- Metadata contract validation passes
+This is the highest-value test investment — it mechanizes the safety doctrine.
+
+**P1: Persistence durability tests**
+- Queue overflow behavior
+- Flush-on-shutdown
+- Corrupt DB recovery
+- Schema migration paths
+
+**P1: Rust tests + CI job**
+- Path handling, long-path `\\?\` behavior, junction/symlink cycles
+- FFI surface: null/invalid UTF-16 inputs must not panic across the boundary (panic across FFI is UB)
+- Add `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` to CI
+- Publish DLL as CI artifact consumed by publish job
+
+**P2: Coverage visibility**
+- Publish coverage summary to CI job summary
+- Set a soft floor (e.g. fail under 30%, ratchet upward)
+
+**P3: Smoke automation**
+- Script the manual smoke checklist steps that are scriptable
+- Run post-publish in CI
+
+---
+
+## Tooling and Standards
+
+| Area | Current State | Target |
+|---|---|---|
+| Line endings | No `.gitattributes`; 613-file churn | Add `.gitattributes`; renormalize once (C2) |
+| Editor config | None | `.editorconfig` encoding/indent/whitespace + C# naming rules |
+| Formatting | Manual consistency (unenforced) | `dotnet format --verify-no-changes` in CI |
+| Analyzers | Default only | Enable `AnalysisLevel=latest`, `EnforceCodeStyleInBuild=true`, `BannedApiAnalyzers` |
+| Warnings | 0 today | `TreatWarningsAsErrors=true` in `Directory.Build.props` — cheapest moment is now |
+| Package versions | Inline in csproj ×2 | `Directory.Packages.props` central package management |
+| Rust tooling | No fmt/clippy config; no CI | `cargo fmt --chec

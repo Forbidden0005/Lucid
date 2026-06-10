@@ -35,6 +35,17 @@ namespace Lucid.Services.Execution.Executors;
 /// </summary>
 internal sealed class DismRestoreHealthExecutor : IActionExecutor
 {
+    private readonly IDismRepairRuntime _runtime;
+
+    public DismRestoreHealthExecutor() : this(new DefaultDismRepairRuntime())
+    {
+    }
+
+    internal DismRestoreHealthExecutor(IDismRepairRuntime runtime)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+    }
+
     // ── Identity ──────────────────────────────────────────────────────────────
 
     private const string Id = "action.repair.dism-restore-health";
@@ -112,28 +123,20 @@ internal sealed class DismRestoreHealthExecutor : IActionExecutor
         float lastPctLogged = -1f;
         var   outputLines   = new List<string>();
 
-        var result = ProcessExecutionHelper.Run(
-            exe:       "DISM.exe",
+        var result = _runtime.Run(
+            exe: "DISM.exe",
             arguments: "/Online /Cleanup-Image /RestoreHealth",
-            log:       context.Log,
-            ct:        ct,
-            progressLineCallback: line =>
+            log: context.Log,
+            ct: ct,
+            outputLines: outputLines,
+            onProgress: pct =>
             {
-                outputLines.Add(line);
-
-                if (CommandOutputParser.TryParseDismProgress(line, out float pct))
+                if (pct - lastPctLogged >= 5f || pct >= 99.9f)
                 {
-                    if (pct - lastPctLogged >= 5f || pct >= 99.9f)
-                    {
-                        context.Log.Info($"  Progress: {pct:F0}%");
-                        lastPctLogged = pct;
-                    }
+                    context.Log.Info($"  Progress: {pct:F0}%");
+                    lastPctLogged = pct;
                 }
-            },
-            // Suppress raw DISM progress bars; keep all other lines.
-            lineFilter: line =>
-                !CommandOutputParser.IsDismProgressLine(line) &&
-                CommandOutputParser.IsInterestingLine(line));
+            });
 
         sw.Stop();
 
@@ -222,5 +225,42 @@ internal sealed class DismRestoreHealthExecutor : IActionExecutor
         return Task.FromResult(ActionExecutionResult.Failed(
             ActionId, "DISM does not support rollback.",
             TimeSpan.Zero, context.Log.Build()));
+    }
+
+    internal interface IDismRepairRuntime
+    {
+        ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines,
+            Action<float> onProgress);
+    }
+
+    private sealed class DefaultDismRepairRuntime : IDismRepairRuntime
+    {
+        public ProcessExecutionHelper.RunResult Run(
+            string exe,
+            string arguments,
+            ActionExecutionLog log,
+            CancellationToken ct,
+            IList<string> outputLines,
+            Action<float> onProgress) =>
+            ProcessExecutionHelper.Run(
+                exe: exe,
+                arguments: arguments,
+                log: log,
+                ct: ct,
+                progressLineCallback: line =>
+                {
+                    outputLines.Add(line);
+
+                    if (CommandOutputParser.TryParseDismProgress(line, out float pct))
+                        onProgress(pct);
+                },
+                lineFilter: line =>
+                    !CommandOutputParser.IsDismProgressLine(line) &&
+                    CommandOutputParser.IsInterestingLine(line));
     }
 }

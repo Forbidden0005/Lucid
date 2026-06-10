@@ -55,10 +55,10 @@ public sealed class OllamaClient : IDisposable
         // The platform guarantees "nothing ever leaves this machine."
         // Any non-local URL in settings.json is silently replaced with the safe
         // default. The validation result is stored for diagnostics callers.
-        var resolved = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl;
-        var validation = LocalEndpointValidator.Validate(resolved);
+        var validation = LocalEndpointValidator.Validate(baseUrl);
         EndpointValidation = validation;
-        _baseUrl   = (validation.IsAllowed ? resolved : DefaultBaseUrl).TrimEnd('/');
+        var resolved = validation.IsAllowed ? baseUrl! : DefaultBaseUrl;
+        _baseUrl   = resolved.TrimEnd('/');
         _modelName = string.IsNullOrWhiteSpace(modelName) ? DefaultModelName : modelName.Trim();
     }
 
