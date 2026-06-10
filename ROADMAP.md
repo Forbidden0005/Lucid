@@ -84,13 +84,16 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 39 test files, 143 passing C# tests
-- 9 Rust tests passing
+- 153 passing C# tests (verified 2026-06-10 via `dotnet test`)
+- 9 Rust tests passing (verified 2026-06-10 via `cargo test`)
 - 28 action executors implementing `IActionExecutor`
 
 **Known active issues (not yet fixed):**
-- ~30 untracked source files including 14 release scripts CI depends on
-- 613-file CRLF/LF churn diff — no `.gitattributes`
+- Untracked/uncommitted CI + release infrastructure: `.github/workflows/lucid-build.yml` (modified),
+  15 `scripts/*.ps1`, `installer/`, `Directory.Build.props`, `release/*.json` — awaiting human
+  review before commit (autonomous hard stop). Test files, docs, and source fixes were committed
+  2026-06-10; a fresh clone still fails CI until the scripts land.
+- CRLF/LF churn — `.gitattributes` committed 2026-06-10; repo-wide renormalize still pending (C2)
 - ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
 - `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
@@ -113,8 +116,13 @@ CI invokes `scripts/validate-release-metadata.ps1`, `validate-release-operations
 **Fix:** Commit all untracked source after C2 is in place (so endings land normalized).
 Verify with a scratch clone + CI run.
 
-- [ ] Commit `.gitattributes` + `.editorconfig` first (C2)
-- [ ] Stage and commit: `scripts/` (14 untracked), `installer/`, `Directory.Build.props`, test files, docs
+- [x] Commit `.gitattributes` + `.editorconfig` first (C2) — done 2026-06-10 (`f7e38ea`)
+- [x] Stage and commit: test files, docs, production source fixes — done 2026-06-10 (`e1f52fa`);
+      verified beforehand: build clean, 153/153 C# tests, 9/9 Rust tests
+- [ ] Stage and commit: `scripts/` (15 untracked), `installer/`, `Directory.Build.props`,
+      modified `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`, `release/*.json` —
+      **blocked on human review**: autonomous agents must not commit CI/build/release-script
+      changes (AGENTS.md impactful-action gate). Tyler: review and commit these to unblock CI.
 - [ ] Confirm CI green from clean checkout
 
 ### C2 — No `.gitattributes`; line-ending churn poisons every diff (P0)
@@ -125,8 +133,10 @@ Real changes are invisible inside whole-file diffs. `git blame` is destroyed on 
 add `.editorconfig`, then run a one-time `git add --renormalize .` commit — isolated from any
 functional change.
 
-- [ ] Add `.gitattributes` and `.editorconfig`
-- [ ] Run `git add --renormalize .`
+- [x] Add `.gitattributes` and `.editorconfig` — committed 2026-06-10 (`f7e38ea`); newly staged
+      files now land normalized
+- [ ] Run `git add --renormalize .` — deferred: must be isolated from functional changes, and
+      the modified CI workflow + `verify-dev.ps1` are still uncommitted (pending human review)
 - [ ] Commit as `chore: normalize line endings` with no functional changes mixed in
 
 ### C3 — `release/` (740 MB) not in `.gitignore` (P0)
@@ -304,6 +314,15 @@ Do not add items here that have not been verified.
 - Rust scanner tests: missing-root failure, file-root rejection, directory/file/byte counting, top-file ordering, FFI argument validation, version reporting, owned-string cleanup
 - Rust scanner root validation now rejects nonexistent or non-directory roots
 
+### Session 2026-06-10 (autonomous)
+- Verified full green state: x64 Debug build clean, 153/153 C# tests, 9/9 Rust tests
+- Committed `.gitattributes` + `.editorconfig` (C2 step 1, `f7e38ea`)
+- Committed prior session's verified work — executor tests, OllamaClient endpoint enforcement,
+  consent fixes, privacy scanner tests, `.gitignore` release carve-out (C3) — as `e1f52fa`
+- Removed stale `.git/index.lock` (0-byte, orphaned by a crashed git process; no git running)
+- Deliberately left uncommitted pending human review: modified CI workflow, 15 release scripts,
+  `installer/`, `Directory.Build.props`, `release/*.json`, `verify-dev.ps1`, `AUDIT_ROADMAP.md`
+
 
 ---
 
@@ -338,8 +357,10 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Add `docs/repository-hygiene.md`
 - [x] Normalize Git-tracked casing of `README.md` and `ROADMAP.md`
 - [x] Complete stale-name audit for `ExplainMyPC` references
-- [ ] Add `.gitattributes` and normalize line endings (C2)
-- [ ] Commit all untracked source (C1)
+- [ ] Add `.gitattributes` and normalize line endings (C2) — attributes committed 2026-06-10;
+      renormalize pending
+- [ ] Commit all untracked source (C1) — test files, docs, source fixes committed 2026-06-10;
+      CI/release scripts, `installer/`, `Directory.Build.props` await human review
 - [x] Add `release/` to `.gitignore` (C3) — done 2026-06-10, verified via `git check-ignore`
 - [ ] Delete `_archive/` after tagging (C9)
 - [ ] Consolidate triplicated agent instruction docs (C8)
