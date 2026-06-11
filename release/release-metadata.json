@@ -1,0 +1,12 @@
+{
+  "product": "Lucid",
+  "version": "0.1.0",
+  "fileVersion": "0.1.0.0",
+  "informationalVersion": "0.1.0+local",
+  "channel": "preview",
+  "packaging": "unpackaged-self-contained",
+  "runtimeIdentifier": "win-x64",
+  "signingMode": "unsigned-ci-artifact",
+  "signingRequiredBeforeDistribution": true,
+  "releaseNotes": "docs/releases/0.1.0-preview.md"
+}

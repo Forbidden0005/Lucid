@@ -33,6 +33,26 @@ $solutionPath = Join-Path $desktopDir "Lucid.slnx"
 $appProjectPath = Join-Path $desktopDir "Lucid.App\Lucid.App.csproj"
 $testProjectPath = Join-Path $desktopDir "Lucid.Tests\Lucid.Tests.csproj"
 $includeCheckPath = Join-Path $PSScriptRoot "check-app-source-includes.ps1"
+$releaseMetadataCheckPath = Join-Path $PSScriptRoot "validate-release-metadata.ps1"
+$releaseOperationsCheckPath = Join-Path $PSScriptRoot "validate-release-operations.ps1"
+$releaseArtifactSignPath = Join-Path $PSScriptRoot "sign-release-artifact.ps1"
+$releaseArtifactPrepPath = Join-Path $PSScriptRoot "prepare-release-artifact.ps1"
+$releaseSmokePath = Join-Path $PSScriptRoot "run-release-smoke.ps1"
+$releaseArtifactVerifyPath = Join-Path $PSScriptRoot "verify-release-artifact.ps1"
+$releasePackagePath = Join-Path $PSScriptRoot "package-release-artifact.ps1"
+$releasePackageVerifyPath = Join-Path $PSScriptRoot "verify-release-package.ps1"
+$releaseInstallerVerifyPath = Join-Path $PSScriptRoot "verify-installer-roundtrip.ps1"
+$releaseUpdateManifestPath = Join-Path $PSScriptRoot "generate-release-update-manifest.ps1"
+$releaseUpdateManifestVerifyPath = Join-Path $PSScriptRoot "verify-release-update-manifest.ps1"
+$releaseUpdateFeedPath = Join-Path $PSScriptRoot "generate-release-update-feed.ps1"
+$releaseUpdateFeedVerifyPath = Join-Path $PSScriptRoot "verify-release-update-feed.ps1"
+$supportBundleVerifyPath = Join-Path $PSScriptRoot "verify-support-bundle-export.ps1"
+
+Write-Step "Validate release metadata"
+Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseMetadataCheckPath)
+
+Write-Step "Validate release operations policy"
+Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseOperationsCheckPath)
 
 Write-Step "Restore solution"
 Push-Location $desktopDir
@@ -51,6 +71,42 @@ try {
     if ($PublishApp) {
         Write-Step "Publish unpackaged WinUI app"
         Invoke-CheckedCommand -FilePath dotnet -Arguments @("publish", $appProjectPath, "-c", $Configuration, "-p:Platform=x64", "-r", "win-x64", "--self-contained", "true", "-p:WindowsPackageType=None", "--no-restore")
+
+        Write-Step "Sign release artifact"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseArtifactSignPath)
+
+        Write-Step "Run release smoke"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseSmokePath)
+
+        Write-Step "Prepare release artifact"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseArtifactPrepPath)
+
+        Write-Step "Verify release artifact"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseArtifactVerifyPath)
+
+        Write-Step "Package release artifact"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releasePackagePath)
+
+        Write-Step "Verify release package"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releasePackageVerifyPath)
+
+        Write-Step "Generate release update manifest"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseUpdateManifestPath)
+
+        Write-Step "Verify release update manifest"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseUpdateManifestVerifyPath)
+
+        Write-Step "Generate release update feed"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseUpdateFeedPath)
+
+        Write-Step "Verify release update feed"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseUpdateFeedVerifyPath)
+
+        Write-Step "Verify installer round-trip"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseInstallerVerifyPath)
+
+        Write-Step "Verify support bundle export"
+        Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $supportBundleVerifyPath)
     }
 }
 finally {
@@ -68,7 +124,7 @@ finally {
 
 Write-Step "Verification complete"
 if ($PublishApp) {
-    Write-Info "Build, C# tests, release publish, and Rust tests all ran successfully."
+    Write-Info "Build, C# tests, release publish, signing hook, release smoke, artifact preparation, artifact verification, release packaging, package verification, update manifest/feed generation and verification, installer round-trip verification, support-bundle verification, and Rust tests all ran successfully."
 }
 else {
     Write-Info "Build, C# tests, and Rust tests all ran successfully."

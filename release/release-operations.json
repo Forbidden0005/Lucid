@@ -1,0 +1,58 @@
+{
+  "product": "Lucid",
+  "defaultChannel": "preview",
+  "channels": [
+    {
+      "name": "preview",
+      "hostType": "static-json",
+      "publicationRoot": "release/packages",
+      "feedIndex": "release/packages/feeds/index.json",
+      "feedFile": "release/packages/feeds/preview.json",
+      "ownerRole": "release-engineering",
+      "rolloutPolicy": "manual-full-channel",
+      "publicDistributionAllowed": false
+    },
+    {
+      "name": "stable",
+      "hostType": "static-json",
+      "publicationRoot": "release/packages",
+      "feedIndex": "release/packages/feeds/index.json",
+      "feedFile": "release/packages/feeds/stable.json",
+      "ownerRole": "release-engineering",
+      "rolloutPolicy": "manual-full-channel",
+      "publicDistributionAllowed": false
+    },
+    {
+      "name": "internal",
+      "hostType": "static-json",
+      "publicationRoot": "release/packages",
+      "feedIndex": "release/packages/feeds/index.json",
+      "feedFile": "release/packages/feeds/internal.json",
+      "ownerRole": "release-engineering",
+      "rolloutPolicy": "manual-full-channel",
+      "publicDistributionAllowed": false
+    }
+  ],
+  "signingPolicy": {
+    "requiredForPublicDistribution": true,
+    "allowedModes": [
+      "unsigned-ci-artifact",
+      "authenticode-required"
+    ],
+    "currentPublicDistributionAllowed": false
+  },
+  "symbolPolicy": {
+    "publicationMode": "manual-private",
+    "requiresPdbRetention": true,
+    "storePath": "release/symbols",
+    "ownerRole": "release-engineering"
+  },
+  "supportPolicy": {
+    "intakeMode": "manual-reviewed-bundle",
+    "bundleExportScript": "installer/Export-LucidSupportBundle.ps1",
+    "supportPolicyDoc": "docs/support-and-crash-policy.md",
+    "triageGuideDoc": "docs/support-triage-guide.md"
+  },
+  "releaseChecklistDoc": "docs/releases/release-checklist.md",
+  "updatePublicationDoc": "docs/update-publication.md"
+}

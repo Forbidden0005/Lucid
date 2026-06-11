@@ -27,6 +27,12 @@ jobs:
         working-directory: lucid-desktop
         run: dotnet restore Lucid.slnx -p:Platform=x64
 
+      - name: Validate release metadata
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-metadata.ps1
+
+      - name: Validate release operations policy
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-operations.ps1
+
       - name: Check Lucid.App source inclusion policy
         run: powershell.exe -ExecutionPolicy Bypass -File scripts/check-app-source-includes.ps1
 
@@ -95,6 +101,12 @@ jobs:
       - name: Restore NuGet packages
         working-directory: lucid-desktop
         run: dotnet restore Lucid.slnx -p:Platform=x64
+
+      - name: Validate release metadata
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-metadata.ps1
+
+      - name: Validate release operations policy
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-operations.ps1
 
       - name: Check Lucid.App source inclusion policy
         run: powershell.exe -ExecutionPolicy Bypass -File scripts/check-app-source-includes.ps1
@@ -166,6 +178,12 @@ jobs:
         working-directory: lucid-desktop
         run: dotnet restore Lucid.slnx -p:Platform=x64
 
+      - name: Validate release metadata
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-metadata.ps1
+
+      - name: Validate release operations policy
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-operations.ps1
+
       - name: Publish unpackaged self-contained app
         working-directory: lucid-desktop
         run: >
@@ -177,8 +195,45 @@ jobs:
           -p:WindowsPackageType=None
           --no-restore
 
-      - name: Upload unpackaged release artifact
+      - name: Sign release artifact
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/sign-release-artifact.ps1
+
+      - name: Run release smoke
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/run-release-smoke.ps1
+
+      - name: Prepare release artifact metadata and checksums
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/prepare-release-artifact.ps1
+
+      - name: Verify prepared release artifact
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/verify-release-artifact.ps1
+
+      - name: Package release artifact
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/package-release-artifact.ps1
+
+      - name: Verify release package
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/verify-release-package.ps1
+
+      - name: Generate release update manifest
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/generate-release-update-manifest.ps1
+
+      - name: Verify release update manifest
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/verify-release-update-manifest.ps1
+
+      - name: Generate release update feed
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/generate-release-update-feed.ps1
+
+      - name: Verify release update feed
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/verify-release-update-feed.ps1
+
+      - name: Verify installer round-trip
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/verify-installer-roundtrip.ps1
+
+      - name: Verify support bundle export
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/verify-support-bundle-export.ps1
+
+      - name: Upload unpackaged release package
         uses: actions/upload-artifact@v4
         with:
-          name: lucid-release-win-x64-unpackaged
-          path: lucid-desktop/Lucid.App/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/publish/
+          name: lucid-release-win-x64-unpackaged-package
+          path: |
+            release/packages/
