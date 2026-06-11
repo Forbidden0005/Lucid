@@ -9,18 +9,14 @@
 //!
 //! The public API is entirely safe — callers in lib.rs handle the C boundary.
 
-use std::collections::BinaryHeap;
 use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::io;
-use windows_sys::Win32::Foundation::{
-    ERROR_NO_MORE_FILES, HANDLE, INVALID_HANDLE_VALUE,
-};
+use windows_sys::Win32::Foundation::{ERROR_NO_MORE_FILES, HANDLE, INVALID_HANDLE_VALUE};
 use windows_sys::Win32::Storage::FileSystem::{
-    FindClose, FindFirstFileExW, FindNextFileW,
+    FindClose, FindExInfoBasic, FindExSearchNameMatch, FindFirstFileExW, FindNextFileW,
+    FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT, FIND_FIRST_EX_LARGE_FETCH,
     WIN32_FIND_DATAW,
-    FindExInfoBasic, FindExSearchNameMatch,
-    FIND_FIRST_EX_LARGE_FETCH,
-    FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT,
 };
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -28,13 +24,13 @@ use windows_sys::Win32::Storage::FileSystem::{
 #[derive(Debug)]
 pub struct ScanResult {
     pub total_bytes: u64,
-    pub file_count:  u64,
-    pub dir_count:   u64,
+    pub file_count: u64,
+    pub dir_count: u64,
 }
 
 #[derive(Debug)]
 pub struct TopFile {
-    pub path:       String,
+    pub path: String,
     pub size_bytes: u64,
 }
 
@@ -44,12 +40,16 @@ pub struct TopFile {
 pub fn scan_directory(root: &str) -> io::Result<ScanResult> {
     validate_root(root)?;
 
-    let mut result = ScanResult { total_bytes: 0, file_count: 0, dir_count: 0 };
+    let mut result = ScanResult {
+        total_bytes: 0,
+        file_count: 0,
+        dir_count: 0,
+    };
     walk(root, &mut |_path, size| {
         if size == u64::MAX {
-            result.dir_count += 1;   // sentinel: directory
+            result.dir_count += 1; // sentinel: directory
         } else {
-            result.file_count  += 1;
+            result.file_count += 1;
             result.total_bytes += size;
         }
     });
@@ -66,7 +66,9 @@ pub fn scan_top_files(root: &str, n: usize) -> io::Result<Vec<TopFile>> {
     let mut heap: BinaryHeap<Reverse<(u64, String)>> = BinaryHeap::new();
 
     walk(root, &mut |path, size| {
-        if size == u64::MAX { return; }    // skip directories
+        if size == u64::MAX {
+            return;
+        } // skip directories
         if heap.len() < n {
             heap.push(Reverse((size, path)));
         } else if let Some(Reverse((min_size, _))) = heap.peek() {
@@ -79,10 +81,13 @@ pub fn scan_top_files(root: &str, n: usize) -> io::Result<Vec<TopFile>> {
 
     let mut results: Vec<TopFile> = heap
         .into_iter()
-        .map(|Reverse((size, path))| TopFile { path, size_bytes: size })
+        .map(|Reverse((size, path))| TopFile {
+            path,
+            size_bytes: size,
+        })
         .collect();
 
-    results.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+    results.sort_by_key(|file| Reverse(file.size_bytes));
     Ok(results)
 }
 
@@ -137,8 +142,8 @@ fn walk(root: &str, cb: &mut impl FnMut(String, u64)) {
                     cb(full.clone(), u64::MAX);
                     stack.push(full);
                 } else {
-                    let size = (find_data.nFileSizeHigh as u64) << 32
-                        | find_data.nFileSizeLow as u64;
+                    let size =
+                        (find_data.nFileSizeHigh as u64) << 32 | find_data.nFileSizeLow as u64;
                     cb(full, size);
                 }
             }
@@ -146,12 +151,16 @@ fn walk(root: &str, cb: &mut impl FnMut(String, u64)) {
             let ok = unsafe { FindNextFileW(handle, &mut find_data) };
             if ok == 0 {
                 let err = unsafe { windows_sys::Win32::Foundation::GetLastError() };
-                if err == ERROR_NO_MORE_FILES { break; }
+                if err == ERROR_NO_MORE_FILES {
+                    break;
+                }
                 break; // other error — stop iterating this dir
             }
         }
 
-        unsafe { FindClose(handle); }
+        unsafe {
+            FindClose(handle);
+        }
     }
 }
 
@@ -201,7 +210,9 @@ mod tests {
         }
 
         fn path_str(&self) -> &str {
-            self.path.to_str().expect("test path should be valid unicode")
+            self.path
+                .to_str()
+                .expect("test path should be valid unicode")
         }
 
         fn create_dir(&self, relative: &str) {
@@ -340,12 +351,18 @@ mod tests {
             .arg(&dir.path)
             .status()
             .expect("spawn cmd for mklink");
-        assert!(status.success(), "mklink /J should succeed without elevation");
+        assert!(
+            status.success(),
+            "mklink /J should succeed without elevation"
+        );
 
         let result = scan_directory(dir.path_str()).expect("scan with junction cycle");
 
         assert_eq!(result.file_count, 1, "only the real file is counted");
-        assert_eq!(result.dir_count, 1, "junction is skipped, not counted as a directory");
+        assert_eq!(
+            result.dir_count, 1,
+            "junction is skipped, not counted as a directory"
+        );
         assert_eq!(result.total_bytes, 4);
     }
 

@@ -16,9 +16,9 @@
 
 mod scanner;
 
+use scanner::{scan_directory, scan_top_files};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use scanner::{scan_directory, scan_top_files};
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ use scanner::{scan_directory, scan_top_files};
 /// The returned pointer is valid for the lifetime of the process (static data).
 #[no_mangle]
 pub extern "C" fn lucid_scanner_version() -> *const c_char {
-    b"lucid-scanner 0.1.0\0".as_ptr() as *const c_char
+    c"lucid-scanner 0.1.0".as_ptr()
 }
 
 // ── Directory scan ────────────────────────────────────────────────────────────
@@ -43,19 +43,27 @@ pub extern "C" fn lucid_scanner_version() -> *const c_char {
 /// - `0`  success
 /// - `-1` path argument is null or not valid UTF-8
 /// - `-2` I/O error (path does not exist or access denied)
+///
+/// # Safety
+/// `path` must point to a valid null-terminated UTF-8 string. All output
+/// pointers must be non-null and valid for writes of one `u64` each.
 #[no_mangle]
 pub unsafe extern "C" fn lucid_scan_directory(
     path: *const c_char,
     out_total_bytes: *mut u64,
-    out_file_count:  *mut u64,
-    out_dir_count:   *mut u64,
+    out_file_count: *mut u64,
+    out_dir_count: *mut u64,
 ) -> c_int {
-    if path.is_null() || out_total_bytes.is_null() || out_file_count.is_null() || out_dir_count.is_null() {
+    if path.is_null()
+        || out_total_bytes.is_null()
+        || out_file_count.is_null()
+        || out_dir_count.is_null()
+    {
         return -1;
     }
 
     let root = match unsafe { CStr::from_ptr(path) }.to_str() {
-        Ok(s)  => s,
+        Ok(s) => s,
         Err(_) => return -1,
     };
 
@@ -63,8 +71,8 @@ pub unsafe extern "C" fn lucid_scan_directory(
         Ok(result) => {
             unsafe {
                 *out_total_bytes = result.total_bytes;
-                *out_file_count  = result.file_count;
-                *out_dir_count   = result.dir_count;
+                *out_file_count = result.file_count;
+                *out_dir_count = result.dir_count;
             }
             0
         }
@@ -93,6 +101,13 @@ pub unsafe extern "C" fn lucid_scan_directory(
 /// - `0`  success
 /// - `-1` bad arguments
 /// - `-2` I/O error
+///
+/// # Safety
+/// `path` must point to a valid null-terminated UTF-8 string. `out_entries`
+/// must point to caller-owned storage for at least `n` pointers, and
+/// `out_count` must be non-null and valid for one `u32` write. Each non-null
+/// string pointer written to `out_entries` must later be released with
+/// `lucid_free`.
 #[no_mangle]
 pub unsafe extern "C" fn lucid_scan_top_files(
     path: *const c_char,
@@ -105,12 +120,12 @@ pub unsafe extern "C" fn lucid_scan_top_files(
     }
 
     let root = match unsafe { CStr::from_ptr(path) }.to_str() {
-        Ok(s)  => s,
+        Ok(s) => s,
         Err(_) => return -1,
     };
 
     let top = match scan_top_files(root, n as usize) {
-        Ok(v)  => v,
+        Ok(v) => v,
         Err(_) => return -2,
     };
 
@@ -118,13 +133,17 @@ pub unsafe extern "C" fn lucid_scan_top_files(
     for (i, entry) in top.into_iter().take(written).enumerate() {
         let s = format!("{}\t{}", entry.path, entry.size_bytes);
         let cs = match CString::new(s) {
-            Ok(c)  => c,
+            Ok(c) => c,
             Err(_) => continue,
         };
-        unsafe { *out_entries.add(i) = cs.into_raw(); }
+        unsafe {
+            *out_entries.add(i) = cs.into_raw();
+        }
     }
 
-    unsafe { *out_count = written as u32; }
+    unsafe {
+        *out_count = written as u32;
+    }
     0
 }
 
@@ -133,10 +152,16 @@ pub unsafe extern "C" fn lucid_scan_top_files(
 /// Frees a `*mut c_char` that was allocated by this library.
 /// Passing a null pointer is a no-op.
 /// Passing a pointer not originally from this library is undefined behaviour.
+///
+/// # Safety
+/// `ptr` must be null or a pointer previously returned by this library from
+/// `CString::into_raw`, and it must not have been freed already.
 #[no_mangle]
 pub unsafe extern "C" fn lucid_free(ptr: *mut c_char) {
     if !ptr.is_null() {
-        unsafe { drop(CString::from_raw(ptr)); }
+        unsafe {
+            drop(CString::from_raw(ptr));
+        }
     }
 }
 
@@ -216,9 +241,8 @@ mod tests {
         let mut count = 0_u32;
         let mut entries: [*mut c_char; 1] = [ptr::null_mut(); 1];
 
-        let rc = unsafe {
-            lucid_scan_top_files(path.as_ptr(), 0, entries.as_mut_ptr(), &mut count)
-        };
+        let rc =
+            unsafe { lucid_scan_top_files(path.as_ptr(), 0, entries.as_mut_ptr(), &mut count) };
 
         assert_eq!(rc, -1);
         assert_eq!(count, 0);
@@ -248,7 +272,9 @@ mod tests {
                 .to_owned();
             values.push(value);
 
-            unsafe { lucid_free(*entry); }
+            unsafe {
+                lucid_free(*entry);
+            }
         }
 
         assert!(values[0].contains("\t9"));
@@ -276,15 +302,30 @@ mod tests {
 
         unsafe {
             assert_eq!(
-                lucid_scan_directory(path.as_ptr(), ptr::null_mut(), &mut file_count, &mut dir_count),
+                lucid_scan_directory(
+                    path.as_ptr(),
+                    ptr::null_mut(),
+                    &mut file_count,
+                    &mut dir_count
+                ),
                 -1
             );
             assert_eq!(
-                lucid_scan_directory(path.as_ptr(), &mut total_bytes, ptr::null_mut(), &mut dir_count),
+                lucid_scan_directory(
+                    path.as_ptr(),
+                    &mut total_bytes,
+                    ptr::null_mut(),
+                    &mut dir_count
+                ),
                 -1
             );
             assert_eq!(
-                lucid_scan_directory(path.as_ptr(), &mut total_bytes, &mut file_count, ptr::null_mut()),
+                lucid_scan_directory(
+                    path.as_ptr(),
+                    &mut total_bytes,
+                    &mut file_count,
+                    ptr::null_mut()
+                ),
                 -1
             );
         }
@@ -319,12 +360,14 @@ mod tests {
         let mut count = 7_u32;
         let mut entries: [*mut c_char; 1] = [ptr::null_mut(); 1];
 
-        let rc = unsafe {
-            lucid_scan_top_files(path.as_ptr(), 1001, entries.as_mut_ptr(), &mut count)
-        };
+        let rc =
+            unsafe { lucid_scan_top_files(path.as_ptr(), 1001, entries.as_mut_ptr(), &mut count) };
 
         assert_eq!(rc, -1);
-        assert_eq!(count, 7, "out_count must be untouched on argument rejection");
+        assert_eq!(
+            count, 7,
+            "out_count must be untouched on argument rejection"
+        );
     }
 
     #[test]
@@ -355,9 +398,8 @@ mod tests {
         let mut count = 0_u32;
         let mut entries: [*mut c_char; 1] = [ptr::null_mut(); 1];
 
-        let rc = unsafe {
-            lucid_scan_top_files(path.as_ptr(), 1, entries.as_mut_ptr(), &mut count)
-        };
+        let rc =
+            unsafe { lucid_scan_top_files(path.as_ptr(), 1, entries.as_mut_ptr(), &mut count) };
 
         assert_eq!(rc, -2);
     }

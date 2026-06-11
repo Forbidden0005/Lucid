@@ -1,6 +1,6 @@
 # Lucid Roadmap
 
-> Last audited: 2026-06-10. This is the single source of truth for project state, priorities,
+> Last audited: 2026-06-11. This is the single source of truth for project state, priorities,
 > completed work, and engineering direction. All other roadmap and state documents are retired
 > into `docs/history/`. Update this file after every completed task.
 
@@ -14,15 +14,14 @@
 4. [Critical Issues — Act First](#critical-issues--act-first)
 5. [Completed Work](#completed-work)
 6. [Product Roadmap](#product-roadmap)
-7. [Engineering Professionalization Roadmap](#engineering-professionalization-roadmap)
-8. [Architecture Review](#architecture-review)
-9. [Code Quality Backlog](#code-quality-backlog)
-10. [Testing Plan](#testing-plan)
-11. [Tooling and Standards](#tooling-and-standards)
-12. [Documentation State](#documentation-state)
-13. [Dependency Review](#dependency-review)
-14. [Deferred Work](#deferred-work)
-15. [Definition of Professional Quality](#definition-of-professional-quality)
+7. [Architecture Review](#architecture-review)
+8. [Code Quality Backlog](#code-quality-backlog)
+9. [Testing Plan](#testing-plan)
+10. [Tooling and Standards](#tooling-and-standards)
+11. [Documentation State](#documentation-state)
+12. [Dependency Review](#dependency-review)
+13. [Deferred Work](#deferred-work)
+14. [Definition of Professional Quality](#definition-of-professional-quality)
 
 ---
 
@@ -37,7 +36,7 @@
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
 | Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 40 test files, 160 passing tests |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 239 passing C# tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -69,7 +68,7 @@ Lucid must never drift into:
 
 ## Current Verified Baseline
 
-Verified 2026-06-10 from repository inspection.
+Verified 2026-06-11 from repository inspection and local verification.
 
 **Build commands (verified passing):**
 ```powershell
@@ -84,8 +83,8 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 239 passing C# tests (verified 2026-06-10 via `dotnet test`)
-- 19 Rust tests passing (verified 2026-06-10 via `cargo test`)
+- 239 passing C# tests (verified 2026-06-11 via `dotnet test`)
+- 19 Rust tests passing (verified 2026-06-11 via `cargo test`)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
   the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
   production set in `AppServices` is 27)
@@ -110,10 +109,10 @@ cargo test
 These block professional quality and must be resolved before any new feature work.
 
 ### C1 — Untracked source files that committed code depends on (P0)
-CI invokes `scripts/validate-release-metadata.ps1`, `validate-release-operations.ps1`, and
-`check-app-source-includes.ps1` — all untracked. A fresh clone of `main` fails CI today.
-~25% of the test suite exists only on this machine. `Directory.Build.props`, the entire
-`installer/` directory, 10 test files, and 4 docs are also untracked.
+CI invokes `scripts/validate-release-metadata.ps1` and `validate-release-operations.ps1`, but
+those scripts are still untracked. A fresh clone of `main` fails CI today. `Directory.Build.props`,
+the entire `installer/` directory, 14 untracked release/support scripts, `release/*.json`, and
+`AUDIT_ROADMAP.md` are also awaiting human review or disposition.
 
 **Fix:** Commit all untracked source after C2 is in place (so endings land normalized).
 Verify with a scratch clone + CI run.
@@ -121,13 +120,14 @@ Verify with a scratch clone + CI run.
 - [x] Commit `.gitattributes` + `.editorconfig` first (C2) — done 2026-06-10 (`f7e38ea`)
 - [x] Stage and commit: test files, docs, production source fixes — done 2026-06-10 (`e1f52fa`);
       verified beforehand: build clean, 153/153 C# tests, 9/9 Rust tests
-- [ ] Stage and commit: `scripts/` (15 untracked), `installer/`, `Directory.Build.props`,
+- [ ] Stage and commit: `scripts/` (14 untracked), `installer/`, `Directory.Build.props`,
       modified `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`, `release/*.json` —
       **blocked on human review**: autonomous agents must not commit CI/build/release-script
       changes (AGENTS.md impactful-action gate). Tyler: review and commit these to unblock CI.
+- [ ] Decide disposition for `AUDIT_ROADMAP.md` (commit under history/docs or remove after review)
 - [ ] Confirm CI green from clean checkout
 
-### C2 — No `.gitattributes`; line-ending churn poisons every diff (P0)
+### C2 — Line-ending renormalization still pending (P0)
 613 modified files showing ~113k insertions / ~112k deletions — almost entirely CRLF↔LF.
 Real changes are invisible inside whole-file diffs. `git blame` is destroyed on every touched file.
 
@@ -169,6 +169,8 @@ Meanwhile page-level ViewModels use constructor injection. Two competing DI idio
 ### C5 — 633-line manual compile whitelist in `Lucid.App.csproj` (P1)
 481 explicit `<Compile Include>` entries. Only 9 files remain excluded. The original reason
 (excluding future scaffolding) no longer applies. Every new file requires a csproj edit.
+Current guard coverage is partial: `scripts/check-app-source-includes.ps1` verifies ViewModels,
+Services, and Core, but the 6 excluded Controls/Models files are still outside that guard.
 
 **Fix:** Delete or archive the 9 orphans, remove the Remove/Include machinery, return to default globbing,
 retire `check-app-source-includes.ps1`.
@@ -177,10 +179,11 @@ retire `check-app-source-includes.ps1`.
 - [ ] Remove `<Compile Remove>` globs and all 481 `<Compile Include>` entries
 - [ ] Confirm build output identical; retire guard script from CI
 
-### C6 — Test depth: 143 tests for 480 files; Rust at zero; Rust absent from CI (P1)
-Coverage concentrated in Cleanup/Execution/Persistence/Trust. 28 executors exist; destructive-path
-and rollback coverage is partial. Rust scanner has 0 tests and no CI job. The build silently skips
-copying `lucid_scanner.dll` when missing — a broken native build is undetectable until runtime.
+### C6 — Rust absent from CI; Release native DLL remains optional (P1)
+Test depth improved materially during Phase 3: 239 C# tests, 19 Rust tests, and executor safety
+coverage across the 27 registered production executors. Remaining risk is CI enforcement and native
+artifact reliability: Rust still has no CI job, and the build silently skips copying
+`lucid_scanner.dll` when missing — a broken native build is undetectable until runtime.
 
 **Fix:** See Testing Plan. Make Release copy step a hard error when DLL is missing.
 
@@ -192,6 +195,8 @@ copying `lucid_scanner.dll` when missing — a broken native build is undetectab
       long-path `\\?\` traversal, junction-cycle termination, path-form handling
 - [ ] `cargo test/clippy/fmt` CI job — blocked on human review (CI changes are an
       autonomous hard stop)
+      - Local precondition now clean as of 2026-06-11: `cargo fmt --check`,
+        `cargo clippy -- -D warnings`, and `cargo test` all pass
 - [ ] Make missing DLL a hard build error for Release configuration
 
 ### C7 — 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls (P1)
@@ -256,7 +261,7 @@ Do not add items here that have not been verified.
 - CI unit test workflow corrected — test job no longer assumes compiled artifacts from another runner
 - `setup.ps1` resolves solution and launch paths from repo location instead of stale `ExplainMyPC` path
 - `scripts/verify-dev.ps1` added as one-command local verification entrypoint
-- `scripts/check-app-source-includes.ps1` verifies active C# files are either compiled or documented as intentional exclusions
+- `scripts/check-app-source-includes.ps1` verifies ViewModels, Services, and Core C# files are either compiled or documented as intentional exclusions
 - `docs/active-file-inventory.md` records active file counts and current intentional non-compiled files
 
 ### Build, CI, and Release Pipeline
@@ -321,6 +326,8 @@ Do not add items here that have not been verified.
 ### Rust
 - Rust scanner tests: missing-root failure, file-root rejection, directory/file/byte counting, top-file ordering, FFI argument validation, version reporting, owned-string cleanup
 - Rust scanner root validation now rejects nonexistent or non-directory roots
+- Rust scanner formatting and lint are locally clean: `cargo fmt --check` and
+  `cargo clippy -- -D warnings` pass as of 2026-06-11
 
 ### Session 2026-06-10 (autonomous)
 - Verified full green state: x64 Debug build clean, 153/153 C# tests, 9/9 Rust tests
@@ -328,8 +335,20 @@ Do not add items here that have not been verified.
 - Committed prior session's verified work — executor tests, OllamaClient endpoint enforcement,
   consent fixes, privacy scanner tests, `.gitignore` release carve-out (C3) — as `e1f52fa`
 - Removed stale `.git/index.lock` (0-byte, orphaned by a crashed git process; no git running)
-- Deliberately left uncommitted pending human review: modified CI workflow, 15 release scripts,
+- Deliberately left uncommitted pending human review: modified CI workflow, 14 release/support scripts,
   `installer/`, `Directory.Build.props`, `release/*.json`, `verify-dev.ps1`, `AUDIT_ROADMAP.md`
+
+### Session 2026-06-11 (Codex review)
+- Reviewed committed stabilization work and pending CI/release infrastructure without committing
+  human-gated build, CI, release, or installer files
+- Corrected roadmap drift: stale test counts, stale Rust/executor wording, stale untracked-test
+  claims, partial source-inclusion guard scope, and the missing-section Table of Contents entry
+- Fixed local Rust CI preconditions without changing scanner behavior: formatted Rust sources,
+  added `# Safety` docs for unsafe FFI exports, replaced manual C string construction, and used
+  clippy-preferred descending sort key
+- Verified: x64 Debug build clean (0 warnings, 0 errors), 239/239 C# tests, 19/19 Rust tests,
+  `cargo fmt --check`, `cargo clippy -- -D warnings`, release metadata validation,
+  release operations validation, and source-inclusion check
 
 ### Session 2026-06-10 (autonomous, second run)
 - Completed and committed `SQLitePersistenceDurabilityTests` (7 tests), found untracked from a
@@ -391,8 +410,9 @@ Do not add items here that have not been verified.
 - Discovered and repaired truncation of this file: the tail (final rows of the Tooling table plus
   sections Documentation State, Dependency Review, Deferred Work, Definition of Professional
   Quality) was lost to a truncated write committed unnoticed in `e1f52fa` and carried through all
-  subsequent commits. Reconstructed from `AUDIT_ROADMAP.md` with an inline reconstruction note;
-  the ToC's "Engineering Professionalization Roadmap" discrepancy is flagged there for human review
+  subsequent commits. Reconstructed from `AUDIT_ROADMAP.md` with an inline reconstruction note.
+  The stale ToC entry for a missing "Engineering Professionalization Roadmap" section was removed
+  2026-06-11
 - Diagnosed and dismissed phantom repo corruption: the agent sandbox's filesystem mount served
   stale/partial views of committed files and `.git` internals (apparent mid-file truncations,
   "index file corrupt" / "improper chunk offset" errors). Native Windows `git status` and
@@ -440,7 +460,8 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [ ] Add `.gitattributes` and normalize line endings (C2) — attributes committed 2026-06-10;
       renormalize pending
 - [ ] Commit all untracked source (C1) — test files, docs, source fixes committed 2026-06-10;
-      CI/release scripts, `installer/`, `Directory.Build.props` await human review
+      CI/release scripts, `installer/`, `Directory.Build.props`, `release/*.json`, and
+      `AUDIT_ROADMAP.md` await human review or disposition
 - [x] Add `release/` to `.gitignore` (C3) — done 2026-06-10, verified via `git check-ignore`
 - [ ] Delete `_archive/` after tagging (C9)
 - [ ] Consolidate triplicated agent instruction docs (C8)
@@ -476,6 +497,8 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [ ] Remove csproj compile whitelist (C5)
 - [ ] Real certificate-backed signing inputs — flip release metadata to `authenticode-required`
 - [ ] Expand launch smoke gate into deeper navigation and telemetry assertions
+- [ ] Decide non-interactive CI smoke policy: current pending script can record `skipped`, and
+      artifact verification accepts `passed` or `skipped`
 - [ ] Define hosted update publication/discovery rules
 - [ ] Crash/support operational ownership for customer-facing distribution
 - [ ] Packaged-distribution parity (MSIX — deferred until after unpackaged path is stable)
@@ -651,9 +674,9 @@ reference it; file-linking disappears; the csproj whitelist problem also shrinks
 — moving files is cheap once globbing is default.
 
 ### Concern 3: Execution Priority Queue Missing
-28 executors follow `IActionExecutor` with dry-run/rollback — good. Missing: a formal Execution
-Priority Queue (Foreground/Background/Idle-only classes). Until built, concurrent heavy operations
-are prevented only by convention. Belongs in Phase 5.
+27 registered production executors follow `IActionExecutor` with dry-run/rollback — good. Missing:
+a formal Execution Priority Queue (Foreground/Background/Idle-only classes). Until built,
+concurrent heavy operations are prevented only by convention. Belongs in Phase 5.
 
 ### Concern 4: Native Boundary Is Silently Optional
 The csproj copies `lucid_scanner.dll` if present and logs "skipping" if not. Release builds must
@@ -682,15 +705,17 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 ## Testing Plan
 
 ### Current Status
-- 41 test files / 239 passing test cases — good structure, real assertions, Moq + FluentAssertions
-- ~25% of test files are untracked (C1) — commit first
+- 239 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
+- Test files are committed; remaining C1 blocker is CI/build/release infrastructure awaiting human review
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
-- Rust: 9 tests; no CI job
-- No integration tests of SQLite persistence against real files beyond unit scope
+- Rust: 19 tests; no CI job
+- SQLite durability tests cover real file behavior; broader app-level persistence integration coverage is still absent
 
 ### Improvement Plan (ordered)
 
-**P0:** Commit the untracked test files (part of C1)
+**P0: Commit the untracked test files — done 2026-06-10**
+Committed as part of C1 partial cleanup. Remaining P0 source-control blocker is the human-reviewed
+CI/build/release infrastructure listed under C1.
 
 **P1: Executor safety contract suite — done 2026-06-10**
 Parameterized test over all 27 registered executors asserting doctrine invariants:
@@ -728,13 +753,13 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 
 | Area | Current State | Target |
 |---|---|---|
-| Line endings | No `.gitattributes`; 613-file churn | Add `.gitattributes`; renormalize once (C2) |
-| Editor config | None | `.editorconfig` encoding/indent/whitespace + C# naming rules |
+| Line endings | `.gitattributes` committed; one-time renormalize still pending | Renormalize once after pending CI/release files are reviewed (C2) |
+| Editor config | `.editorconfig` committed; enforcement still limited | Enforce formatting/code style in CI |
 | Formatting | Manual consistency (unenforced) | `dotnet format --verify-no-changes` in CI |
 | Analyzers | Default only | Enable `AnalysisLevel=latest`, `EnforceCodeStyleInBuild=true`, `BannedApiAnalyzers` |
 | Warnings | 0 today | `TreatWarningsAsErrors=true` in `Directory.Build.props` — cheapest moment is now |
 | Package versions | Inline in csproj ×2 | `Directory.Packages.props` central package management |
-| Rust tooling | No fmt/clippy config; no CI | `cargo fmt --check` + `cargo clippy -D warnings` + `cargo test` CI job |
+| Rust tooling | Local `fmt`, `clippy -D warnings`, and tests pass; no CI job | Add `cargo fmt --check` + `cargo clippy -D warnings` + `cargo test` CI job |
 | Commit hooks | None | Optional lightweight pre-commit running `dotnet format` on staged files — skip if it adds friction |
 | CI duplication | 4 jobs repeat restore/validate verbatim | Composite action or `workflow_call`; `concurrency:` group with cancel-in-progress; NuGet caching |
 
@@ -742,10 +767,9 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 > through the end of this file was reconstructed after the original tail of this document was lost
 > to a truncated write — the truncation was committed unnoticed in `e1f52fa` and carried through
 > every subsequent commit. Sources for the reconstruction: `AUDIT_ROADMAP.md` (the 2026-06-10 audit
-> this file consolidates) and the surviving body of this document. One known discrepancy is left
-> for human review rather than guessed at: the Table of Contents lists an
-> "Engineering Professionalization Roadmap" section, but no such heading exists in the surviving
-> body (the professionalization phases live under Product Roadmap).
+> this file consolidates) and the surviving body of this document. The stale Table of Contents entry
+> for a missing "Engineering Professionalization Roadmap" section was removed on 2026-06-11; the
+> professionalization phases live under Product Roadmap.
 
 ---
 
