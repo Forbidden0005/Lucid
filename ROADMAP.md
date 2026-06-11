@@ -84,9 +84,11 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 160 passing C# tests (verified 2026-06-10 via `dotnet test`)
+- 239 passing C# tests (verified 2026-06-10 via `dotnet test`)
 - 19 Rust tests passing (verified 2026-06-10 via `cargo test`)
-- 28 action executors implementing `IActionExecutor`
+- 27 concrete action executors implementing `IActionExecutor` (28 executor files including
+  the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
+  production set in `AppServices` is 27)
 
 **Known active issues (not yet fixed):**
 - Untracked/uncommitted CI + release infrastructure: `.github/workflows/lucid-build.yml` (modified),
@@ -182,7 +184,10 @@ copying `lucid_scanner.dll` when missing — a broken native build is undetectab
 
 **Fix:** See Testing Plan. Make Release copy step a hard error when DLL is missing.
 
-- [ ] Executor safety contract suite (all 28 executors)
+- [x] Executor safety contract suite (all 27 registered executors) — done 2026-06-10:
+      parameterized suite over the full production set (registration under enforced metadata
+      contract, metadata/runtime declaration consistency, dry-run purity at guarded runtime
+      seams, hostile rollback-token safety)
 - [x] Rust unit tests — done 2026-06-10: 19 tests covering FFI argument/UTF-8 validation,
       long-path `\\?\` traversal, junction-cycle termination, path-form handling
 - [ ] `cargo test/clippy/fmt` CI job — blocked on human review (CI changes are an
@@ -356,6 +361,32 @@ Do not add items here that have not been verified.
 - Verified: 19/19 Rust tests (`cargo test`), x64 Debug build clean (0 warnings, 0 errors),
   160/160 C# tests (`dotnet test`)
 
+### Session 2026-06-10 (autonomous, fifth run)
+- Closed Phase 3 / C6 item: executor safety contract suite across the full registered
+  production executor set — new `ExecutorSafetyContractTests` (79 test cases) asserting,
+  for every executor: (1) clean registration under the registry's enforced metadata
+  contract, (2) catalog metadata matches runtime declarations (privilege, confirmation,
+  dry-run, rollback, consent/failure-mode/diagnostics notes), (3) ActionId uniqueness and
+  format, (4) dry-run never reports applied changes, never lets an exception escape, and
+  never touches a mutating runtime operation — proven via guarded throwing fakes injected
+  into all 8 seam-equipped executors (Sfc, DISM, FlushDns, Winsock, StoreReset,
+  NetworkAdapter, RecycleBin, WindowsUpdateCache) plus a guarded `IStartupManagementService`
+  for the 4 startup executors, (5) rollback with an unknown token never claims restoration
+  and fails safely (only `NotSupportedException` from non-rollbackable executors is allowed)
+- Scope notes recorded in the suite itself: 4 unseamed cleanup executors (temp files,
+  browser cache, delivery optimization, old downloads) are excluded from behavioural
+  dry-run invocation because their dry-run scans live user directories (read-only by
+  design, machine-dependent); their dry-run/rollback behaviour remains covered by
+  dedicated seam/parameter tests. `action.startup.backup-startup-state` is an explicit,
+  documented exception to the unknown-token rule: its rollback is an idempotent deletion
+  of its own snapshot artifact, so a missing target legitimately reports success
+- Count correction: the registered production set is 27 concrete executors (28 files
+  including the abstract `OpenApplicationExecutorBase`); docs previously said 28
+- Test-only change: new test file + 24 additive `<Compile Include>` links in
+  `Lucid.Tests.csproj` (18 executor sources + 6 support files); zero production code edits
+- Verified: x64 Debug build clean (0 warnings, 0 errors), 239/239 C# tests
+  (160 → 239), 19/19 Rust tests
+
 ### Session 2026-06-10 (autonomous, fourth run)
 - Discovered and repaired truncation of this file: the tail (final rows of the Tooling table plus
   sections Documentation State, Dependency Review, Deferred Work, Definition of Professional
@@ -472,7 +503,7 @@ Goal: protect the parts of Lucid that can harm trust.
 - [x] Automation consent gate tests (all paths including denial and cancellation)
 - [x] Local endpoint enforcement tests
 - [x] Rust scanner tests (19 tests)
-- [ ] Executor safety contract suite across all 28 executors (dry-run purity, rollback metadata, hostile-path inputs) (C6)
+- [x] Executor safety contract suite across all 27 registered executors (dry-run purity, rollback metadata, hostile-path inputs) (C6) — done 2026-06-10, see session notes
 - [x] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6) — done 2026-06-10, all 19 passing
 - [ ] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6)
 - [ ] Make missing `lucid_scanner.dll` a hard build error for Release (C6)
@@ -651,7 +682,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 ## Testing Plan
 
 ### Current Status
-- 40 test files / 160 test methods — good structure, real assertions, Moq + FluentAssertions
+- 41 test files / 239 passing test cases — good structure, real assertions, Moq + FluentAssertions
 - ~25% of test files are untracked (C1) — commit first
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
 - Rust: 9 tests; no CI job
@@ -661,13 +692,15 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 
 **P0:** Commit the untracked test files (part of C1)
 
-**P1: Executor safety contract suite**
-Parameterized test over all 28 executors asserting doctrine invariants:
-- Dry-run never mutates state
-- Destructive executors declare rollback metadata or are explicitly non-rollbackable
-- Rollback after execute restores state where testable
-- Metadata contract validation passes
-This is the highest-value test investment — it mechanizes the safety doctrine.
+**P1: Executor safety contract suite — done 2026-06-10**
+Parameterized test over all 27 registered executors asserting doctrine invariants:
+- Dry-run never mutates state — covered at the seam boundary (guarded throwing fakes)
+- Destructive executors declare rollback metadata or are explicitly non-rollbackable — covered
+- Rollback with unknown token never claims restoration — covered (idempotent
+  artifact-deletion rollback documented as the one legitimate exception)
+- Metadata contract validation passes for the full set — covered
+Remaining (not blocking): "rollback after execute restores state" end-to-end remains
+per-executor (existing rollback tests cover the staging-based cleanup executors).
 
 **P1: Persistence durability tests — done 2026-06-10**
 - Queue overflow behavior — covered (back-pressure metrics, drop callback, post-drain recovery)
