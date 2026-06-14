@@ -4,12 +4,14 @@
 > completed work, and engineering direction. All other roadmap and state documents are retired
 > into `docs/history/`. Update this file after every completed task.
 
-> ⚠️ **Scope divergence (2026-06-13):** a whole-project review found the implementation
-> has run ahead of this roadmap — ~521 files across 42 service subdomains, including
-> several domains not scoped here (Autonomy, Distributed, Companion, Visual/Desktop
-> context, Simulation). Direction on whether to freeze, rebaseline, or quarantine that
-> scope is pending in **[`docs/SCOPE_RECONCILIATION.md`](docs/SCOPE_RECONCILIATION.md)**.
-> Read it before adding new subsystems.
+> ⚠️ **Scope freeze in force (decided 2026-06-14):** a whole-project review found the
+> implementation has run ahead of this roadmap — ~521 files across 42 service
+> subdomains, including several domains not scoped here (Autonomy, Distributed,
+> Companion, Visual/Desktop context, Simulation). **Decision: Option A — freeze new
+> out-of-roadmap scope now; rebaseline (Option B) at the Phase-1 green bar
+> (`v0.1-foundation`).** Do **not** add a new out-of-roadmap service domain without
+> explicit owner sign-off — new work hardens what already exists. Full mapping and
+> the rebaseline trigger: **[`docs/SCOPE_RECONCILIATION.md`](docs/SCOPE_RECONCILIATION.md)**.
 
 ---
 
