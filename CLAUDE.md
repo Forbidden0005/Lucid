@@ -38,6 +38,7 @@ Key strategic directives (always active):
 - Never add: fake AI buzzwords, mystery optimization, aggressive auto-remediation, cloud dependency
 - The flagship experience is natural language operational explanations (Phase 4 in roadmap)
 - Current highest-value priorities (in order): Platform stabilization → Resource governance → Explain My PC flagship → Security intelligence → Process relationship intelligence → Operational replay → SQLite persistence → Advanced forecasting
+- **Scope freeze (Option A, owner-confirmed 2026-06-14):** the implementation has run ahead of the roadmap. Do **not** add a new out-of-roadmap service domain (the ❓ list in `docs/SCOPE_RECONCILIATION.md` — Autonomy, Distributed, Companion, Visual/Desktop context, Simulation, etc.) without explicit owner sign-off. New work hardens what exists. This is a freeze, not a deletion. The freeze lifts and a roadmap rebaseline (Option B) begins once Phase 1 hits its green stabilization bar (`v0.1-foundation`); read `docs/SCOPE_RECONCILIATION.md` before proposing new subsystems.
 
 ---
 
@@ -511,17 +512,42 @@ Full detail in `ROADMAP.md`. Quick reference:
 
 # What Is Already Built
 
-See full inventory in session notes. Summary of major systems:
+> Regenerated from the actual source tree (not session notes). Scale at last sync:
+> **~521 C# files** in `Lucid.App` across **42 service subdomains**, **23 pages**,
+> **27 executors**, **25 insight rules**, **249 passing tests**.
+>
+> ⚠️ Much of the list below is **beyond the roadmap's stated current phase**
+> (Phase 1 — Platform Stabilization). The implementation has run ahead of the
+> plan. Before treating any of these as "done and load-bearing," read
+> **`docs/SCOPE_RECONCILIATION.md`**, which maps each subsystem to its roadmap
+> phase and flags which were built early or are not in the roadmap at all.
 
+### Foundation (Phase 1-aligned)
 - **Telemetry engine** — 6 samplers, rolling 30-min buffer, baseline modeling (Welford)
 - **Intelligence engine** — 25 insight rules (anomaly + forecast + synthesis), process attribution
 - **Narrative engine** — plain-English system status from insight set
-- **Action execution engine** — IActionExecutor pattern, dry-run, rollback, privilege detection
-- **28 executors** — disk cleanup, Windows repair, startup management, process control, storage cleanup
+- **Action execution engine** — `IActionExecutor` pattern, dry-run, rollback, privilege detection
+- **27 executors** — disk cleanup, Windows repair, startup management, process control, storage cleanup
+- **Rollback staging maintenance** — governed (IdleOnly) retention sweep that reclaims expired `%LOCALAPPDATA%\Lucid\Rollback` staging sets (`Services/Cleanup/RollbackStagingSweeper` + `RollbackStagingMaintenanceService`)
+- **Resource governance** — `RuntimeGovernanceService`, `ConcurrencyBudget`, `AdaptiveSchedulingPolicy`, Foreground/Background/IdleOnly workload classes
+- **Settings** — `ISettingsService` / `JsonSettingsStore`, schema-versioned, atomic writes
+- **SQLite persistence** — repository pattern, write-queue, health monitor, durability tests
+- **Diagnostics / self-observability** — `InternalDiagnosticsService`, structured `IOperationalLogger`
 - **Process intelligence** — per-PID behavioral tracking, anomaly flags, trust classification
 - **Security intelligence** — persistence scanner, signature verification, Defender status reader
-- **Storage intelligence** — SHA-256 duplicate detection, category analyzer, large file finder
-- **Timeline system** — chronological event aggregation, grouped by time, filter chips
-- **Session & history** — operation history persistence, session context tracking
-- **13 pages** — Dashboard, Insights, Processes, Repairs, Security, Storage, Timeline, Apps, Explain, Settings, Privacy, InsightDetail
-- **Design system** — 9 XAML style files, 5 custom controls, Fluent-inspired dark theme
+- **Storage intelligence** — SHA-256 duplicate detection, category analyzer, large file finder; native Rust scanner (`lucid-scanner`) with managed fallback
+- **Timeline / session / history** — event aggregation, operation history persistence, session context
+
+### Built ahead of roadmap (see SCOPE_RECONCILIATION.md before relying on these)
+- **Explain / Reasoning / Cognitive** — `ExplainMyPcEngine`, `OperationalEvidenceGraph`, `CognitiveReasoningEngine`, context synthesis, reasoning memory
+- **Watchtower / Remediation / Autonomy** — proactive recommendations, autonomous remediation, workflow planner/executor, human-review gates
+- **Simulation / Replay / Analytics** — intervention impact estimation, operational replay, historical analytics
+- **Trust / Governance hardening** — consent integrity, local-LLM endpoint enforcement, executor identity validation
+- **Companion / Conversation / LlmChat** — overlay companion, conversation engine, local Ollama client
+- **Desktop / Visual context** — active-window, clipboard, and consent-gated screen analysis
+- **Distributed** — local sync coordinator, cross-machine analytics, device identity (no cloud)
+- **Learning / Behavior** — effectiveness profiles, personalization, workload profiling
+
+### UI
+- **23 pages** — Dashboard, Insights, Processes, Repairs, Security, Storage, Timeline, Apps, Explain, Settings, Privacy, InsightDetail, Diagnostics, RuntimeGovernance, Replay, Historical, MachineBehavior, DeviceIntelligence, Watchtower, AutonomousRemediation, Simulation, Investigation, Reasoning
+- **Design system** — theme/style XAML resources, custom controls, Fluent-inspired dark theme

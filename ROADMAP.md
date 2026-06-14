@@ -4,6 +4,15 @@
 > completed work, and engineering direction. All other roadmap and state documents are retired
 > into `docs/history/`. Update this file after every completed task.
 
+> ⚠️ **Scope freeze in force (decided 2026-06-14):** a whole-project review found the
+> implementation has run ahead of this roadmap — ~521 files across 42 service
+> subdomains, including several domains not scoped here (Autonomy, Distributed,
+> Companion, Visual/Desktop context, Simulation). **Decision: Option A — freeze new
+> out-of-roadmap scope now; rebaseline (Option B) at the Phase-1 green bar
+> (`v0.1-foundation`).** Do **not** add a new out-of-roadmap service domain without
+> explicit owner sign-off — new work hardens what already exists. Full mapping and
+> the rebaseline trigger: **[`docs/SCOPE_RECONCILIATION.md`](docs/SCOPE_RECONCILIATION.md)**.
+
 ---
 
 ## Table of Contents
@@ -36,7 +45,7 @@
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
 | Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 239 passing C# tests |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 249 passing C# tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -90,10 +99,9 @@ cargo test
   production set in `AppServices` is 27)
 
 **Known active issues (not yet fixed):**
-- Untracked/uncommitted CI + release infrastructure: `.github/workflows/lucid-build.yml` (modified),
-  15 `scripts/*.ps1`, `installer/`, `Directory.Build.props`, `release/*.json` — awaiting human
-  review before commit (autonomous hard stop). Test files, docs, and source fixes were committed
-  2026-06-10; a fresh clone still fails CI until the scripts land.
+- Fresh-clone / CI proof is still incomplete: the previously untracked CI, release, installer, and
+  support infrastructure was committed on 2026-06-11 (`107a6fb`), and the current worktree is
+  clean, but a scratch-clone verification / CI-green confirmation is still not recorded here.
 - CRLF/LF churn — `.gitattributes` committed 2026-06-10; repo-wide renormalize still pending (C2)
 - ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
@@ -108,23 +116,20 @@ cargo test
 
 These block professional quality and must be resolved before any new feature work.
 
-### C1 — Untracked source files that committed code depends on (P0)
-CI invokes `scripts/validate-release-metadata.ps1` and `validate-release-operations.ps1`, but
-those scripts are still untracked. A fresh clone of `main` fails CI today. `Directory.Build.props`,
-the entire `installer/` directory, 14 untracked release/support scripts, `release/*.json`, and
-`AUDIT_ROADMAP.md` are also awaiting human review or disposition.
+### C1 — Clean-checkout / CI proof still pending (P0)
+The load-bearing CI, release, installer, and support infrastructure that was previously local-only
+is now committed on `main`, and `git status` is clean. What remains is proving that a fresh
+checkout follows the documented path end-to-end and that CI is green from that state.
 
-**Fix:** Commit all untracked source after C2 is in place (so endings land normalized).
-Verify with a scratch clone + CI run.
+**Fix:** Verify with a scratch clone + CI run, then keep the roadmap aligned with that evidence.
 
 - [x] Commit `.gitattributes` + `.editorconfig` first (C2) — done 2026-06-10 (`f7e38ea`)
 - [x] Stage and commit: test files, docs, production source fixes — done 2026-06-10 (`e1f52fa`);
       verified beforehand: build clean, 153/153 C# tests, 9/9 Rust tests
-- [ ] Stage and commit: `scripts/` (14 untracked), `installer/`, `Directory.Build.props`,
-      modified `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`, `release/*.json` —
-      **blocked on human review**: autonomous agents must not commit CI/build/release-script
-      changes (AGENTS.md impactful-action gate). Tyler: review and commit these to unblock CI.
-- [ ] Decide disposition for `AUDIT_ROADMAP.md` (commit under history/docs or remove after review)
+- [x] Stage and commit: CI, release, installer, support, and versioning infrastructure —
+      done 2026-06-11 (`107a6fb`): `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`,
+      14 additional `scripts/*.ps1`, `installer/`, `Directory.Build.props`, `release/*.json`,
+      and `AUDIT_ROADMAP.md`
 - [ ] Confirm CI green from clean checkout
 
 ### C2 — Line-ending renormalization still pending (P0)
@@ -137,8 +142,8 @@ functional change.
 
 - [x] Add `.gitattributes` and `.editorconfig` — committed 2026-06-10 (`f7e38ea`); newly staged
       files now land normalized
-- [ ] Run `git add --renormalize .` — deferred: must be isolated from functional changes, and
-      the modified CI workflow + `verify-dev.ps1` are still uncommitted (pending human review)
+- [ ] Run `git add --renormalize .` — deferred: keep this isolated from functional changes as a
+      dedicated normalization commit now that the load-bearing source is tracked
 - [ ] Commit as `chore: normalize line endings` with no functional changes mixed in
 
 ### C3 — `release/` (740 MB) not in `.gitignore` (P0)
@@ -151,8 +156,8 @@ which is how C1 happened.
       repo-tracked contract files (`release-metadata.json`, `release-operations.json`) that
       `scripts/validate-release-*.ps1` and 10 other release scripts consume. A bare `release/` rule
       would have prevented git from ever descending into the directory, blocking those negations.
-- [x] Confirm `git status` ignores it — verified: `git check-ignore` matches all artifact
-      subdirectories; only the two contract JSONs remain visible as untracked (intentional, for C1)
+- [x] Confirm `git status` ignores it — verified: `git check-ignore` matches generated artifact
+      subdirectories while the two repo-tracked contract JSONs remain visible to git as intended
 
 ### C4 — `AppServices.cs`: 2,052-line static service locator (P1)
 ~100 `public static` service properties; 32 ViewModel/View files reach into it directly.
@@ -180,7 +185,7 @@ retire `check-app-source-includes.ps1`.
 - [ ] Confirm build output identical; retire guard script from CI
 
 ### C6 — Rust absent from CI; Release native DLL remains optional (P1)
-Test depth improved materially during Phase 3: 239 C# tests, 19 Rust tests, and executor safety
+Test depth improved materially during Phase 3: 249 C# tests, 19 Rust tests, and executor safety
 coverage across the 27 registered production executors. Remaining risk is CI enforcement and native
 artifact reliability: Rust still has no CI job, and the build silently skips copying
 `lucid_scanner.dll` when missing — a broken native build is undetectable until runtime.
@@ -349,6 +354,16 @@ Do not add items here that have not been verified.
 - Verified: x64 Debug build clean (0 warnings, 0 errors), 239/239 C# tests, 19/19 Rust tests,
   `cargo fmt --check`, `cargo clippy -- -D warnings`, release metadata validation,
   release operations validation, and source-inclusion check
+- Commit produced: `0e8cb13` (`chore: align roadmap and rust lint baseline`)
+
+### Session 2026-06-11 (post-release-infra verification)
+- Re-audited `main` after the human-reviewed release/installer/CI commit `107a6fb`; repository is
+  now clean and the previously local-only support infrastructure is tracked on `origin/main`
+- Verified current integrated developer path: `scripts/verify-dev.ps1` completes successfully on
+  the committed tree, including release metadata validation, operations-policy validation,
+  source-inclusion checks, x64 Debug build, 239/239 C# tests, and 19/19 Rust tests
+- Roadmap advanced from the pre-commit C1 snapshot to the current post-commit state; remaining C1
+  proof is fresh-clone / CI confirmation rather than missing tracked source
 
 ### Session 2026-06-10 (autonomous, second run)
 - Completed and committed `SQLitePersistenceDurabilityTests` (7 tests), found untracked from a
@@ -459,9 +474,10 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Complete stale-name audit for `ExplainMyPC` references
 - [ ] Add `.gitattributes` and normalize line endings (C2) — attributes committed 2026-06-10;
       renormalize pending
-- [ ] Commit all untracked source (C1) — test files, docs, source fixes committed 2026-06-10;
-      CI/release scripts, `installer/`, `Directory.Build.props`, `release/*.json`, and
-      `AUDIT_ROADMAP.md` await human review or disposition
+- [x] Commit all untracked source (C1) — test files, docs, source fixes committed 2026-06-10;
+      completed 2026-06-11 (`107a6fb`) for CI/release scripts, `installer/`,
+      `Directory.Build.props`, `release/*.json`, and `AUDIT_ROADMAP.md`; remaining C1 work is
+      clean-checkout / CI proof
 - [x] Add `release/` to `.gitignore` (C3) — done 2026-06-10, verified via `git check-ignore`
 - [ ] Delete `_archive/` after tagging (C9)
 - [ ] Consolidate triplicated agent instruction docs (C8)
@@ -494,6 +510,8 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Installer-managed data migration with canonical-path normalization and backup
 - [x] Repo-side update-feed generation and discovery verification
 - [x] Repo-tracked release-operations policy and validation
+- [ ] Preserve malformed migration-state evidence instead of silently discarding it during
+      installer data migration (`installer/Migrate-LucidData.ps1`)
 - [ ] Remove csproj compile whitelist (C5)
 - [ ] Real certificate-backed signing inputs — flip release metadata to `authenticode-required`
 - [ ] Expand launch smoke gate into deeper navigation and telemetry assertions
@@ -697,6 +715,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 | `async void` | 12 occurrences | Audit — acceptable only for UI event handlers; wrap bodies in try/catch | P1 |
 | Sync-over-async | 9 `.Result`/`.Wait()` | Replace with await or document why safe | P1 |
 | Dead code | 9 excluded files incl. `MockTelemetryService.cs`, `ShellViewModel.cs`, 3 controls, 3 models | Delete (git preserves them) | P1 |
+| Migration-state recovery loses evidence | `installer/Migrate-LucidData.ps1` swallows JSON parse failure and rewrites migration state | Preserve the bad state file or emit explicit recovery evidence before replacement | P1 |
 | Loose service files | 5 telemetry files at `Services/` root | Relocate to `Services/Telemetry/` | P2 |
 | TFM mismatch | App targets `19041.0`, Tests target `22621.0` | Align or document why tests target newer SDK | P2 |
 
@@ -705,8 +724,8 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 ## Testing Plan
 
 ### Current Status
-- 239 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
-- Test files are committed; remaining C1 blocker is CI/build/release infrastructure awaiting human review
+- 249 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
+- Test files are committed; remaining C1 blocker is fresh-clone / CI proof on the now-tracked infrastructure
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
 - Rust: 19 tests; no CI job
 - SQLite durability tests cover real file behavior; broader app-level persistence integration coverage is still absent
@@ -714,8 +733,8 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 ### Improvement Plan (ordered)
 
 **P0: Commit the untracked test files — done 2026-06-10**
-Committed as part of C1 partial cleanup. Remaining P0 source-control blocker is the human-reviewed
-CI/build/release infrastructure listed under C1.
+Completed as part of the C1 cleanup sequence. Remaining P0 proof is clean-checkout / CI verification
+on the committed infrastructure.
 
 **P1: Executor safety contract suite — done 2026-06-10**
 Parameterized test over all 27 registered executors asserting doctrine invariants:

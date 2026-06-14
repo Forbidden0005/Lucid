@@ -24,6 +24,9 @@ Thumbs.db
 
 # Generated release artifacts (~740 MB locally). The two JSON contract files are
 # repo-tracked source consumed by scripts/validate-release-*.ps1 — keep them visible.
+# The symbol store directory must exist for validate-release-operations.ps1 to pass
+# on a fresh checkout/CI; its contents (actual symbols) stay ignored via the .gitkeep.
 release/*
 !release/release-metadata.json
 !release/release-operations.json
+!release/symbols/

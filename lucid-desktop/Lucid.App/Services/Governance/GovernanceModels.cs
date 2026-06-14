@@ -43,6 +43,7 @@ public enum WorkloadCategory
     DuplicateHashing    = 21,  // SHA-256 duplicate detection hashing
     HistoricalAnalytics = 22,  // HistoricalAnalyticsEngine.ComputeAsync
     LearningAnalysis    = 23,  // RemediationLearningService.AnalyzePendingActionsAsync
+    RollbackMaintenance = 24,  // RollbackStagingMaintenanceService expired-set sweep
 }
 
 // ── Runtime mode ──────────────────────────────────────────────────────────────
