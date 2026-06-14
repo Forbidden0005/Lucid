@@ -208,12 +208,39 @@ public static class RollbackStagingSweeper
         bytes = TryMeasureDirectory(dir);
         try
         {
+            ClearReadOnlyAttributes(dir);
             Directory.Delete(dir, recursive: true);
             return true;
         }
         catch (Exception ex) when (IsIoError(ex))
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Clears the ReadOnly attribute from everything under <paramref name="dir"/>.
+    /// Staged files can carry ReadOnly (it survives <see cref="File.Move(string, string)"/>),
+    /// and <see cref="Directory.Delete(string, bool)"/> throws on a read-only entry —
+    /// which, after a set has already been renamed to <c>.purging-*</c>, would make
+    /// every later pass retry the same delete forever and never reclaim the space.
+    /// Best-effort: if attributes cannot be cleared, the subsequent delete simply
+    /// throws and the set is retried on a later pass.
+    /// </summary>
+    private static void ClearReadOnlyAttributes(string dir)
+    {
+        try
+        {
+            foreach (var info in new DirectoryInfo(dir)
+                         .EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
+            {
+                if ((info.Attributes & FileAttributes.ReadOnly) != 0)
+                    info.Attributes &= ~FileAttributes.ReadOnly;
+            }
+        }
+        catch (Exception ex) when (IsIoError(ex))
+        {
+            // Best-effort — the delete below will surface any real failure.
         }
     }
 

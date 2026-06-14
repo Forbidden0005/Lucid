@@ -153,6 +153,23 @@ public sealed class RollbackStagingSweeperTests
     }
 
     [Fact]
+    public void Sweep_RemovesExpiredSet_EvenWhenStagedFileIsReadOnly()
+    {
+        using var root = new RollbackRoot();
+        var set  = root.AddStagingSet("TempCleanup", ageDays: 30, "ro.bin", new byte[12]);
+        var file = Path.Combine(set, "ro.bin");
+        File.SetAttributes(file, File.GetAttributes(file) | FileAttributes.ReadOnly);
+        // Re-age in case the attribute change touched the directory timestamp.
+        Directory.SetLastWriteTimeUtc(set, DateTime.UtcNow.AddDays(-30));
+
+        var result = RollbackStagingSweeper.Sweep(root.Path, Retention, DateTimeOffset.UtcNow);
+
+        result.StagingSetsRemoved.Should().Be(1, "a read-only staged file must not block reclamation");
+        result.Errors.Should().Be(0);
+        Directory.Exists(set).Should().BeFalse();
+    }
+
+    [Fact]
     public void Sweep_WhenDeleteIsBlocked_NeverLeavesAPartialLiveSet()
     {
         using var root = new RollbackRoot();
