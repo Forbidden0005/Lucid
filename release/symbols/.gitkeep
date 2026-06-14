@@ -1,0 +1,8 @@
+# Symbol store root for release operations.
+#
+# Required to exist by scripts/validate-release-operations.ps1 (symbolPolicy.storePath
+# = "release/symbols"), which throws if this directory is missing — that check runs
+# before the build in .github/workflows/lucid-build.yml, so without this placeholder
+# every CI run fails on a fresh checkout before compiling.
+#
+# Actual symbol artifacts produced during a release stay untracked (see .gitignore).
