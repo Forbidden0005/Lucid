@@ -105,17 +105,26 @@ long-term separation, reversible.
 protect Phase 1, then do a deliberate rebaseline (B) once Phase 1 has a green
 stabilization bar — rather than letting the roadmap and the code keep diverging.
 
-### Working decision (adopted 2026-06-14, reversible by the owner)
+### Decision (owner-confirmed 2026-06-14): A now → B at the next milestone
 
-Pending the owner's explicit choice, **Option A is in force as the protective default**:
+The owner has explicitly chosen **Option A now, Option B at the next milestone**.
+This supersedes the earlier "provisional default" framing.
+
+**In force today (Option A — stabilize-first freeze):**
 
 - **Do not add a new ❓ (out-of-roadmap) service domain** without explicit owner
   sign-off. New work goes into hardening what already exists (tests, governance
   coverage, diagnostics, persistence durability) — i.e. Phase 1.
 - This is a *freeze*, not a deletion: no existing code is removed, disabled, or
-  moved by adopting A. Option B or C remains fully open and supersedes this note
-  the moment the owner picks one.
+  moved. Option C (quarantine) is not being pursued.
 - The freeze is mirrored as a guardrail in `CLAUDE.md` so future sessions honour it.
+
+**Planned next (Option B — rebaseline), triggered by the Phase-1 green bar.**
+When Phase 1 — Platform Stabilization is verified complete — i.e. every ✅ Phase-1
+subsystem above has test + governance coverage and a clean build/CI bar (the
+`v0.1-foundation` milestone) — lift the freeze and rewrite `ROADMAP.md` to promote
+the ⏩/❓ domains into real, owned phases, each with its own stabilization bar.
+Until that bar is met, the freeze stays in force.
 
 ## Not in scope of this document
 

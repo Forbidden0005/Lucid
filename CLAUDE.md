@@ -38,7 +38,7 @@ Key strategic directives (always active):
 - Never add: fake AI buzzwords, mystery optimization, aggressive auto-remediation, cloud dependency
 - The flagship experience is natural language operational explanations (Phase 4 in roadmap)
 - Current highest-value priorities (in order): Platform stabilization → Resource governance → Explain My PC flagship → Security intelligence → Process relationship intelligence → Operational replay → SQLite persistence → Advanced forecasting
-- **Scope freeze (Option A, active):** the implementation has run ahead of the roadmap. Do **not** add a new out-of-roadmap service domain (the ❓ list in `docs/SCOPE_RECONCILIATION.md` — Autonomy, Distributed, Companion, Visual/Desktop context, Simulation, etc.) without explicit owner sign-off. New work hardens what exists. This is a freeze, not a deletion; read `docs/SCOPE_RECONCILIATION.md` before proposing new subsystems.
+- **Scope freeze (Option A, owner-confirmed 2026-06-14):** the implementation has run ahead of the roadmap. Do **not** add a new out-of-roadmap service domain (the ❓ list in `docs/SCOPE_RECONCILIATION.md` — Autonomy, Distributed, Companion, Visual/Desktop context, Simulation, etc.) without explicit owner sign-off. New work hardens what exists. This is a freeze, not a deletion. The freeze lifts and a roadmap rebaseline (Option B) begins once Phase 1 hits its green stabilization bar (`v0.1-foundation`); read `docs/SCOPE_RECONCILIATION.md` before proposing new subsystems.
 
 ---
 
