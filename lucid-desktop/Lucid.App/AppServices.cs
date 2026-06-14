@@ -21,6 +21,7 @@ using Lucid.Services.Intelligence.Arbitration;
 using Lucid.Services.Workflow;
 using Lucid.Services.Baseline;
 using Lucid.Services.Behavior;
+using Lucid.Services.Cleanup;
 using Lucid.Services.Distributed;
 using Lucid.Services.Governance;
 using Lucid.Services.Learning;
@@ -112,6 +113,7 @@ public static class AppServices
     private static ProcessIntelligenceService?   _processIntelligence;
     private static IOperationalReplayService?    _replayService;
     private static IRemediationLearningService?  _learningService;
+    private static RollbackStagingMaintenanceService? _rollbackMaintenance;
 
     // ── SQLite persistence layer ──────────────────────────────────────────────
     private static SQLitePersistenceService?        _persistence;
@@ -1455,6 +1457,15 @@ public static class AppServices
         _ = learningSvc.AnalyzePendingActionsAsync();
         _learningService = learningSvc;
 
+        // ── Rollback staging maintenance ──────────────────────────────────────
+        // Reversible cleanups move files into %LOCALAPPDATA%\Lucid\Rollback rather
+        // than deleting them. Without a sweeper those sets accumulate forever and
+        // the reclaimed space is never truly freed. This IdleOnly service prunes
+        // sets past the retention window, governed so it only runs when calm.
+        _rollbackMaintenance = new RollbackStagingMaintenanceService(
+            _settings!, _governance, _operationalLogger!);
+        _rollbackMaintenance.Start();
+
         // ── Operational Watchtower ────────────────────────────────────────────
         // Created after learning service so intervention planner has effectiveness
         // profiles available. The coordinator uses historical analytics, learning,
@@ -1953,6 +1964,11 @@ public static class AppServices
         _diagnostics?.Stop();
         if (_diagnostics is IDisposable dd) dd.Dispose();
         _diagnostics = null;
+
+        // Stop rollback maintenance before governance — each sweep acquires a
+        // governance slot, so it must wind down while governance is still live.
+        _rollbackMaintenance?.Stop();
+        _rollbackMaintenance = null;
 
         // Stop governance — it holds a ReadingAvailable subscription.
         _governance?.Stop();

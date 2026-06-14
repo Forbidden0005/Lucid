@@ -32,6 +32,7 @@ internal static class WorkloadClassifier
         WorkloadCategory.DuplicateHashing    => WorkloadPriority.IdleOnly,
         WorkloadCategory.HistoricalAnalytics => WorkloadPriority.IdleOnly,
         WorkloadCategory.LearningAnalysis    => WorkloadPriority.IdleOnly,
+        WorkloadCategory.RollbackMaintenance => WorkloadPriority.IdleOnly,
 
         _ => WorkloadPriority.Background,
     };
@@ -53,6 +54,7 @@ internal static class WorkloadClassifier
         WorkloadCategory.DuplicateHashing    => "Duplicate Detection",
         WorkloadCategory.HistoricalAnalytics => "Historical Analytics",
         WorkloadCategory.LearningAnalysis    => "Learning Analysis",
+        WorkloadCategory.RollbackMaintenance => "Rollback Maintenance",
         _ => category.ToString(),
     };
 }
