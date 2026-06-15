@@ -1,4 +1,6 @@
-﻿using Lucid.Core.Infrastructure;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+using Lucid.Core.Infrastructure;
 using Lucid.Services.Infrastructure.Events;
 using Lucid.Services.Infrastructure.Lifecycle;
 using Lucid.Services.Infrastructure.OperationalState;
@@ -89,6 +91,10 @@ public static class AppServices
 {
     // ── Structured logger ─────────────────────────────────────────────────────
     private static ILucidLogger? _logger;
+
+    // DI container — populated at the end of Initialize() once every service is
+    // constructed (strangler foundation; see ConfigureContainer).
+    private static ServiceProvider? _serviceProvider;
 
     // ── Phase 18: Unified Operational Core ───────────────────────────────────
     private static IEventBus?                    _eventBus;
@@ -1818,6 +1824,174 @@ public static class AppServices
             try { await _healthTrajectory!.ComputeReportAsync().ConfigureAwait(false); }
             catch { /* best-effort pre-warm — analytics failure is non-critical */ }
         });
+
+        // ── DI container (strangler foundation) ───────────────────────────────
+        // Register every constructed service into an MS.DI container now that they
+        // all exist. Nothing resolves from it yet — call sites migrate off the
+        // static accessors incrementally — so this cannot change runtime behaviour.
+        ConfigureContainer(uiDispatcher);
+    }
+
+    // ── DI container ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The dependency-injection container, available after <see cref="Initialize"/>.
+    /// As call sites migrate off the static accessors they resolve from here
+    /// (directly or via <c>Ioc.Default</c>). During the strangler migration this
+    /// simply mirrors the constructed singletons exposed by the accessors below.
+    /// </summary>
+    public static IServiceProvider Provider =>
+        _serviceProvider ?? throw new InvalidOperationException(
+            "AppServices.Provider accessed before Initialize() built the container.");
+
+    /// <summary>
+    /// Registers every constructed service into an MS.DI container and wires it to
+    /// CommunityToolkit's <c>Ioc.Default</c>. Called at the END of
+    /// <see cref="Initialize"/>, so it captures the fully-constructed singletons.
+    ///
+    /// Instances are registered as-is (<c>AddSingleton&lt;T&gt;(instance)</c>), so the
+    /// container does NOT own or dispose them — the existing ordered Shutdown()
+    /// remains the single owner of teardown. ViewModels are registered later, per
+    /// page, as their call sites migrate (they resolve their service dependencies
+    /// from these singletons).
+    /// </summary>
+    private static void ConfigureContainer(DispatcherQueue uiDispatcher)
+    {
+        var s = new ServiceCollection();
+
+        // UI dispatcher — required by ViewModels resolved from the container.
+        s.AddSingleton(uiDispatcher);
+
+        // ── Unified Operational Core / infrastructure ─────────────────────────
+        s.AddSingleton<ILucidLogger>(Logger);
+        s.AddSingleton<IEventBus>(EventBus);
+        s.AddSingleton<ServiceHealthRegistry>(HealthRegistry);
+        s.AddSingleton<LifecycleCoordinator>(LifecycleCoordinator);
+        s.AddSingleton<IOperationalStateCoordinator>(OperationalState);
+        s.AddSingleton<IOperationalLogger>(OperationalLogger);
+        s.AddSingleton<IPlatformMetricsService>(PlatformMetrics);
+
+        // ── Reasoning / cognitive layer ───────────────────────────────────────
+        s.AddSingleton<IOperationalContextSynthesizer>(ContextSynthesizer);
+        s.AddSingleton<IReasoningMemoryService>(ReasoningMemory);
+        s.AddSingleton<IRecommendationArbitrator>(RecommendationArbitrator);
+        s.AddSingleton<ICognitiveReasoningEngine>(CognitiveReasoning);
+        s.AddSingleton<CognitiveHealthMetrics>(CognitiveMetrics);
+        s.AddSingleton<ReasoningDiagnosticsService>(ReasoningDiagnostics);
+        s.AddSingleton<RecommendationOutcomeTracker>(OutcomeTracker);
+        s.AddSingleton<PatternConsistencyAnalyzer>(PatternAnalyzer);
+
+        // ── Adaptive learning layer ───────────────────────────────────────────
+        s.AddSingleton<PatternIntelligenceEngine>(PatternIntelligence);
+        s.AddSingleton<AdaptiveBaselineTracker>(AdaptiveBaselines);
+        s.AddSingleton<RecommendationEffectivenessAnalyzer>(EffectivenessAnalyzer);
+        s.AddSingleton<LearningOutcomeService>(LearningOutcomes);
+        s.AddSingleton<ConfidenceCalibrationEngine>(CalibrationEngine);
+        s.AddSingleton<LongitudinalBehaviorTracker>(LongitudinalTracker);
+        s.AddSingleton<GovernanceLearningPolicy>(LearningPolicy);
+        s.AddSingleton<AdaptiveLearningMetrics>(AdaptiveLearningMetrics);
+        s.AddSingleton<LearningDiagnosticsService>(LearningDiagnostics);
+
+        // ── Interaction layer ─────────────────────────────────────────────────
+        s.AddSingleton<CognitivePresentationService>(CognitivePresentation);
+        s.AddSingleton<InformationDensityCoordinator>(DensityCoordinator);
+        s.AddSingleton<UnifiedRecommendationService>(UnifiedRecommendations);
+        s.AddSingleton<ExplainabilityRenderer>(ExplainabilityRenderer);
+        s.AddSingleton<CognitiveTimelineBuilder>(CognitiveTimeline);
+        s.AddSingleton<AttentionCoordinator>(AttentionCoordinator);
+        s.AddSingleton<InteractionHealthMetrics>(InteractionMetrics);
+        s.AddSingleton<InteractionDiagnosticsService>(InteractionDiagnostics);
+
+        // ── Trust & governance hardening ──────────────────────────────────────
+        s.AddSingleton<GovernanceDiagnosticsService>(GovernanceDiagnostics);
+        s.AddSingleton<TrustPostureRecoveryManager>(TrustPostureRecovery);
+
+        // ── Core platform services ────────────────────────────────────────────
+        s.AddSingleton<ITelemetryService>(Telemetry);
+        s.AddSingleton<ITelemetryHistoryBuffer>(History);
+        s.AddSingleton<ISystemBaselineService>(Baseline);
+        s.AddSingleton<ISystemInsightEngine>(Intelligence);
+        s.AddSingleton<ISessionContextService>(Session);
+        s.AddSingleton<IOperationalNarrativeEngine>(Narrative);
+        s.AddSingleton<ActionExecutorRegistry>(ExecutorRegistry);
+        s.AddSingleton<IActionExecutionEngine>(ExecutionEngine);
+        s.AddSingleton<IOperationHistoryService>(HistoryService);
+        s.AddSingleton<ITimelineAggregationService>(Timeline);
+        s.AddSingleton<IStartupManagementService>(StartupManagement);
+        s.AddSingleton<IExplainMyPcEngine>(ExplainEngine);
+        s.AddSingleton<ProcessIntelligenceService>(ProcessIntelligence);
+        s.AddSingleton<IOperationalReplayService>(ReplayService);
+        s.AddSingleton<IRemediationLearningService>(LearningService);
+        s.AddSingleton<IHistoricalAnalyticsEngine>(HistoricalAnalytics);
+        s.AddSingleton<IRuntimeGovernanceService>(Governance);
+        s.AddSingleton<IInternalDiagnosticsService>(Diagnostics);
+        s.AddSingleton<WorkloadProfilingService>(WorkloadProfiling);
+        s.AddSingleton<IBehavioralContextEngine>(BehavioralContext);
+
+        // ── Distributed layer ─────────────────────────────────────────────────
+        s.AddSingleton<DeviceIdentityService>(DeviceIdentity);
+        s.AddSingleton<TrustedDeviceRegistry>(TrustedDevices);
+        s.AddSingleton<LocalSyncCoordinator>(LocalSync);
+        s.AddSingleton<DistributedTimelineAggregator>(DistributedTimeline);
+        s.AddSingleton<CrossMachineAnalyticsEngine>(CrossMachineAnalytics);
+
+        // ── Watchtower / remediation / simulation ─────────────────────────────
+        s.AddSingleton<OperationalWatchtowerService>(Watchtower);
+        s.AddSingleton<AutonomousRemediationService>(RemediationService);
+        s.AddSingleton<OperationalSimulationEngine>(SimulationEngine);
+        s.AddSingleton<ISimulationHistoryService>(SimulationHistory);
+        s.AddSingleton<IOutcomeVerificationService>(OutcomeVerification);
+        s.AddSingleton<IMachineHealthTrajectoryService>(HealthTrajectory);
+
+        // ── Anomaly intelligence ──────────────────────────────────────────────
+        s.AddSingleton<IBehavioralBaselineService>(BehavioralBaseline);
+        s.AddSingleton<IDriftDetectionService>(DriftDetection);
+        s.AddSingleton<IAnomalyDetectionService>(AnomalyDetection);
+        s.AddSingleton<IEarlyWarningService>(EarlyWarning);
+        s.AddSingleton<ISystemPersonalityClassifier>(PersonalityClassifier);
+
+        // ── Personalization ───────────────────────────────────────────────────
+        s.AddSingleton<IInterventionMemoryService>(InterventionMemory);
+        s.AddSingleton<IPersonalizationEngine>(PersonalizationEngine);
+        s.AddSingleton<IUserBehaviorClassifier>(UserBehaviorClassifier);
+        s.AddSingleton<IAlertFatigueManager>(AlertFatigueManager);
+        s.AddSingleton<IRecommendationExplanationService>(RecommendationExplanation);
+
+        // ── Evidence & workflow ───────────────────────────────────────────────
+        s.AddSingleton<IOperationalEvidenceGraph>(EvidenceGraph);
+        s.AddSingleton<IRootCauseAnalysisEngine>(RootCauseEngine);
+        s.AddSingleton<IEvidenceExplanationService>(EvidenceExplanation);
+        s.AddSingleton<IOperationalWorkflowEngine>(WorkflowEngine);
+
+        // ── Companion / conversation / LLM ────────────────────────────────────
+        s.AddSingleton<ICompanionSessionManager>(CompanionSession);
+        s.AddSingleton<IOperationalConversationEngine>(ConversationEngine);
+        s.AddSingleton<IOperationalConversationService>(ConversationService);
+        s.AddSingleton<ILlmChatService>(LlmChat);
+        s.AddSingleton<IDesktopContextService>(DesktopContext);
+
+        // ── Automation & trust ────────────────────────────────────────────────
+        s.AddSingleton<AutomationOrchestrator>(AutomationOrchestrator);
+        s.AddSingleton<AutomationAuditService>(AutomationAudit);
+        s.AddSingleton<ConsentExplanationService>(ConsentExplanation);
+        s.AddSingleton<AutomationTransparencyEngine>(AutomationTransparency);
+        s.AddSingleton<AutomationConsentService>(AutomationConsent);
+        s.AddSingleton<OperationalTrustManager>(TrustManager);
+
+        // ── Autonomy ──────────────────────────────────────────────────────────
+        s.AddSingleton<AutonomousWorkflowEngine>(AutonomousWorkflowEngine);
+        s.AddSingleton<HumanReviewGate>(HumanReviewGate);
+        s.AddSingleton<OperationalGoalResolver>(GoalResolver);
+
+        // ── Visual context & settings ─────────────────────────────────────────
+        s.AddSingleton<IVisualContextService>(VisualContext);
+        s.AddSingleton<ConsentBoundScreenAnalysis>(VisualConsent);
+        s.AddSingleton<ISettingsService>(Settings);
+
+        _serviceProvider = s.BuildServiceProvider();
+        Ioc.Default.ConfigureServices(_serviceProvider);
+
+        _logger?.Info("Startup", "DI container configured — services registered.");
     }
 
     /// <summary>
@@ -1827,6 +2001,12 @@ public static class AppServices
     public static void Shutdown()
     {
         _logger?.Info("Startup", "AppServices.Shutdown() called — tearing down services");
+
+        // Dispose the container first. It was populated with externally-created
+        // instances (AddSingleton<T>(instance)), so it does NOT dispose them —
+        // the ordered teardown below remains the single owner of disposal.
+        _serviceProvider?.Dispose();
+        _serviceProvider = null;
         _settings = null;
 
         // Simulation, history, verification, and trajectory services are stateless — null them.
