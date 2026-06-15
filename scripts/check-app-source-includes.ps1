@@ -43,10 +43,16 @@ if (-not (Test-Path $projectPath)) {
 
 [xml]$projectXml = Get-Content $projectPath
 
-$compileIncludes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+# The project uses default SDK compile globbing: every .cs under the project is
+# compiled UNLESS it is explicitly removed via <Compile Remove>. (This replaced a
+# 483-entry <Compile Include> allow-list that could silently drop new files.)
+# Collect the <Compile Remove> entries — the only way a managed source file can be
+# left out of the build — and verify each managed-folder file is either compiled or
+# a documented intentional exclusion.
+$compileRemoves = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($node in $projectXml.Project.ItemGroup.Compile) {
-    if ($node.Include) {
-        [void]$compileIncludes.Add((Normalize-RelativePath $node.Include))
+    if ($node.Remove) {
+        [void]$compileRemoves.Add((Normalize-RelativePath $node.Remove))
     }
 }
 
@@ -67,6 +73,7 @@ $summary = [System.Collections.Generic.List[pscustomobject]]::new()
 
 Write-Section "Check Lucid.App source-file inclusion policy"
 Write-Detail "Project: $projectPath"
+Write-Detail "Model: default-glob compile (a file is compiled unless explicitly <Compile Remove>'d)."
 
 foreach ($folder in $managedFolders) {
     $folderPath = Join-Path $appDir $folder
@@ -75,16 +82,19 @@ foreach ($folder in $managedFolders) {
     }
 
     $allFiles = @(Get-ChildItem -Path $folderPath -Recurse -Filter *.cs | Sort-Object FullName)
-    $includedCount = 0
+    $compiledCount = 0
     $excludedCount = 0
 
     foreach ($file in $allFiles) {
         $relativePath = Get-RelativePath $appDir $file.FullName
-        if ($compileIncludes.Contains($relativePath)) {
-            $includedCount++
+
+        # Under default globbing the file is compiled unless explicitly removed.
+        if (-not $compileRemoves.Contains($relativePath)) {
+            $compiledCount++
             continue
         }
 
+        # The file is removed from the build; it must be a documented exclusion.
         if ($intentionalExclusions.Contains($relativePath)) {
             $excludedCount++
             continue
@@ -96,13 +106,13 @@ foreach ($folder in $managedFolders) {
     $summary.Add([pscustomobject]@{
         Folder = $folder
         Total = $allFiles.Count
-        Included = $includedCount
+        Compiled = $compiledCount
         IntentionalExclusions = $excludedCount
     })
 }
 
 foreach ($row in $summary) {
-    Write-Detail ("{0}: total={1}, included={2}, intentional exclusions={3}" -f $row.Folder, $row.Total, $row.Included, $row.IntentionalExclusions)
+    Write-Detail ("{0}: total={1}, compiled={2}, intentional exclusions={3}" -f $row.Folder, $row.Total, $row.Compiled, $row.IntentionalExclusions)
 }
 
 if ($intentionalExclusions.Count -gt 0) {
@@ -112,14 +122,33 @@ if ($intentionalExclusions.Count -gt 0) {
     }
 }
 
+# Reverse check: every documented exclusion must actually be <Compile Remove>'d,
+# otherwise the documentation has drifted from the project file (the file would now
+# silently compile despite being documented as excluded).
+$documentationDrift = [System.Collections.Generic.List[string]]::new()
+foreach ($key in $intentionalExclusions.Keys) {
+    if (-not $compileRemoves.Contains((Normalize-RelativePath $key))) {
+        $documentationDrift.Add($key)
+    }
+}
+
 if ($unexpectedMissing.Count -gt 0) {
-    Write-Section "Unexpected non-compiled source files"
+    Write-Section "Undocumented non-compiled source files"
     foreach ($path in $unexpectedMissing) {
         Write-Host "    $path" -ForegroundColor Red
     }
 
-    throw "Found source files under managed folders that are not compiled or explicitly documented as intentional exclusions."
+    throw "Found managed source files removed from the build (<Compile Remove>) that are not documented as intentional exclusions."
+}
+
+if ($documentationDrift.Count -gt 0) {
+    Write-Section "Documented exclusions that are no longer excluded"
+    foreach ($path in $documentationDrift) {
+        Write-Host "    $path" -ForegroundColor Red
+    }
+
+    throw "Intentional-exclusion documentation has drifted: the above files are documented as excluded but are not <Compile Remove>'d (they now compile)."
 }
 
 Write-Section "Source-file inclusion check passed"
-Write-Detail "All managed C# files are compiled or intentionally documented."
+Write-Detail "All managed C# files are compiled or documented as intentional <Compile Remove> exclusions."
