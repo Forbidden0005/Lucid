@@ -1,0 +1,9 @@
+# Symbol store (symbolPolicy.storePath in release/release-operations.json).
+#
+# This directory must exist on fresh checkouts and in CI because
+# scripts/validate-release-operations.ps1 requires the symbol store path to be
+# present (symbolPolicy.requiresPdbRetention = true).
+#
+# Retained PDBs are published here manually (publicationMode = manual-private)
+# and are intentionally git-ignored; only this placeholder is tracked so the
+# directory is always available to the release pipeline.

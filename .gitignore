@@ -1,6 +1,9 @@
 # Claude Code worktrees (created by /batch and agent isolation)
 .claude/worktrees/
 
+# Serena MCP server working directory (project cache/memories — tool artifact)
+.serena/
+
 # Build outputs
 **/bin/
 **/obj/
@@ -27,3 +30,9 @@ Thumbs.db
 release/*
 !release/release-metadata.json
 !release/release-operations.json
+# The symbol store (symbolPolicy.storePath) must exist on fresh checkouts/CI —
+# validate-release-operations.ps1 requires the directory. Track an empty
+# placeholder while still ignoring the retained PDBs published into it.
+!release/symbols/
+release/symbols/*
+!release/symbols/.gitkeep
