@@ -1,6 +1,6 @@
 # Lucid Roadmap
 
-> Last audited: 2026-06-11. This is the single source of truth for project state, priorities,
+> Last audited: 2026-06-16. This is the single source of truth for project state, priorities,
 > completed work, and engineering direction. All other roadmap and state documents are retired
 > into `docs/history/`. Update this file after every completed task.
 
@@ -68,7 +68,7 @@ Lucid must never drift into:
 
 ## Current Verified Baseline
 
-Verified 2026-06-11 from repository inspection and local verification.
+Verified 2026-06-16 from repository inspection and local verification.
 
 **Build commands (verified passing):**
 ```powershell
@@ -80,21 +80,37 @@ dotnet test Lucid.Tests\Lucid.Tests.csproj -c Debug -p:Platform=x64 --no-restore
 cargo test
 ```
 
+**Release verification commands (verified passing):**
+```powershell
+# From repo root
+powershell -ExecutionPolicy Bypass -File scripts\verify-dev.ps1
+powershell -ExecutionPolicy Bypass -File scripts\verify-release.ps1
+
+# From lucid-native/
+cargo fmt --check
+cargo clippy -- -D warnings
+```
+
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 239 passing C# tests (verified 2026-06-11 via `dotnet test`)
-- 19 Rust tests passing (verified 2026-06-11 via `cargo test`)
+- 239 passing C# tests (verified 2026-06-16 via `dotnet test` and `scripts/verify-release.ps1`)
+- 19 Rust tests passing (verified 2026-06-16 via `cargo test` and `scripts/verify-release.ps1`)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
   the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
   production set in `AppServices` is 27)
 
 **Known active issues (not yet fixed):**
+- Public distribution is intentionally blocked by the current release contract: `release/release-metadata.json`
+  is `preview` + `unsigned-ci-artifact`, and `release/release-operations.json` sets
+  `publicDistributionAllowed=false` for every channel
+- Local release automation is green, but the working branch is not at the latest authoritative state:
+  `main` is ahead 1 / behind 2 vs `origin/main`, and the remote-only commits include a startup
+  heap-corruption fix and rollback-staging retention work that are not present in this checkout
 - Fresh-clone / CI proof is still incomplete: the previously untracked CI, release, installer, and
   support infrastructure was committed on 2026-06-11 (`107a6fb`), and the current worktree is
   clean, but a scratch-clone verification / CI-green confirmation is still not recorded here.
 - CRLF/LF churn — `.gitattributes` committed 2026-06-10; repo-wide renormalize still pending (C2)
-- ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
 - `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
 - 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
@@ -121,6 +137,10 @@ checkout follows the documented path end-to-end and that CI is green from that s
       done 2026-06-11 (`107a6fb`): `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`,
       14 additional `scripts/*.ps1`, `installer/`, `Directory.Build.props`, `release/*.json`,
       and `AUDIT_ROADMAP.md`
+- [x] Re-run local committed-tree verification after the release-infrastructure commit — done
+      2026-06-16: `scripts/verify-dev.ps1` and `scripts/verify-release.ps1` both pass, including
+      Release publish, smoke launch, package verification, update manifest/feed generation and
+      verification, installer round-trip, support bundle export, 239/239 C# tests, and 19/19 Rust tests
 - [ ] Confirm CI green from clean checkout
 
 ### C2 — Line-ending renormalization still pending (P0)
@@ -265,6 +285,11 @@ Do not add items here that have not been verified.
 - CI proves Debug and Release lanes separately, uploads unpackaged self-contained `win-x64` publish artifact
 - `docs/release-packaging.md` documents unpackaged self-contained `win-x64` as first distribution path; MSIX deferred
 - `Directory.Build.props`, `release/release-metadata.json`, and `docs/releases/0.1.0-preview.md` define version, assembly stamping, and signing mode
+- Local end-to-end release lane re-verified on 2026-06-16: `scripts/verify-dev.ps1` and
+  `scripts/verify-release.ps1` passed on the committed tree, including Release publish, smoke
+  launch, artifact/package verification, update manifest/feed verification, installer round-trip,
+  support bundle export, and Rust validation (`cargo fmt --check`, `cargo clippy -- -D warnings`,
+  `cargo test`)
 - `scripts/validate-release-metadata.ps1` enforces version/signing metadata consistency in local verification and CI
 - `scripts/prepare-release-artifact.ps1` validates publish outputs, copies smoke checklist, generates `RELEASE-SHA256.txt` and `release-artifact-manifest.json`
 - `scripts/verify-release-artifact.ps1` verifies file counts, byte totals, per-file SHA-256, checksum-file consistency, manifest metadata, and signing-mode enforcement
