@@ -1,9 +1,8 @@
-# Symbol store (symbolPolicy.storePath in release/release-operations.json).
+# Symbol store root for release operations.
 #
-# This directory must exist on fresh checkouts and in CI because
-# scripts/validate-release-operations.ps1 requires the symbol store path to be
-# present (symbolPolicy.requiresPdbRetention = true).
+# Required to exist by scripts/validate-release-operations.ps1 (symbolPolicy.storePath
+# = "release/symbols"), which throws if this directory is missing — that check runs
+# before the build in .github/workflows/lucid-build.yml, so without this placeholder
+# every CI run fails on a fresh checkout before compiling.
 #
-# Retained PDBs are published here manually (publicationMode = manual-private)
-# and are intentionally git-ignored; only this placeholder is tracked so the
-# directory is always available to the release pipeline.
+# Actual symbol artifacts produced during a release stay untracked (see .gitignore).

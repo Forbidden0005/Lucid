@@ -33,6 +33,15 @@ public sealed record AppSettings
     /// <summary>Days between automatic background scans.</summary>
     public int AutoScanIntervalDays { get; init; } = 7;
 
+    /// <summary>
+    /// How many days a reversible-cleanup rollback staging set is retained before
+    /// the background maintenance sweep removes it and reclaims the space.
+    /// Within this window a cleanup action can still be undone; after it, the
+    /// files (already "removed" from the user's view) are permanently freed.
+    /// Clamped to a minimum of 1 day at use. Additive field — no schema bump.
+    /// </summary>
+    public int RollbackRetentionDays { get; init; } = 7;
+
     // ── Privacy ───────────────────────────────────────────────────────────────
 
     /// <summary>

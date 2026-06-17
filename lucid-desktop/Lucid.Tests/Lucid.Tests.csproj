@@ -42,6 +42,8 @@
   <ItemGroup>
     <Compile Include="..\Lucid.App\Services\Cleanup\CleanupScanner.cs"
              Link="App\Services\Cleanup\CleanupScanner.cs" />
+    <Compile Include="..\Lucid.App\Services\Cleanup\RollbackStagingSweeper.cs"
+             Link="App\Services\Cleanup\RollbackStagingSweeper.cs" />
     <Compile Include="..\Lucid.App\Services\Automation\AutomationModels.cs"
              Link="App\Services\Automation\AutomationModels.cs" />
     <Compile Include="..\Lucid.App\Services\Automation\AutomationExecutionPlan.cs"

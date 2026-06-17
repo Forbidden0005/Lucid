@@ -40,12 +40,14 @@ if (-not (Test-Path -LiteralPath $smokeChecklistPath -PathType Leaf)) {
 
 $metadata = Get-Content -Raw -LiteralPath $releaseMetadataPath | ConvertFrom-Json
 
+# Note: WindowsAppSDK 1.6+ names the merged app PRI after the assembly
+# (Lucid.App.pri); it was "resources.pri" under 1.5 and earlier.
 $requiredFiles = @(
     "Lucid.App.exe",
     "Lucid.App.dll",
     "Lucid.App.deps.json",
     "Lucid.App.runtimeconfig.json",
-    "resources.pri"
+    "Lucid.App.pri"
 )
 
 foreach ($requiredFile in $requiredFiles) {

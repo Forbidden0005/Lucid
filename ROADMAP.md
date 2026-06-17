@@ -4,6 +4,15 @@
 > completed work, and engineering direction. All other roadmap and state documents are retired
 > into `docs/history/`. Update this file after every completed task.
 
+> ⚠️ **Scope freeze in force (decided 2026-06-14):** a whole-project review found the
+> implementation has run ahead of this roadmap — ~521 files across 42 service
+> subdomains, including several domains not scoped here (Autonomy, Distributed,
+> Companion, Visual/Desktop context, Simulation). **Decision: Option A — freeze new
+> out-of-roadmap scope now; rebaseline (Option B) at the Phase-1 green bar
+> (`v0.1-foundation`).** Do **not** add a new out-of-roadmap service domain without
+> explicit owner sign-off — new work hardens what already exists. Full mapping and
+> the rebaseline trigger: **[`docs/SCOPE_RECONCILIATION.md`](docs/SCOPE_RECONCILIATION.md)**.
+
 ---
 
 ## Table of Contents
@@ -36,7 +45,7 @@
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
 | Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 239 passing C# tests |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 249 passing C# tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -176,7 +185,7 @@ retire `check-app-source-includes.ps1`.
 - [ ] Confirm build output identical; retire guard script from CI
 
 ### C6 — Rust absent from CI; Release native DLL remains optional (P1)
-Test depth improved materially during Phase 3: 239 C# tests, 19 Rust tests, and executor safety
+Test depth improved materially during Phase 3: 249 C# tests, 19 Rust tests, and executor safety
 coverage across the 27 registered production executors. Remaining risk is CI enforcement and native
 artifact reliability: Rust still has no CI job, and the build silently skips copying
 `lucid_scanner.dll` when missing — a broken native build is undetectable until runtime.
@@ -715,7 +724,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 ## Testing Plan
 
 ### Current Status
-- 239 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
+- 250 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
 - Test files are committed; remaining C1 blocker is fresh-clone / CI proof on the now-tracked infrastructure
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
 - Rust: 19 tests; no CI job
