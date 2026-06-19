@@ -1,6 +1,9 @@
 # Claude Code worktrees (created by /batch and agent isolation)
 .claude/worktrees/
 
+# Serena MCP server working directory (project cache/memories — tool artifact)
+.serena/
+
 # Build outputs
 **/bin/
 **/obj/
@@ -29,4 +32,8 @@ Thumbs.db
 release/*
 !release/release-metadata.json
 !release/release-operations.json
+# Track the symbol-store directory via its .gitkeep placeholder only; the actual
+# retained PDBs published into it stay ignored.
 !release/symbols/
+release/symbols/*
+!release/symbols/.gitkeep
