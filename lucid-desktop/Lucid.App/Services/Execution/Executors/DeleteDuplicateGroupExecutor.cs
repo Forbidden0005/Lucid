@@ -14,11 +14,12 @@ namespace Lucid.Services.Execution.Executors;
 ///   "KeepPath"   — the full path of the file to keep.
 ///   "DeletePaths" — pipe-separated list of full paths to delete.
 ///
-/// Safety: every delete path is checked against <see cref="ExecutionPathGuard"/>
-/// before any file is moved. A single protected path fails the whole group
-/// without mutating anything — a system path in a "duplicate" group means the
-/// grouping itself cannot be trusted. Dry-run applies the same check so the
-/// preview surfaces the refusal.
+/// Safety: every path in the group — the delete list AND the keep candidate —
+/// is checked against <see cref="ExecutionPathGuard"/> before any file is
+/// moved. A single protected path fails the whole group without mutating
+/// anything: a system path anywhere in a "duplicate" group means the grouping
+/// itself cannot be trusted. Dry-run applies the same check so the preview
+/// surfaces the refusal.
 /// </summary>
 internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
 {
@@ -53,7 +54,7 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
         ctx.Log.Info($"  Keep:   {keepPath ?? "(not specified)"}");
         ctx.Log.Info($"  Delete: {toDelete.Length} file(s)");
 
-        if (FindBlockedPath(toDelete) is { } dryRunBlockReason)
+        if (FindBlockedPath(toDelete, keepPath) is { } dryRunBlockReason)
         {
             ctx.Log.Error(dryRunBlockReason);
             sw.Stop();
@@ -89,6 +90,7 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
     {
         var sw = Stopwatch.StartNew();
 
+        ctx.Parameters.TryGetValue(ParamKeepPath,    out var keepPath);
         ctx.Parameters.TryGetValue(ParamDeletePaths, out var deletePaths);
         var toDelete = (deletePaths ?? string.Empty)
             .Split('|', StringSplitOptions.RemoveEmptyEntries);
@@ -102,8 +104,10 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
         }
 
         // Validate the whole group before moving anything — a protected path
-        // in a "duplicate" group means the grouping cannot be trusted.
-        if (FindBlockedPath(toDelete) is { } blockReason)
+        // in a "duplicate" group means the grouping cannot be trusted. The
+        // keep candidate counts: a protected keep path taints the group even
+        // though it is never touched.
+        if (FindBlockedPath(toDelete, keepPath) is { } blockReason)
         {
             ctx.Log.Error(blockReason);
             sw.Stop();
@@ -175,10 +179,19 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
     /// <summary>
     /// Returns the block reason for the first protected path in the group,
     /// or null when every path is safe to operate on.
+    ///
+    /// The keep path participates when supplied: it is never mutated, but a
+    /// protected keep candidate means the duplicate grouping itself cannot be
+    /// trusted, so the whole group is refused. An absent keep path is not an
+    /// error — only the delete list is mandatory.
     /// </summary>
-    private static string? FindBlockedPath(IEnumerable<string> paths)
+    private static string? FindBlockedPath(IEnumerable<string> deletePaths, string? keepPath)
     {
-        foreach (var path in paths)
+        if (!string.IsNullOrWhiteSpace(keepPath) &&
+            ExecutionPathGuard.CheckDestructiveTarget(keepPath) is { } keepReason)
+            return keepReason;
+
+        foreach (var path in deletePaths)
         {
             if (ExecutionPathGuard.CheckDestructiveTarget(path) is { } reason)
                 return reason;

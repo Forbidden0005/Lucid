@@ -34,6 +34,44 @@ public sealed class DeleteDuplicateGroupExecutorSafetyTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ProtectedKeepPath_FailsWithoutMovingAnyDeleteFile()
+    {
+        using var dir = new TestDir();
+        var dupA = dir.WriteFile("dup-a.bin", new byte[] { 4, 5, 6 });
+        var dupB = dir.WriteFile("dup-b.bin", new byte[] { 4, 5, 6 });
+        // A protected keep candidate taints the whole group even though the
+        // keep file itself is never touched — the grouping cannot be trusted.
+        var protectedKeep = dir.WriteFile(@"drivers\keep.sys", new byte[] { 4, 5, 6 });
+        var executor = new DeleteDuplicateGroupExecutor();
+
+        var result = await executor.ExecuteAsync(
+            NewContext(deletePaths: $"{dupA}|{dupB}", keepPath: protectedKeep));
+
+        result.Status.Should().Be(ActionExecutionStatus.Failed,
+            "a protected keep path means the duplicate grouping cannot be trusted");
+        result.Message.Should().Contain("protected system directory");
+        File.Exists(dupA).Should().BeTrue("no delete-list file may move when the group is refused");
+        File.Exists(dupB).Should().BeTrue();
+        File.Exists(protectedKeep).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_DryRunWithProtectedKeepPath_SurfacesRefusalInPreview()
+    {
+        var executor = new DeleteDuplicateGroupExecutor();
+        var context = NewContext(
+            deletePaths: @"C:\Users\u\Downloads\dup-1.bin|C:\Users\u\Downloads\dup-2.bin",
+            keepPath: @"C:\Windows\System32\dup.bin",
+            isDryRun: true);
+
+        var result = await executor.ExecuteAsync(context);
+
+        result.Status.Should().Be(ActionExecutionStatus.Failed,
+            "the preview must surface a protected keep candidate before approval");
+        result.Message.Should().Contain("protected system directory");
+    }
+
+    [Fact]
     public async Task ExecuteAsync_DryRunWithProtectedPath_SurfacesRefusalInPreview()
     {
         var executor = new DeleteDuplicateGroupExecutor();
