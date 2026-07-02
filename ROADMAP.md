@@ -45,7 +45,7 @@
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
 | Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 249 passing C# tests |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 296 passing C# tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -92,8 +92,8 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 239 passing C# tests (verified 2026-06-11 via `dotnet test`)
-- 19 Rust tests passing (verified 2026-06-11 via `cargo test`)
+- 296 passing C# tests (verified 2026-07-02 via `dotnet test`)
+- 19 Rust tests passing (verified 2026-07-02 via `cargo test`)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
   the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
   production set in `AppServices` is 27)
@@ -724,7 +724,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 ## Testing Plan
 
 ### Current Status
-- 250 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
+- 296 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
 - Test files are committed; remaining C1 blocker is fresh-clone / CI proof on the now-tracked infrastructure
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
 - Rust: 19 tests; no CI job

@@ -513,8 +513,8 @@ Full detail in `ROADMAP.md`. Quick reference:
 # What Is Already Built
 
 > Regenerated from the actual source tree (not session notes). Scale at last sync:
-> **~521 C# files** in `Lucid.App` across **42 service subdomains**, **23 pages**,
-> **27 executors**, **25 insight rules**, **249 passing tests**.
+> **~528 C# files** in `Lucid.App` across **42 service subdomains**, **23 pages**,
+> **27 executors**, **25 insight rules**, **296 passing tests**.
 >
 > ⚠️ Much of the list below is **beyond the roadmap's stated current phase**
 > (Phase 1 — Platform Stabilization). The implementation has run ahead of the
