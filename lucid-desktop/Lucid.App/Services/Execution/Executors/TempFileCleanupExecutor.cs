@@ -205,23 +205,25 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
         context.Log.Info($"Rollback staging: {staging}");
 
         // ── Create staging directory ──────────────────────────────────────────
-        // Staging is a hard requirement: this action advertises reversibility,
-        // so a run that cannot stage must not delete anything.
+        // This executor declares SupportsRollback = true, so a run that cannot
+        // stage must FAIL — never silently escalate to permanent deletion.
+        // (Doctrine: cleanup is conservative and reversible.)
         try
         {
             Directory.CreateDirectory(staging);
         }
         catch (Exception ex)
         {
-            context.Log.Warn(
-                $"Could not create rollback staging area: {ex.Message}");
+            context.Log.Error(
+                $"Could not create rollback staging area: {ex.Message}  " +
+                $"Cleanup was not started — no files were touched.");
             sw.Stop();
             return ActionExecutionResult.Failed(
                 ActionId,
-                "Cleanup stopped before any files were touched — the rollback " +
-                "staging area could not be created, so this run would not have " +
-                "been reversible.",
-                sw.Elapsed, context.Log.Build(), ex.Message);
+                "Cleanup did not run because the rollback staging area could not be " +
+                "created — nothing was deleted. Free up disk space or check permissions " +
+                $"for {staging} and try again.",
+                sw.Elapsed, context.Log.Build(), ex.ToString());
         }
 
         // ── Open rollback manifest ────────────────────────────────────────────
@@ -236,16 +238,17 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
         }
         catch (Exception ex)
         {
-            context.Log.Warn(
-                $"Could not create rollback manifest: {ex.Message}");
+            context.Log.Error(
+                $"Could not create rollback manifest: {ex.Message}  " +
+                $"Cleanup was not started — no files were touched.");
             TryDeleteDirectory(staging, context.Log);
             sw.Stop();
             return ActionExecutionResult.Failed(
                 ActionId,
-                "Cleanup stopped before any files were touched — the rollback " +
-                "manifest could not be created, so this run would not have " +
-                "been reversible.",
-                sw.Elapsed, context.Log.Build(), ex.Message);
+                "Cleanup did not run because the rollback manifest could not be " +
+                "created — nothing was deleted. Free up disk space or check permissions " +
+                $"for {staging} and try again.",
+                sw.Elapsed, context.Log.Build(), ex.ToString());
         }
 
         // ── Scan and clean each target directory ──────────────────────────────

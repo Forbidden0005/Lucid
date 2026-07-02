@@ -122,17 +122,29 @@ internal sealed class DeliveryOptimizationCacheExecutor : IActionExecutor
                 $"Some files may be locked and will be skipped.");
 
         // ── Create staging ────────────────────────────────────────────────────
-        bool stagingReady = false;
+        // This executor declares SupportsRollback = true, so a run that cannot
+        // stage must FAIL — never silently escalate to permanent deletion.
         try
         {
             Directory.CreateDirectory(staging);
-            stagingReady = true;
         }
         catch (Exception ex)
         {
-            context.Log.Warn(
+            context.Log.Error(
                 $"Could not create staging area: {ex.Message}  " +
-                $"Files will be permanently deleted — rollback unavailable.");
+                $"Cleanup was not started — no files were touched.");
+
+            // DoSvc was stopped above — bring it back before failing.
+            context.Log.Info($"Restarting {ServiceName} service…");
+            StartService(ServiceName, context.Log);
+
+            sw.Stop();
+            return ActionExecutionResult.Failed(
+                ActionId,
+                "Cleanup did not run because the rollback staging area could not be " +
+                "created — nothing was deleted. Free up disk space or check permissions " +
+                $"for {staging} and try again.",
+                sw.Elapsed, context.Log.Build(), ex.ToString());
         }
 
         // ── Clean all target directories ──────────────────────────────────────
@@ -161,17 +173,10 @@ internal sealed class DeliveryOptimizationCacheExecutor : IActionExecutor
                 {
                     var sz = file.Length;
 
-                    if (stagingReady)
-                    {
-                        var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
-                        var stagingPath = Path.Combine(staging, stagingName);
-                        File.Move(file.FullName, stagingPath);
-                        manifest.Add($"{stagingName}|{file.FullName}");
-                    }
-                    else
-                    {
-                        File.Delete(file.FullName);
-                    }
+                    var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
+                    var stagingPath = Path.Combine(staging, stagingName);
+                    File.Move(file.FullName, stagingPath);
+                    manifest.Add($"{stagingName}|{file.FullName}");
 
                     context.Log.Info(
                         $"  Removed  {file.Name}  ({CleanupScanner.FormatBytes(sz)})");
@@ -219,12 +224,12 @@ internal sealed class DeliveryOptimizationCacheExecutor : IActionExecutor
 
         // ── Write manifest ────────────────────────────────────────────────────
         string? rollbackToken = null;
-        if (stagingReady && manifest.Count > 0)
+        if (manifest.Count > 0)
         {
             if (CleanupScanner.TryWriteManifest(staging, manifest, context.Log))
                 rollbackToken = staging;
         }
-        else if (stagingReady && totalFiles == 0)
+        else if (totalFiles == 0)
         {
             CleanupScanner.TryDeleteDirectory(staging, context.Log);
         }

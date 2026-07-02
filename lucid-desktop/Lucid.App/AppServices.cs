@@ -1437,7 +1437,22 @@ public static class AppServices
             _deviceIdentity, _localSync, _timeline);
         _crossMachineAnalytics = new CrossMachineAnalyticsEngine(
             _deviceIdentity, _localSync);
-        _localSync.Start();
+
+        // OPT-IN gate (local-first doctrine): the sync coordinator opens a LAN
+        // TCP listener and broadcasts UDP discovery beacons. By default nothing
+        // leaves — or listens on — this machine; loops only start when the user
+        // has explicitly enabled device sync in Settings.
+        if (_settings!.Current.DeviceSyncEnabled)
+        {
+            _localSync.Start();
+            _logger.Info("Startup", "Local device sync active (user opt-in)");
+        }
+        else
+        {
+            _logger.Info("Startup",
+                "Local device sync off — no LAN discovery beacons or listener " +
+                "(opt-in available in Settings)");
+        }
 
         // ── Operational Replay service ────────────────────────────────────────
         // Stateless — no Start()/Stop() required. Created after timeline and
@@ -1558,6 +1573,13 @@ public static class AppServices
         _outcomeTracker       = new RecommendationOutcomeTracker();
         _patternAnalyzer      = new PatternConsistencyAnalyzer();
 
+        // Governance diagnostics must exist BEFORE its consumers below:
+        // CognitiveReasoningEngine and GovernanceLearningPolicy inject it
+        // directly. It previously lived in the Phase 18C block (~150 lines
+        // later), so both consumers silently received null — the classic
+        // hand-ordered-registry hazard. Only depends on the event bus.
+        _governanceDiagnostics = new GovernanceDiagnosticsService(_eventBus!);
+
         _cognitiveReasoning = new CognitiveReasoningEngine(
             _intelligence!,
             _operationalState!,
@@ -1637,9 +1659,23 @@ public static class AppServices
         // ── Operational Companion layer ────────────────────────────────────────
         // Stateless/lightweight — session manager is in-memory only.
         // Conversation engine wraps existing services; no new background work.
-        // Desktop context initialized here so it is non-null when passed to OperationalConversationService.
+        // Desktop context initialized here so it is non-null when passed to
+        // OperationalConversationService — but capture is CONSENT-GATED:
+        // window/clipboard polling only starts when the user has explicitly
+        // enabled desktop context awareness (off by default). While stopped,
+        // consumers see an empty snapshot.
         _desktopContext = new DesktopContextService(uiDispatcher);
-        _desktopContext.Start();
+        if (_settings!.Current.DesktopContextAwarenessEnabled)
+        {
+            _desktopContext.Start();
+            _logger.Info("Startup", "Desktop context awareness active (user opt-in)");
+        }
+        else
+        {
+            _logger.Info("Startup",
+                "Desktop context awareness off — window/clipboard context is not collected " +
+                "(opt-in available in Settings)");
+        }
 
         _companionSession = new CompanionSessionManager();
 
@@ -1686,7 +1722,9 @@ public static class AppServices
 
         // Audit service loads persisted entries from disk in its constructor and
         // prunes entries older than 30 days. Non-blocking — file read is fast.
-        _automationAudit = new AutomationAuditService();
+        // Given the logger so persistence failures surface instead of being
+        // silently dropped (the ledger is the accountability record).
+        _automationAudit = new AutomationAuditService(_logger);
 
         // Consent service depends on timeline (for publishing consent events),
         // audit (for recording every decision), and the two stateless services.
@@ -1705,9 +1743,9 @@ public static class AppServices
             _timeline!);
 
         // ── Phase 18C: Trust & Governance Hardening ──────────────────────────
-        // Initialize governance diagnostics first so all subsequent trust
-        // checks can publish audit events.
-        _governanceDiagnostics = new GovernanceDiagnosticsService(_eventBus!);
+        // Governance diagnostics is created earlier (Phase 19 observability
+        // block) because the cognitive engine and learning policy inject it;
+        // all trust checks below can publish audit events through it.
 
         // Consent integrity validation — verify the persisted consent posture
         // has not been tampered with outside the normal UI flows.
@@ -1915,6 +1953,10 @@ public static class AppServices
         // AutomationAuditService persists to disk asynchronously; no explicit flush needed.
         _trustManager           = null;
         _automationConsent      = null;
+        // AutomationAuditService implements IDisposable (write gate +
+        // ReaderWriterLockSlim); Dispose waits briefly for an in-flight
+        // ledger write so the last audit entries reach disk.
+        _automationAudit?.Dispose();
         _automationAudit        = null;
         _consentExplanation     = null;
         _automationTransparency = null;

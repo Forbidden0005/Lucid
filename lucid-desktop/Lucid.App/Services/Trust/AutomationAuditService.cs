@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Lucid.Core.Infrastructure;
 using Lucid.Services.Automation;
 
 namespace Lucid.Services.Trust;
@@ -18,15 +19,24 @@ namespace Lucid.Services.Trust;
 /// Threading:
 ///   All public mutating methods are thread-safe via a lock.
 ///   All reads return snapshots — safe to consume from any thread.
+///
+/// Persistence integrity (this ledger is the accountability record for every
+/// autonomous action, so its durability is a trust requirement):
+///   • Disk writes are serialized through a single-writer gate — overlapping
+///     mutations never produce interleaved or torn writes to the file.
+///   • Each write goes to a temp file first and then atomically replaces the
+///     ledger, so a crash mid-write can never leave truncated JSON behind.
+///   • Persistence failures are surfaced to the structured logger instead of
+///     being silently dropped.
 /// </summary>
-public sealed class AutomationAuditService
+public sealed class AutomationAuditService : IDisposable
 {
     // ── Constants ─────────────────────────────────────────────────────────────
 
     /// <summary>Number of days to retain audit entries. Entries older than this are pruned.</summary>
     public const int RetentionDays = 30;
 
-    private static readonly string AuditFilePath = Path.Combine(
+    private static readonly string DefaultAuditFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Lucid", "audit-log.json");
 
@@ -41,12 +51,70 @@ public sealed class AutomationAuditService
     private readonly List<AutomationAuditEntry>       _entries = [];
     private readonly System.Threading.ReaderWriterLockSlim _lock = new();
 
+    /// <summary>Serializes disk writes — exactly one persist runs at a time.</summary>
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+    private readonly string        _auditFilePath;
+    private readonly ILucidLogger? _logger;
+    private volatile bool          _disposed;
+
+    /// <summary>
+    /// The most recently scheduled persist task. Dispose waits on this (not on
+    /// the gate) so a write that is scheduled but not yet started still gets
+    /// its chance to land before handles are released.
+    /// </summary>
+    private volatile Task _lastPersist = Task.CompletedTask;
+
+    /// <summary>
+    /// Makes {disposed-check → mutate → schedule persist} atomic with respect
+    /// to Dispose's {set disposed → capture last persist}. Guarantees every
+    /// ACCEPTED mutation has scheduled its persist before Dispose decides
+    /// which task to wait for — an accepted entry can never be dropped by a
+    /// racing shutdown.
+    /// </summary>
+    private readonly object _shutdownGate = new();
+
     // ── Construction / persistence ────────────────────────────────────────────
 
-    public AutomationAuditService()
+    /// <param name="logger">
+    /// Optional structured logger; persistence failures are reported through it.
+    /// </param>
+    /// <param name="auditFilePath">
+    /// Optional override of the ledger location — used by tests so they never
+    /// touch the real user ledger. Defaults to %LOCALAPPDATA%\Lucid\audit-log.json.
+    /// </param>
+    public AutomationAuditService(ILucidLogger? logger = null, string? auditFilePath = null)
     {
+        _logger        = logger;
+        _auditFilePath = string.IsNullOrWhiteSpace(auditFilePath)
+            ? DefaultAuditFilePath
+            : auditFilePath;
+
         LoadFromDisk();
         PruneStale();
+    }
+
+    /// <summary>
+    /// Waits briefly for any in-flight disk write to finish, then releases the
+    /// lock and write-gate handles. Called at app shutdown.
+    /// </summary>
+    public void Dispose()
+    {
+        Task lastPersist;
+        lock (_shutdownGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            lastPersist = _lastPersist;
+        }
+
+        // Give the last scheduled persist a moment to complete so the final
+        // audit entries reach disk; never block shutdown indefinitely.
+        try { lastPersist.Wait(TimeSpan.FromSeconds(3)); }
+        catch { /* persist failures are already logged inside the task */ }
+
+        _writeGate.Dispose();
+        _lock.Dispose();
     }
 
     // ── Recording (called by AutomationConsentService) ────────────────────────
@@ -152,29 +220,34 @@ public sealed class AutomationAuditService
     /// </summary>
     public void UpdateOutcome(string workflowId, string actionId, bool success, string? error = null)
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_shutdownGate)
         {
-            // Find the most recent approved entry for this workflow+action
-            for (int i = _entries.Count - 1; i >= 0; i--)
+            if (IsDisposedThenWarn($"outcome update for {actionId}")) return;
+
+            _lock.EnterWriteLock();
+            try
             {
-                var e = _entries[i];
-                if (e.WorkflowId == workflowId &&
-                    e.ActionId   == actionId   &&
-                    e.Approved   == true       &&
-                    e.Succeeded  is null)
+                // Find the most recent approved entry for this workflow+action
+                for (int i = _entries.Count - 1; i >= 0; i--)
                 {
-                    _entries[i] = e with { Succeeded = success, ErrorDetail = error };
-                    break;
+                    var e = _entries[i];
+                    if (e.WorkflowId == workflowId &&
+                        e.ActionId   == actionId   &&
+                        e.Approved   == true       &&
+                        e.Succeeded  is null)
+                    {
+                        _entries[i] = e with { Succeeded = success, ErrorDetail = error };
+                        break;
+                    }
                 }
             }
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
 
-        PersistAsync();
+            SchedulePersistLocked();
+        }
     }
 
     /// <summary>
@@ -182,25 +255,30 @@ public sealed class AutomationAuditService
     /// </summary>
     public void RecordRollback(string workflowId, string actionId)
     {
-        _lock.EnterWriteLock();
-        try
+        lock (_shutdownGate)
         {
-            for (int i = _entries.Count - 1; i >= 0; i--)
+            if (IsDisposedThenWarn($"rollback record for {actionId}")) return;
+
+            _lock.EnterWriteLock();
+            try
             {
-                var e = _entries[i];
-                if (e.WorkflowId == workflowId && e.ActionId == actionId)
+                for (int i = _entries.Count - 1; i >= 0; i--)
                 {
-                    _entries[i] = e with { WasRolledBack = true, RolledBackAt = DateTimeOffset.Now };
-                    break;
+                    var e = _entries[i];
+                    if (e.WorkflowId == workflowId && e.ActionId == actionId)
+                    {
+                        _entries[i] = e with { WasRolledBack = true, RolledBackAt = DateTimeOffset.Now };
+                        break;
+                    }
                 }
             }
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
 
-        PersistAsync();
+            SchedulePersistLocked();
+        }
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -208,6 +286,8 @@ public sealed class AutomationAuditService
     /// <summary>Returns a snapshot of all current audit entries (newest first).</summary>
     public IReadOnlyList<AutomationAuditEntry> GetAllEntries()
     {
+        if (_disposed) return [];
+
         _lock.EnterReadLock();
         try
         {
@@ -219,6 +299,8 @@ public sealed class AutomationAuditService
     /// <summary>Returns entries for a specific workflow ID.</summary>
     public IReadOnlyList<AutomationAuditEntry> GetEntriesForWorkflow(string workflowId)
     {
+        if (_disposed) return [];
+
         _lock.EnterReadLock();
         try
         {
@@ -231,6 +313,8 @@ public sealed class AutomationAuditService
     /// <summary>Returns entries within the last N days.</summary>
     public IReadOnlyList<AutomationAuditEntry> GetRecentEntries(int days = 7)
     {
+        if (_disposed) return [];
+
         var cutoff = DateTimeOffset.Now.AddDays(-days);
         _lock.EnterReadLock();
         try
@@ -247,6 +331,8 @@ public sealed class AutomationAuditService
     /// </summary>
     public int CountRecentHighRiskDenials(TimeSpan window)
     {
+        if (_disposed) return 0;
+
         var cutoff = DateTimeOffset.Now - window;
         _lock.EnterReadLock();
         try
@@ -263,11 +349,31 @@ public sealed class AutomationAuditService
 
     private void AddEntry(AutomationAuditEntry entry)
     {
-        _lock.EnterWriteLock();
-        try { _entries.Add(entry); }
-        finally { _lock.ExitWriteLock(); }
+        lock (_shutdownGate)
+        {
+            if (IsDisposedThenWarn($"audit entry for {entry.ActionId}")) return;
 
-        PersistAsync();
+            _lock.EnterWriteLock();
+            try { _entries.Add(entry); }
+            finally { _lock.ExitWriteLock(); }
+
+            SchedulePersistLocked();
+        }
+    }
+
+    /// <summary>
+    /// Shutdown guard for mutating entry points: after Dispose the sync
+    /// primitives are released, so late calls must not touch them — and the
+    /// drop must be visible in the log, never silent (this ledger is the
+    /// accountability record). Returns true when the call must be skipped.
+    /// </summary>
+    private bool IsDisposedThenWarn(string what)
+    {
+        if (!_disposed) return false;
+
+        _logger?.Warning("Trust",
+            $"Audit ledger received {what} after shutdown; it was not recorded.");
+        return true;
     }
 
     private void PruneStale()
@@ -282,43 +388,76 @@ public sealed class AutomationAuditService
     {
         try
         {
-            if (!File.Exists(AuditFilePath)) return;
-            var json    = File.ReadAllText(AuditFilePath);
+            if (!File.Exists(_auditFilePath)) return;
+            var json    = File.ReadAllText(_auditFilePath);
             var loaded  = JsonSerializer.Deserialize<List<AutomationAuditEntry>>(json, _jsonOptions);
             if (loaded is null) return;
             _lock.EnterWriteLock();
             try { _entries.AddRange(loaded); }
             finally { _lock.ExitWriteLock(); }
         }
-        catch
+        catch (Exception ex)
         {
-            // Non-fatal — start with empty ledger if file is corrupted
+            // Non-fatal — start with an empty ledger, but never silently:
+            // losing the audit history is a trust-relevant event.
+            _logger?.Warning("Trust",
+                $"Audit ledger could not be read ({_auditFilePath}); starting with an empty ledger.", ex);
         }
     }
 
-    private void PersistAsync()
+    /// <summary>
+    /// Schedules a persist for the current entry set. Must be called while
+    /// holding <see cref="_shutdownGate"/>: that ordering guarantees Dispose
+    /// (which flips <see cref="_disposed"/> under the same gate) always sees —
+    /// and waits for — the persist of every accepted mutation.
+    /// </summary>
+    private void SchedulePersistLocked()
     {
-        _ = Task.Run(PersistCoreAsync);
+        _lastPersist = Task.Run(PersistCoreAsync);
     }
 
     private async Task PersistCoreAsync()
     {
         try
         {
-            var dir = Path.GetDirectoryName(AuditFilePath)!;
-            Directory.CreateDirectory(dir);
+            // Single-writer gate: overlapping mutations queue here, and each
+            // pass writes the then-current snapshot — the file on disk is
+            // always one complete, consistent serialization.
+            await _writeGate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                var dir = Path.GetDirectoryName(_auditFilePath)!;
+                Directory.CreateDirectory(dir);
 
-            IReadOnlyList<AutomationAuditEntry> snapshot;
-            _lock.EnterReadLock();
-            try { snapshot = [.. _entries]; }
-            finally { _lock.ExitReadLock(); }
+                IReadOnlyList<AutomationAuditEntry> snapshot;
+                _lock.EnterReadLock();
+                try { snapshot = [.. _entries]; }
+                finally { _lock.ExitReadLock(); }
 
-            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-            await File.WriteAllTextAsync(AuditFilePath, json).ConfigureAwait(false);
+                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+
+                // Write-then-rename: a crash mid-write leaves only a stale
+                // .tmp behind, never a truncated ledger.
+                var tmpPath = _auditFilePath + ".tmp";
+                await File.WriteAllTextAsync(tmpPath, json).ConfigureAwait(false);
+                File.Move(tmpPath, _auditFilePath, overwrite: true);
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
         }
-        catch
+        catch (ObjectDisposedException)
         {
-            // Non-fatal — audit persistence failure does not affect the app
+            // Shutdown raced an in-flight persist — the Dispose grace window
+            // already gave pending writes their chance.
+        }
+        catch (Exception ex)
+        {
+            // The app keeps running, but the failure must be visible: this
+            // ledger is the accountability record for autonomous actions.
+            _logger?.Error("Trust",
+                $"Audit ledger write failed ({_auditFilePath}); recent entries are only in memory.", ex);
         }
     }
 
