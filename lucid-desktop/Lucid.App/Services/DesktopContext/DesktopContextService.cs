@@ -8,16 +8,23 @@ namespace Lucid.Services.DesktopContext;
 /// Polling cadence: 1750ms (lightweight — Win32 reads + cached COM result)
 /// Thread-safety:   ContextChanged fires on the UI thread via DispatcherQueue
 /// Memory:          Current snapshot only — no history stored here
-/// Privacy:         All context is ephemeral; nothing is persisted by this service
+/// Privacy:         Consent-gated — capture only runs while the user has the
+///                  opt-in setting enabled (AppSettings.DesktopContextAwarenessEnabled,
+///                  off by default). All context is ephemeral; nothing is
+///                  persisted by this service. While stopped, CurrentSnapshot
+///                  stays an empty snapshot, so downstream consumers simply see
+///                  "no desktop context".
 ///
-/// Start() / Stop() must be called on the UI thread.
+/// Start() / Stop() must be called on the UI thread. The service is
+/// restart-safe: the Explorer STA provider is created per Start() and
+/// disposed per Stop(), so the user can toggle awareness at runtime.
 /// </summary>
 public sealed class DesktopContextService : IDesktopContextService
 {
     private readonly DispatcherQueue         _uiDispatcher;
-    private readonly ExplorerContextProvider _explorerProvider;
     private readonly ContextChangeAggregator _aggregator = new();
 
+    private ExplorerContextProvider?   _explorerProvider;
     private System.Threading.Timer?    _timer;
     private WorkflowContextSnapshot    _currentSnapshot;
 
@@ -26,7 +33,6 @@ public sealed class DesktopContextService : IDesktopContextService
     public DesktopContextService(DispatcherQueue uiDispatcher)
     {
         _uiDispatcher     = uiDispatcher;
-        _explorerProvider = new ExplorerContextProvider();
         _currentSnapshot  = new WorkflowContextSnapshot { SnapshotCreatedAt = DateTimeOffset.Now };
     }
 
@@ -34,12 +40,17 @@ public sealed class DesktopContextService : IDesktopContextService
 
     public WorkflowContextSnapshot CurrentSnapshot => _currentSnapshot;
 
+    public bool IsRunning => _timer is not null;
+
     public event EventHandler<ContextChangedEventArgs>? ContextChanged;
 
     public void Start()
     {
-        // Kick the STA thread for initial explorer read
-        _explorerProvider.Wake();
+        if (IsRunning) return;
+
+        // Fresh provider per session — Stop() tears down its STA thread.
+        _explorerProvider = new ExplorerContextProvider();
+        _explorerProvider.Wake();   // kick the STA thread for initial explorer read
 
         _timer = new System.Threading.Timer(
             _ => Poll(),
@@ -52,13 +63,23 @@ public sealed class DesktopContextService : IDesktopContextService
     {
         _timer?.Dispose();
         _timer = null;
-        _explorerProvider.Dispose();
+        _explorerProvider?.Dispose();
+        _explorerProvider = null;
+
+        // Clear captured context immediately — consent was withdrawn, so no
+        // stale window/clipboard data may linger for downstream consumers.
+        _currentSnapshot = new WorkflowContextSnapshot { SnapshotCreatedAt = DateTimeOffset.Now };
     }
 
     // ── Polling ────────────────────────────────────────────────────────────────
 
     private void Poll()
     {
+        // Timer callbacks can race a concurrent Stop(); a null provider means
+        // consent was just withdrawn — capture nothing.
+        var provider = _explorerProvider;
+        if (provider is null) return;
+
         try
         {
             // These two calls are cheap Win32 reads — no STA needed
@@ -66,10 +87,10 @@ public sealed class DesktopContextService : IDesktopContextService
             var clipboard = ClipboardContextProvider.GetCurrent();
 
             // Explorer context comes from the STA cache (updated asynchronously)
-            var explorer  = _explorerProvider.GetCurrent();
+            var explorer  = provider.GetCurrent();
 
             // Wake the STA thread for the next cycle
-            _explorerProvider.Wake();
+            provider.Wake();
 
             var snapshot = WorkflowContextSnapshotBuilder.Build(window, explorer, clipboard);
             _currentSnapshot = snapshot;

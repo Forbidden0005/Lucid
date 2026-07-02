@@ -118,6 +118,26 @@
                                       VerticalAlignment="Center" />
                     </Grid>
 
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Desktop context awareness (consent-gated capture) -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Desktop context awareness" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Lets the companion see the active window title, Explorer folder, and a short clipboard preview — nothing is stored, always opt-in"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1"
+                                      IsOn="{x:Bind ViewModel.DesktopContextEnabled, Mode=TwoWay}"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center" />
+                    </Grid>
+
                 </StackPanel>
             </Border>
 
