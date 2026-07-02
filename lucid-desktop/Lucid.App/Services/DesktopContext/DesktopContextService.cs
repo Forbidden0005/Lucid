@@ -28,6 +28,13 @@ public sealed class DesktopContextService : IDesktopContextService
     private System.Threading.Timer?    _timer;
     private WorkflowContextSnapshot    _currentSnapshot;
 
+    /// <summary>
+    /// Guards the consent boundary: Stop()'s teardown and Poll()'s publish are
+    /// mutually exclusive, so an in-flight poll can never republish captured
+    /// context after consent was withdrawn.
+    /// </summary>
+    private readonly object _publishGate = new();
+
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(1750);
 
     public DesktopContextService(DispatcherQueue uiDispatcher)
@@ -63,12 +70,19 @@ public sealed class DesktopContextService : IDesktopContextService
     {
         _timer?.Dispose();
         _timer = null;
-        _explorerProvider?.Dispose();
-        _explorerProvider = null;
 
-        // Clear captured context immediately — consent was withdrawn, so no
-        // stale window/clipboard data may linger for downstream consumers.
-        _currentSnapshot = new WorkflowContextSnapshot { SnapshotCreatedAt = DateTimeOffset.Now };
+        lock (_publishGate)
+        {
+            _explorerProvider?.Dispose();
+            _explorerProvider = null;
+
+            // Clear captured context immediately — consent was withdrawn, so no
+            // stale window/clipboard data may linger for downstream consumers.
+            // Inside the gate: an in-flight Poll() either publishes before this
+            // clear (and is overwritten here) or observes the null provider and
+            // publishes nothing.
+            _currentSnapshot = new WorkflowContextSnapshot { SnapshotCreatedAt = DateTimeOffset.Now };
+        }
     }
 
     // ── Polling ────────────────────────────────────────────────────────────────
@@ -93,9 +107,20 @@ public sealed class DesktopContextService : IDesktopContextService
             provider.Wake();
 
             var snapshot = WorkflowContextSnapshotBuilder.Build(window, explorer, clipboard);
-            _currentSnapshot = snapshot;
 
-            var change = _aggregator.Evaluate(snapshot);
+            // Re-check consent at the publish boundary: Stop() may have run
+            // while this poll was capturing. Publishing is only legal while
+            // the capture session that started this poll is still the active
+            // one — otherwise the data is dropped on the floor.
+            ContextChangedEventArgs? change = null;
+            lock (_publishGate)
+            {
+                if (!ReferenceEquals(_explorerProvider, provider)) return;
+
+                _currentSnapshot = snapshot;
+                change = _aggregator.Evaluate(snapshot);
+            }
+
             if (change is not null)
                 FireContextChanged(change);
         }
