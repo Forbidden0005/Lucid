@@ -50,6 +50,16 @@ public sealed record AppSettings
     /// </summary>
     public bool UsageTelemetryEnabled { get; init; } = false;
 
+    /// <summary>
+    /// Opt-in desktop context awareness: active-window titles, a short
+    /// clipboard text preview, and the current Explorer path, used by the
+    /// companion and conversation features to understand what the user is
+    /// working on. Always off by default — nothing is captured until the
+    /// user explicitly enables it, and nothing is persisted while enabled.
+    /// Additive field — no schema version bump required.
+    /// </summary>
+    public bool DesktopContextAwarenessEnabled { get; init; } = false;
+
     // ── AI / LLM ─────────────────────────────────────────────────────────────
 
     /// <summary>

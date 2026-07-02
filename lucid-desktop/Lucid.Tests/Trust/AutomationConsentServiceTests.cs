@@ -10,8 +10,28 @@ namespace Lucid.Tests.Trust;
 /// Covers the automation consent gate behavior without requiring the live UI
 /// dispatcher or companion overlay.
 /// </summary>
-public sealed class AutomationConsentServiceTests
+public sealed class AutomationConsentServiceTests : IDisposable
 {
+    private readonly string _ledgerDir = Path.Combine(
+        Path.GetTempPath(), "lucid-consent-tests", Guid.NewGuid().ToString("N"));
+
+    private readonly List<AutomationAuditService> _auditServices = [];
+
+    public void Dispose()
+    {
+        foreach (var audit in _auditServices)
+            audit.Dispose();
+
+        try
+        {
+            if (Directory.Exists(_ledgerDir))
+                Directory.Delete(_ledgerDir, recursive: true);
+        }
+        catch
+        {
+        }
+    }
+
     [Fact]
     public async Task RequestConsentAsync_BlockedBoundaryAction_ReturnsFalseWithoutPrompt()
     {
@@ -142,13 +162,22 @@ public sealed class AutomationConsentServiceTests
         service.RequiresConsent(TrustRiskLevel.Medium).Should().BeTrue();
     }
 
-    private static AutomationConsentService CreateService(TestTimelineService timeline) =>
-        new(
+    private AutomationConsentService CreateService(TestTimelineService timeline)
+    {
+        // Isolated ledger path — tests must never touch the real user ledger.
+        // Tracked so Dispose() releases the service's sync primitives and the
+        // fixture teardown removes the temp files.
+        var audit = new AutomationAuditService(auditFilePath: Path.Combine(
+            _ledgerDir, Guid.NewGuid().ToString("N") + ".json"));
+        _auditServices.Add(audit);
+
+        return new(
             timeline,
-            new AutomationAuditService(),
+            audit,
             new ConsentExplanationService(),
             new AutomationTransparencyEngine(),
             new ImmediateDispatcher());
+    }
 
     private static AutomationStep NewStep(string actionId, AutomationRiskLevel risk) => new()
     {

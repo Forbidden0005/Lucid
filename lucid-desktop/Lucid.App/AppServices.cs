@@ -1637,9 +1637,23 @@ public static class AppServices
         // ── Operational Companion layer ────────────────────────────────────────
         // Stateless/lightweight — session manager is in-memory only.
         // Conversation engine wraps existing services; no new background work.
-        // Desktop context initialized here so it is non-null when passed to OperationalConversationService.
+        // Desktop context initialized here so it is non-null when passed to
+        // OperationalConversationService — but capture is CONSENT-GATED:
+        // window/clipboard polling only starts when the user has explicitly
+        // enabled desktop context awareness (off by default). While stopped,
+        // consumers see an empty snapshot.
         _desktopContext = new DesktopContextService(uiDispatcher);
-        _desktopContext.Start();
+        if (_settings!.Current.DesktopContextAwarenessEnabled)
+        {
+            _desktopContext.Start();
+            _logger.Info("Startup", "Desktop context awareness active (user opt-in)");
+        }
+        else
+        {
+            _logger.Info("Startup",
+                "Desktop context awareness off — window/clipboard context is not collected " +
+                "(opt-in available in Settings)");
+        }
 
         _companionSession = new CompanionSessionManager();
 
@@ -1686,7 +1700,9 @@ public static class AppServices
 
         // Audit service loads persisted entries from disk in its constructor and
         // prunes entries older than 30 days. Non-blocking — file read is fast.
-        _automationAudit = new AutomationAuditService();
+        // Given the logger so persistence failures surface instead of being
+        // silently dropped (the ledger is the accountability record).
+        _automationAudit = new AutomationAuditService(_logger);
 
         // Consent service depends on timeline (for publishing consent events),
         // audit (for recording every decision), and the two stateless services.
@@ -1915,6 +1931,10 @@ public static class AppServices
         // AutomationAuditService persists to disk asynchronously; no explicit flush needed.
         _trustManager           = null;
         _automationConsent      = null;
+        // AutomationAuditService implements IDisposable (write gate +
+        // ReaderWriterLockSlim); Dispose waits briefly for an in-flight
+        // ledger write so the last audit entries reach disk.
+        _automationAudit?.Dispose();
         _automationAudit        = null;
         _consentExplanation     = null;
         _automationTransparency = null;

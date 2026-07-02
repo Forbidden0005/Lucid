@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Automation;
+using Lucid.Services.DesktopContext;
 using Lucid.Services.Governance;
 using Lucid.Services.LlmChat;
 using Lucid.Services.Settings;
@@ -39,6 +40,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AutomationConsentService  _automationConsent;
     private readonly AutomationOrchestrator    _automationOrchestrator;
     private readonly ILlmChatService           _llmChat;
+    private readonly IDesktopContextService    _desktopContext;
     private readonly DispatcherQueue           _dispatcher;
 
     private bool _isInitializing;
@@ -53,6 +55,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _autoStartEnabled;
     [ObservableProperty] private bool _autoScanEnabled;
     [ObservableProperty] private bool _usageTelemetryEnabled;
+    [ObservableProperty] private bool _desktopContextEnabled;
 
     // ── Governance section ────────────────────────────────────────────────────
 
@@ -79,7 +82,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         OperationalTrustManager   trustManager,
         AutomationConsentService  automationConsent,
         AutomationOrchestrator    automationOrchestrator,
-        ILlmChatService           llmChat)
+        ILlmChatService           llmChat,
+        IDesktopContextService    desktopContext)
     {
         _settings               = settings;
         _governance             = governance;
@@ -87,6 +91,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _automationConsent      = automationConsent;
         _automationOrchestrator = automationOrchestrator;
         _llmChat                = llmChat;
+        _desktopContext         = desktopContext;
         _dispatcher             = DispatcherQueue.GetForCurrentThread()
                                   ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
     }
@@ -105,6 +110,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutoStartEnabled      = ReadAutoStartFromRegistry();
         AutoScanEnabled       = s.AutoScanEnabled;
         UsageTelemetryEnabled = s.UsageTelemetryEnabled;
+        DesktopContextEnabled = s.DesktopContextAwarenessEnabled;
 
         ConsentModeIndex = _automationConsent.CurrentMode switch
         {
@@ -162,6 +168,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (_isInitializing) return;
         SaveSettings(_settings.Current with { UsageTelemetryEnabled = value });
+    }
+
+    partial void OnDesktopContextEnabledChanged(bool value)
+    {
+        if (_isInitializing) return;
+        SaveSettings(_settings.Current with { DesktopContextAwarenessEnabled = value });
+
+        // Apply immediately — consent changes take effect without a restart.
+        // Both calls are safe on the UI thread (this handler runs there) and
+        // Start()/Stop() are idempotent.
+        if (value) _desktopContext.Start();
+        else       _desktopContext.Stop();
     }
 
     partial void OnConsentModeIndexChanged(int value)

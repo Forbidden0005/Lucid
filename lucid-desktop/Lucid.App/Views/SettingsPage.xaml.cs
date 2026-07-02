@@ -23,7 +23,8 @@ public sealed partial class SettingsPage : Page
             AppServices.TrustManager,
             AppServices.AutomationConsent,
             AppServices.AutomationOrchestrator,
-            AppServices.LlmChat);
+            AppServices.LlmChat,
+            AppServices.DesktopContext);
 
         Loaded   += (_, _) => ViewModel.Initialize();
         Unloaded += (_, _) => ViewModel.Cleanup();
