@@ -206,6 +206,8 @@ public sealed class AutomationAuditService : IDisposable
     /// </summary>
     public void UpdateOutcome(string workflowId, string actionId, bool success, string? error = null)
     {
+        if (IsDisposedThenWarn($"outcome update for {actionId}")) return;
+
         _lock.EnterWriteLock();
         try
         {
@@ -236,6 +238,8 @@ public sealed class AutomationAuditService : IDisposable
     /// </summary>
     public void RecordRollback(string workflowId, string actionId)
     {
+        if (IsDisposedThenWarn($"rollback record for {actionId}")) return;
+
         _lock.EnterWriteLock();
         try
         {
@@ -262,6 +266,8 @@ public sealed class AutomationAuditService : IDisposable
     /// <summary>Returns a snapshot of all current audit entries (newest first).</summary>
     public IReadOnlyList<AutomationAuditEntry> GetAllEntries()
     {
+        if (_disposed) return [];
+
         _lock.EnterReadLock();
         try
         {
@@ -273,6 +279,8 @@ public sealed class AutomationAuditService : IDisposable
     /// <summary>Returns entries for a specific workflow ID.</summary>
     public IReadOnlyList<AutomationAuditEntry> GetEntriesForWorkflow(string workflowId)
     {
+        if (_disposed) return [];
+
         _lock.EnterReadLock();
         try
         {
@@ -285,6 +293,8 @@ public sealed class AutomationAuditService : IDisposable
     /// <summary>Returns entries within the last N days.</summary>
     public IReadOnlyList<AutomationAuditEntry> GetRecentEntries(int days = 7)
     {
+        if (_disposed) return [];
+
         var cutoff = DateTimeOffset.Now.AddDays(-days);
         _lock.EnterReadLock();
         try
@@ -301,6 +311,8 @@ public sealed class AutomationAuditService : IDisposable
     /// </summary>
     public int CountRecentHighRiskDenials(TimeSpan window)
     {
+        if (_disposed) return 0;
+
         var cutoff = DateTimeOffset.Now - window;
         _lock.EnterReadLock();
         try
@@ -317,11 +329,28 @@ public sealed class AutomationAuditService : IDisposable
 
     private void AddEntry(AutomationAuditEntry entry)
     {
+        if (IsDisposedThenWarn($"audit entry for {entry.ActionId}")) return;
+
         _lock.EnterWriteLock();
         try { _entries.Add(entry); }
         finally { _lock.ExitWriteLock(); }
 
         PersistAsync();
+    }
+
+    /// <summary>
+    /// Shutdown guard for mutating entry points: after Dispose the sync
+    /// primitives are released, so late calls must not touch them — and the
+    /// drop must be visible in the log, never silent (this ledger is the
+    /// accountability record). Returns true when the call must be skipped.
+    /// </summary>
+    private bool IsDisposedThenWarn(string what)
+    {
+        if (!_disposed) return false;
+
+        _logger?.Warning("Trust",
+            $"Audit ledger received {what} after shutdown; it was not recorded.");
+        return true;
     }
 
     private void PruneStale()
