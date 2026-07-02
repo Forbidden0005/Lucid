@@ -17,8 +17,9 @@ namespace Lucid.Services.Distributed;
 /// Discovery: 30-second UDP broadcast on port 42998. Beacons announce device ID,
 ///            name, and TCP port. Trusted devices' addresses are tracked from beacons.
 ///
-/// Data exchange: Length-prefixed, AES-256-CBC encrypted JSON over TCP port 43001.
-///                Envelope format: [senderDeviceId 36B] [IV 16B] [ciphertext NB].
+/// Data exchange: Length-prefixed, AES-256-GCM authenticated-encrypted JSON over
+///                TCP port 43001. Envelope: [senderDeviceId 36B] [nonce 12B]
+///                [tag 16B] [ciphertext NB] — see <see cref="SyncEnvelopeCrypto"/>.
 ///
 /// Pairing: 6-digit code valid for 5 minutes. Both sides derive the same AES-256 key
 ///          via SHA-256(code + sorted device IDs). The code is never persisted.
@@ -420,7 +421,8 @@ public sealed class LocalSyncCoordinator : IDisposable
     }
 
     // ── Encryption ────────────────────────────────────────────────────────────
-    // Envelope: [senderDeviceId 36B ASCII] + [AES IV 16B] + [ciphertext NB]
+    // AES-256-GCM envelope — see SyncEnvelopeCrypto for the layout and the
+    // rationale (authenticated encryption; tampering fails closed).
 
     private byte[]? EncryptPayload(string plaintext, string targetDeviceId)
     {
@@ -430,24 +432,8 @@ public sealed class LocalSyncCoordinator : IDisposable
         try
         {
             var key  = Convert.FromBase64String(pairing.AesKeyBase64);
-            var data = Encoding.UTF8.GetBytes(plaintext);
-
-            using var aes = Aes.Create();
-            aes.Key = key;
-            aes.GenerateIV();
-
-            using var enc    = aes.CreateEncryptor();
-            var       cipher = enc.TransformFinalBlock(data, 0, data.Length);
-
-            // Pad/truncate device ID to exactly 36 ASCII bytes
-            var myIdBytes = Encoding.ASCII.GetBytes(
-                _identity.GetOrCreateIdentity().DeviceId.PadRight(36)[..36]);
-
-            var result = new byte[36 + 16 + cipher.Length];
-            Buffer.BlockCopy(myIdBytes, 0, result,  0, 36);
-            Buffer.BlockCopy(aes.IV,   0, result, 36, 16);
-            Buffer.BlockCopy(cipher,   0, result, 52, cipher.Length);
-            return result;
+            var myId = _identity.GetOrCreateIdentity().DeviceId;
+            return SyncEnvelopeCrypto.Encrypt(key, myId, plaintext);
         }
         catch { return null; }
     }
@@ -456,31 +442,21 @@ public sealed class LocalSyncCoordinator : IDisposable
         out string? plaintext, out string? senderId)
     {
         plaintext = null;
-        senderId  = null;
-        if (data.Length < 53) return false;
+        senderId  = SyncEnvelopeCrypto.ReadSenderId(data);
+        if (senderId is null) return false;
+
+        // Trust gate: only devices the user explicitly paired may be decrypted.
+        var pairing = _registry.Get(senderId);
+        if (pairing is null) return false;
 
         try
         {
-            senderId = Encoding.ASCII.GetString(data, 0, 36).Trim();
+            var key = Convert.FromBase64String(pairing.AesKeyBase64);
+            if (!SyncEnvelopeCrypto.TryDecrypt(key, data, out plaintext))
+                return false;
 
-            var pairing = _registry.Get(senderId);
-            if (pairing is null) return false;
-
-            var key    = Convert.FromBase64String(pairing.AesKeyBase64);
-            var iv     = new byte[16];
-            var cipher = new byte[data.Length - 52];
-            Buffer.BlockCopy(data, 36, iv,     0, 16);
-            Buffer.BlockCopy(data, 52, cipher, 0, cipher.Length);
-
-            using var aes = Aes.Create();
-            aes.Key = key;
-            aes.IV  = iv;
-            using var dec = aes.CreateDecryptor();
-            var plain = dec.TransformFinalBlock(cipher, 0, cipher.Length);
-            plaintext = Encoding.UTF8.GetString(plain);
-
-            // Update address from the decrypted sender so future outbound syncs
-            // use the correct IP even without a beacon from this device
+            // Update address from the authenticated sender so future outbound
+            // syncs use the correct IP even without a beacon from this device.
             if (!string.IsNullOrEmpty(senderIp))
                 _discoveredAddresses[senderId] = senderIp;
 

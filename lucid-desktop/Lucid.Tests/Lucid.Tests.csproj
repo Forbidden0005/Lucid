@@ -122,6 +122,8 @@
              Link="App\Services\Execution\Executors\WindowsUpdateCacheExecutor.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Executors\WinsockResetExecutor.cs"
              Link="App\Services\Execution\Executors\WinsockResetExecutor.cs" />
+    <Compile Include="..\Lucid.App\Services\Distributed\SyncEnvelopeCrypto.cs"
+             Link="App\Services\Distributed\SyncEnvelopeCrypto.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Validation\ExecutionPathGuard.cs"
              Link="App\Services\Execution\Validation\ExecutionPathGuard.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Validation\ProcessExecutionFingerprint.cs"
