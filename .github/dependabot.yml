@@ -1,0 +1,46 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  - package-ecosystem: nuget
+    directory: /lucid-desktop/Lucid.App
+    schedule:
+      interval: weekly
+    groups:
+      nuget-dependencies:
+        patterns:
+          - '*'
+
+  - package-ecosystem: nuget
+    directory: /lucid-desktop/Lucid.Tests
+    schedule:
+      interval: weekly
+    groups:
+      nuget-test-dependencies:
+        patterns:
+          - '*'
+
+  - package-ecosystem: cargo
+    directory: /lucid-native
+    schedule:
+      interval: weekly
+    groups:
+      cargo-dependencies:
+        patterns:
+          - '*'
+
+  - package-ecosystem: cargo
+    directory: /lucid-native/lucid-scanner
+    schedule:
+      interval: weekly
+    groups:
+      cargo-scanner-dependencies:
+        patterns:
+          - '*'
