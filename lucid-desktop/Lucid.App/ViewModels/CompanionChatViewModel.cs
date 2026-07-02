@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lucid.Core.Infrastructure;
+using Lucid.Services.Automation;
 using Lucid.Services.Companion;
 using Lucid.Services.LlmChat;
 using Microsoft.UI.Dispatching;
@@ -27,8 +29,10 @@ public sealed partial class CompanionChatViewModel : ObservableObject
 
     // ── Dependencies ───────────────────────────────────────────────────────────
 
-    private readonly ILlmChatService  _llm;
-    private readonly DispatcherQueue  _dispatcher;
+    private readonly ILlmChatService         _llm;
+    private readonly AutomationOrchestrator? _orchestrator;
+    private readonly ILucidLogger?           _logger;
+    private readonly DispatcherQueue         _dispatcher;
 
     // ── Cancellation for in-flight stream ─────────────────────────────────────
 
@@ -140,12 +144,17 @@ public sealed partial class CompanionChatViewModel : ObservableObject
 
     // ── Constructor ────────────────────────────────────────────────────────────
 
-    public CompanionChatViewModel(ILlmChatService llm)
+    public CompanionChatViewModel(
+        ILlmChatService         llm,
+        AutomationOrchestrator? orchestrator = null,
+        ILucidLogger?           logger       = null)
     {
-        _llm        = llm;
-        _dispatcher = DispatcherQueue.GetForCurrentThread()
-                      ?? throw new InvalidOperationException(
-                          "CompanionChatViewModel must be created on the UI thread.");
+        _llm          = llm;
+        _orchestrator = orchestrator;
+        _logger       = logger;
+        _dispatcher   = DispatcherQueue.GetForCurrentThread()
+                        ?? throw new InvalidOperationException(
+                            "CompanionChatViewModel must be created on the UI thread.");
 
         foreach (var qa in StaticQuickActions)
             QuickActions.Add(qa);
@@ -352,6 +361,67 @@ public sealed partial class CompanionChatViewModel : ObservableObject
     {
         AddMessage(MakeMessage(narration,
             isWarning ? CompanionMessageCategory.Warning : CompanionMessageCategory.Action));
+    }
+
+    // ── Automation launch (business logic — moved out of the window code-behind) ─
+
+    /// <summary>
+    /// Plans and executes a desktop automation for the given target, streaming
+    /// narration back into the chat. The window only routes the action tag
+    /// here; planning, event wiring, and execution live in the ViewModel.
+    /// </summary>
+    public void LaunchAutomation(string target)
+    {
+        if (_orchestrator is null) return;
+
+        var plan = _orchestrator.PlanLaunch(target);
+
+        // One-shot subscriptions so a recycled window/VM never leaks handlers.
+        WireOrchestratorEvents(_orchestrator);
+
+        // Zero/low-risk plans execute immediately; risky ones go through the
+        // approval card via the orchestrator's ConfirmationRequired flow.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _orchestrator.ExecutePlanAsync(plan).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Narration events surface user-facing errors; the exception
+                // itself must still reach diagnostics rather than vanish.
+                _logger?.Warning("Automation",
+                    $"Companion automation plan for '{target}' failed: {ex.Message}", ex);
+            }
+        });
+    }
+
+    private void WireOrchestratorEvents(AutomationOrchestrator orchestrator)
+    {
+        // Lightweight handlers — they just add a narration message to the chat.
+        EventHandler<AutomationNarrationEventArgs>? onNarration = null;
+        EventHandler<AutomationPlanEventArgs>?      onComplete  = null;
+        EventHandler<AutomationPlanEventArgs>?      onCancel    = null;
+
+        onNarration = (_, args) => AddAutomationNarration(args.Message, args.IsWarning);
+
+        onComplete = (_, _) =>
+        {
+            orchestrator.NarrationUpdated -= onNarration;
+            orchestrator.PlanCompleted    -= onComplete;
+            orchestrator.PlanCancelled    -= onCancel;
+        };
+        onCancel = (_, _) =>
+        {
+            orchestrator.NarrationUpdated -= onNarration;
+            orchestrator.PlanCompleted    -= onComplete;
+            orchestrator.PlanCancelled    -= onCancel;
+        };
+
+        orchestrator.NarrationUpdated += onNarration;
+        orchestrator.PlanCompleted    += onComplete;
+        orchestrator.PlanCancelled    += onCancel;
     }
 
     // ── Contextual suggestions (no-op with LLM — LLM handles context natively) ─
