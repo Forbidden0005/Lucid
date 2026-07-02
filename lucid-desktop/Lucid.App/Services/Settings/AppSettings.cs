@@ -60,6 +60,16 @@ public sealed record AppSettings
     /// </summary>
     public bool DesktopContextAwarenessEnabled { get; init; } = false;
 
+    /// <summary>
+    /// Opt-in local-network device sync: UDP discovery beacons plus encrypted
+    /// snapshot exchange with explicitly paired devices on the same LAN.
+    /// Always off by default — Lucid neither broadcasts its presence nor
+    /// listens for connections until the user explicitly enables it
+    /// (local-first: by default nothing leaves this machine).
+    /// Additive field — no schema version bump required.
+    /// </summary>
+    public bool DeviceSyncEnabled { get; init; } = false;
+
     // ── AI / LLM ─────────────────────────────────────────────────────────────
 
     /// <summary>

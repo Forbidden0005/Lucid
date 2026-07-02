@@ -1437,7 +1437,22 @@ public static class AppServices
             _deviceIdentity, _localSync, _timeline);
         _crossMachineAnalytics = new CrossMachineAnalyticsEngine(
             _deviceIdentity, _localSync);
-        _localSync.Start();
+
+        // OPT-IN gate (local-first doctrine): the sync coordinator opens a LAN
+        // TCP listener and broadcasts UDP discovery beacons. By default nothing
+        // leaves — or listens on — this machine; loops only start when the user
+        // has explicitly enabled device sync in Settings.
+        if (_settings!.Current.DeviceSyncEnabled)
+        {
+            _localSync.Start();
+            _logger.Info("Startup", "Local device sync active (user opt-in)");
+        }
+        else
+        {
+            _logger.Info("Startup",
+                "Local device sync off — no LAN discovery beacons or listener " +
+                "(opt-in available in Settings)");
+        }
 
         // ── Operational Replay service ────────────────────────────────────────
         // Stateless — no Start()/Stop() required. Created after timeline and

@@ -77,8 +77,13 @@ public sealed class LocalSyncCoordinator : IDisposable
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
+    /// <summary>True while discovery/sync loops are active (user has opted in).</summary>
+    public bool IsRunning => _cts is not null;
+
     public void Start()
     {
+        if (IsRunning) return;
+
         _telemetry.ReadingAvailable += OnTelemetryReading;
         _cts = new CancellationTokenSource();
         _ = Task.Run(() => BeaconSendLoopAsync(_cts.Token));
