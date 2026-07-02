@@ -24,7 +24,8 @@ public sealed partial class SettingsPage : Page
             AppServices.AutomationConsent,
             AppServices.AutomationOrchestrator,
             AppServices.LlmChat,
-            AppServices.DesktopContext);
+            AppServices.DesktopContext,
+            AppServices.LocalSync);
 
         Loaded   += (_, _) => ViewModel.Initialize();
         Unloaded += (_, _) => ViewModel.Cleanup();

@@ -138,6 +138,26 @@
                                       VerticalAlignment="Center" />
                     </Grid>
 
+                    <Rectangle Height="1" Fill="{StaticResource BorderSubtleBrush}" Margin="0,4,0,4" />
+
+                    <!-- Local device sync (opt-in LAN discovery + exchange) -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Local device sync" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Text="Discovers your other Lucid devices on this network and exchanges encrypted snapshots with paired ones — nothing leaves your network, always opt-in"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1"
+                                      IsOn="{x:Bind ViewModel.DeviceSyncEnabled, Mode=TwoWay}"
+                                      OnContent="" OffContent=""
+                                      VerticalAlignment="Center" />
+                    </Grid>
+
                 </StackPanel>
             </Border>
 

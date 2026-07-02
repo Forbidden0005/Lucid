@@ -49,6 +49,7 @@ public sealed class LocalSyncCoordinator : IDisposable
 
     private TelemetrySnapshot?       _latestTelemetry;
     private CancellationTokenSource? _cts;
+    private Task[]                   _loops = [];
 
     // ── Pairing state ─────────────────────────────────────────────────────────
     private string?        _pendingCode;
@@ -77,20 +78,39 @@ public sealed class LocalSyncCoordinator : IDisposable
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
+    /// <summary>True while discovery/sync loops are active (user has opted in).</summary>
+    public bool IsRunning => _cts is not null;
+
     public void Start()
     {
+        if (IsRunning) return;
+
         _telemetry.ReadingAvailable += OnTelemetryReading;
         _cts = new CancellationTokenSource();
-        _ = Task.Run(() => BeaconSendLoopAsync(_cts.Token));
-        _ = Task.Run(() => BeaconReceiveLoopAsync(_cts.Token));
-        _ = Task.Run(() => DataListenerLoopAsync(_cts.Token));
-        _ = Task.Run(() => SyncLoopAsync(_cts.Token));
+        var ct = _cts.Token;
+        _loops =
+        [
+            Task.Run(() => BeaconSendLoopAsync(ct)),
+            Task.Run(() => BeaconReceiveLoopAsync(ct)),
+            Task.Run(() => DataListenerLoopAsync(ct)),
+            Task.Run(() => SyncLoopAsync(ct)),
+        ];
     }
 
     public void Stop()
     {
         _telemetry.ReadingAvailable -= OnTelemetryReading;
         _cts?.Cancel();
+
+        // Wait (bounded) for the loops to observe cancellation and release
+        // their sockets — the receive/listener calls are cancellation-aware,
+        // so this completes in milliseconds. Without it, a quick off→on
+        // toggle could try to rebind ports 42998/43001 while the old loops
+        // still own them, and the new listener would silently fail to bind.
+        try { Task.WaitAll(_loops, TimeSpan.FromSeconds(3)); }
+        catch (AggregateException) { /* loop cancellation surfaces here — expected */ }
+
+        _loops = [];
         _cts?.Dispose();
         _cts = null;
     }

@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Automation;
 using Lucid.Services.DesktopContext;
+using Lucid.Services.Distributed;
 using Lucid.Services.Governance;
 using Lucid.Services.LlmChat;
 using Lucid.Services.Settings;
@@ -41,6 +42,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AutomationOrchestrator    _automationOrchestrator;
     private readonly ILlmChatService           _llmChat;
     private readonly IDesktopContextService    _desktopContext;
+    private readonly LocalSyncCoordinator      _localSync;
     private readonly DispatcherQueue           _dispatcher;
 
     private bool _isInitializing;
@@ -56,6 +58,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _autoScanEnabled;
     [ObservableProperty] private bool _usageTelemetryEnabled;
     [ObservableProperty] private bool _desktopContextEnabled;
+    [ObservableProperty] private bool _deviceSyncEnabled;
 
     // ── Governance section ────────────────────────────────────────────────────
 
@@ -83,7 +86,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutomationConsentService  automationConsent,
         AutomationOrchestrator    automationOrchestrator,
         ILlmChatService           llmChat,
-        IDesktopContextService    desktopContext)
+        IDesktopContextService    desktopContext,
+        LocalSyncCoordinator      localSync)
     {
         _settings               = settings;
         _governance             = governance;
@@ -92,6 +96,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _automationOrchestrator = automationOrchestrator;
         _llmChat                = llmChat;
         _desktopContext         = desktopContext;
+        _localSync              = localSync;
         _dispatcher             = DispatcherQueue.GetForCurrentThread()
                                   ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
     }
@@ -111,6 +116,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutoScanEnabled       = s.AutoScanEnabled;
         UsageTelemetryEnabled = s.UsageTelemetryEnabled;
         DesktopContextEnabled = s.DesktopContextAwarenessEnabled;
+        DeviceSyncEnabled     = s.DeviceSyncEnabled;
 
         ConsentModeIndex = _automationConsent.CurrentMode switch
         {
@@ -180,6 +186,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         // Start()/Stop() are idempotent.
         if (value) _desktopContext.Start();
         else       _desktopContext.Stop();
+    }
+
+    partial void OnDeviceSyncEnabledChanged(bool value)
+    {
+        if (_isInitializing) return;
+        SaveSettings(_settings.Current with { DeviceSyncEnabled = value });
+
+        // Apply immediately — enabling starts LAN discovery/exchange loops,
+        // disabling stops the beacons and closes the listener.
+        if (value) _localSync.Start();
+        else       _localSync.Stop();
     }
 
     partial void OnConsentModeIndexChanged(int value)

@@ -65,6 +65,15 @@ public sealed class AutomationAuditService : IDisposable
     /// </summary>
     private volatile Task _lastPersist = Task.CompletedTask;
 
+    /// <summary>
+    /// Makes {disposed-check → mutate → schedule persist} atomic with respect
+    /// to Dispose's {set disposed → capture last persist}. Guarantees every
+    /// ACCEPTED mutation has scheduled its persist before Dispose decides
+    /// which task to wait for — an accepted entry can never be dropped by a
+    /// racing shutdown.
+    /// </summary>
+    private readonly object _shutdownGate = new();
+
     // ── Construction / persistence ────────────────────────────────────────────
 
     /// <param name="logger">
@@ -91,12 +100,17 @@ public sealed class AutomationAuditService : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
+        Task lastPersist;
+        lock (_shutdownGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            lastPersist = _lastPersist;
+        }
 
         // Give the last scheduled persist a moment to complete so the final
         // audit entries reach disk; never block shutdown indefinitely.
-        try { _lastPersist.Wait(TimeSpan.FromSeconds(3)); }
+        try { lastPersist.Wait(TimeSpan.FromSeconds(3)); }
         catch { /* persist failures are already logged inside the task */ }
 
         _writeGate.Dispose();
@@ -206,31 +220,34 @@ public sealed class AutomationAuditService : IDisposable
     /// </summary>
     public void UpdateOutcome(string workflowId, string actionId, bool success, string? error = null)
     {
-        if (IsDisposedThenWarn($"outcome update for {actionId}")) return;
-
-        _lock.EnterWriteLock();
-        try
+        lock (_shutdownGate)
         {
-            // Find the most recent approved entry for this workflow+action
-            for (int i = _entries.Count - 1; i >= 0; i--)
+            if (IsDisposedThenWarn($"outcome update for {actionId}")) return;
+
+            _lock.EnterWriteLock();
+            try
             {
-                var e = _entries[i];
-                if (e.WorkflowId == workflowId &&
-                    e.ActionId   == actionId   &&
-                    e.Approved   == true       &&
-                    e.Succeeded  is null)
+                // Find the most recent approved entry for this workflow+action
+                for (int i = _entries.Count - 1; i >= 0; i--)
                 {
-                    _entries[i] = e with { Succeeded = success, ErrorDetail = error };
-                    break;
+                    var e = _entries[i];
+                    if (e.WorkflowId == workflowId &&
+                        e.ActionId   == actionId   &&
+                        e.Approved   == true       &&
+                        e.Succeeded  is null)
+                    {
+                        _entries[i] = e with { Succeeded = success, ErrorDetail = error };
+                        break;
+                    }
                 }
             }
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
 
-        PersistAsync();
+            SchedulePersistLocked();
+        }
     }
 
     /// <summary>
@@ -238,27 +255,30 @@ public sealed class AutomationAuditService : IDisposable
     /// </summary>
     public void RecordRollback(string workflowId, string actionId)
     {
-        if (IsDisposedThenWarn($"rollback record for {actionId}")) return;
-
-        _lock.EnterWriteLock();
-        try
+        lock (_shutdownGate)
         {
-            for (int i = _entries.Count - 1; i >= 0; i--)
+            if (IsDisposedThenWarn($"rollback record for {actionId}")) return;
+
+            _lock.EnterWriteLock();
+            try
             {
-                var e = _entries[i];
-                if (e.WorkflowId == workflowId && e.ActionId == actionId)
+                for (int i = _entries.Count - 1; i >= 0; i--)
                 {
-                    _entries[i] = e with { WasRolledBack = true, RolledBackAt = DateTimeOffset.Now };
-                    break;
+                    var e = _entries[i];
+                    if (e.WorkflowId == workflowId && e.ActionId == actionId)
+                    {
+                        _entries[i] = e with { WasRolledBack = true, RolledBackAt = DateTimeOffset.Now };
+                        break;
+                    }
                 }
             }
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
 
-        PersistAsync();
+            SchedulePersistLocked();
+        }
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -329,13 +349,16 @@ public sealed class AutomationAuditService : IDisposable
 
     private void AddEntry(AutomationAuditEntry entry)
     {
-        if (IsDisposedThenWarn($"audit entry for {entry.ActionId}")) return;
+        lock (_shutdownGate)
+        {
+            if (IsDisposedThenWarn($"audit entry for {entry.ActionId}")) return;
 
-        _lock.EnterWriteLock();
-        try { _entries.Add(entry); }
-        finally { _lock.ExitWriteLock(); }
+            _lock.EnterWriteLock();
+            try { _entries.Add(entry); }
+            finally { _lock.ExitWriteLock(); }
 
-        PersistAsync();
+            SchedulePersistLocked();
+        }
     }
 
     /// <summary>
@@ -382,9 +405,14 @@ public sealed class AutomationAuditService : IDisposable
         }
     }
 
-    private void PersistAsync()
+    /// <summary>
+    /// Schedules a persist for the current entry set. Must be called while
+    /// holding <see cref="_shutdownGate"/>: that ordering guarantees Dispose
+    /// (which flips <see cref="_disposed"/> under the same gate) always sees —
+    /// and waits for — the persist of every accepted mutation.
+    /// </summary>
+    private void SchedulePersistLocked()
     {
-        if (_disposed) return;
         _lastPersist = Task.Run(PersistCoreAsync);
     }
 

@@ -205,19 +205,25 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
         context.Log.Info($"Rollback staging: {staging}");
 
         // ── Create staging directory ──────────────────────────────────────────
-        // If staging creation fails, fall back to permanent deletion with no
-        // rollback. A warning is shown but the cleanup still proceeds.
-        bool stagingReady = false;
+        // This executor declares SupportsRollback = true, so a run that cannot
+        // stage must FAIL — never silently escalate to permanent deletion.
+        // (Doctrine: cleanup is conservative and reversible.)
         try
         {
             Directory.CreateDirectory(staging);
-            stagingReady = true;
         }
         catch (Exception ex)
         {
-            context.Log.Warn(
+            context.Log.Error(
                 $"Could not create rollback staging area: {ex.Message}  " +
-                $"Files will be permanently deleted — rollback unavailable for this run.");
+                $"Cleanup was not started — no files were touched.");
+            sw.Stop();
+            return ActionExecutionResult.Failed(
+                ActionId,
+                "Cleanup did not run because the rollback staging area could not be " +
+                "created — nothing was deleted. Free up disk space or check permissions " +
+                $"for {staging} and try again.",
+                sw.Elapsed, context.Log.Build(), ex.ToString());
         }
 
         // ── Scan and clean each target directory ──────────────────────────────
@@ -253,20 +259,12 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
                 {
                     var sz = file.Length;
 
-                    if (stagingReady)
-                    {
-                        // Move to staging (same-drive = atomic rename, no data copy).
-                        // Preserve the extension so the staged file is recognisable.
-                        var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
-                        var stagingPath = Path.Combine(staging, stagingName);
-                        File.Move(file.FullName, stagingPath);
-                        manifest.Add($"{stagingName}|{file.FullName}");
-                    }
-                    else
-                    {
-                        // Staging unavailable — permanent delete.
-                        File.Delete(file.FullName);
-                    }
+                    // Move to staging (same-drive = atomic rename, no data copy).
+                    // Preserve the extension so the staged file is recognisable.
+                    var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
+                    var stagingPath = Path.Combine(staging, stagingName);
+                    File.Move(file.FullName, stagingPath);
+                    manifest.Add($"{stagingName}|{file.FullName}");
 
                     context.Log.Info(
                         $"  Removed  {file.Name}  ({FormatBytes(sz)})");
@@ -324,12 +322,12 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
 
         // ── Write rollback manifest ───────────────────────────────────────────
         string? rollbackToken = null;
-        if (stagingReady && manifest.Count > 0)
+        if (manifest.Count > 0)
         {
             if (TryWriteManifest(staging, manifest, context.Log))
                 rollbackToken = staging;
         }
-        else if (stagingReady && totalFiles == 0)
+        else if (totalFiles == 0)
         {
             // Nothing moved — clean up the empty staging directory.
             TryDeleteDirectory(staging, context.Log);
