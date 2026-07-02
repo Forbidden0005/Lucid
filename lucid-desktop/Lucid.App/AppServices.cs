@@ -1558,6 +1558,13 @@ public static class AppServices
         _outcomeTracker       = new RecommendationOutcomeTracker();
         _patternAnalyzer      = new PatternConsistencyAnalyzer();
 
+        // Governance diagnostics must exist BEFORE its consumers below:
+        // CognitiveReasoningEngine and GovernanceLearningPolicy inject it
+        // directly. It previously lived in the Phase 18C block (~150 lines
+        // later), so both consumers silently received null — the classic
+        // hand-ordered-registry hazard. Only depends on the event bus.
+        _governanceDiagnostics = new GovernanceDiagnosticsService(_eventBus!);
+
         _cognitiveReasoning = new CognitiveReasoningEngine(
             _intelligence!,
             _operationalState!,
@@ -1721,9 +1728,9 @@ public static class AppServices
             _timeline!);
 
         // ── Phase 18C: Trust & Governance Hardening ──────────────────────────
-        // Initialize governance diagnostics first so all subsequent trust
-        // checks can publish audit events.
-        _governanceDiagnostics = new GovernanceDiagnosticsService(_eventBus!);
+        // Governance diagnostics is created earlier (Phase 19 observability
+        // block) because the cognitive engine and learning policy inject it;
+        // all trust checks below can publish audit events through it.
 
         // Consent integrity validation — verify the persisted consent posture
         // has not been tampered with outside the normal UI flows.
