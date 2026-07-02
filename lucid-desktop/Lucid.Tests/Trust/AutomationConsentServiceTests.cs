@@ -145,7 +145,10 @@ public sealed class AutomationConsentServiceTests
     private static AutomationConsentService CreateService(TestTimelineService timeline) =>
         new(
             timeline,
-            new AutomationAuditService(),
+            // Isolated ledger path — tests must never touch the real user ledger.
+            new AutomationAuditService(auditFilePath: Path.Combine(
+                Path.GetTempPath(), "lucid-consent-tests",
+                Guid.NewGuid().ToString("N") + ".json")),
             new ConsentExplanationService(),
             new AutomationTransparencyEngine(),
             new ImmediateDispatcher());

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Lucid.Core.Infrastructure;
 using Lucid.Services.Automation;
 
 namespace Lucid.Services.Trust;
@@ -18,15 +19,24 @@ namespace Lucid.Services.Trust;
 /// Threading:
 ///   All public mutating methods are thread-safe via a lock.
 ///   All reads return snapshots — safe to consume from any thread.
+///
+/// Persistence integrity (this ledger is the accountability record for every
+/// autonomous action, so its durability is a trust requirement):
+///   • Disk writes are serialized through a single-writer gate — overlapping
+///     mutations never produce interleaved or torn writes to the file.
+///   • Each write goes to a temp file first and then atomically replaces the
+///     ledger, so a crash mid-write can never leave truncated JSON behind.
+///   • Persistence failures are surfaced to the structured logger instead of
+///     being silently dropped.
 /// </summary>
-public sealed class AutomationAuditService
+public sealed class AutomationAuditService : IDisposable
 {
     // ── Constants ─────────────────────────────────────────────────────────────
 
     /// <summary>Number of days to retain audit entries. Entries older than this are pruned.</summary>
     public const int RetentionDays = 30;
 
-    private static readonly string AuditFilePath = Path.Combine(
+    private static readonly string DefaultAuditFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Lucid", "audit-log.json");
 
@@ -41,12 +51,56 @@ public sealed class AutomationAuditService
     private readonly List<AutomationAuditEntry>       _entries = [];
     private readonly System.Threading.ReaderWriterLockSlim _lock = new();
 
+    /// <summary>Serializes disk writes — exactly one persist runs at a time.</summary>
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+    private readonly string        _auditFilePath;
+    private readonly ILucidLogger? _logger;
+    private volatile bool          _disposed;
+
+    /// <summary>
+    /// The most recently scheduled persist task. Dispose waits on this (not on
+    /// the gate) so a write that is scheduled but not yet started still gets
+    /// its chance to land before handles are released.
+    /// </summary>
+    private volatile Task _lastPersist = Task.CompletedTask;
+
     // ── Construction / persistence ────────────────────────────────────────────
 
-    public AutomationAuditService()
+    /// <param name="logger">
+    /// Optional structured logger; persistence failures are reported through it.
+    /// </param>
+    /// <param name="auditFilePath">
+    /// Optional override of the ledger location — used by tests so they never
+    /// touch the real user ledger. Defaults to %LOCALAPPDATA%\Lucid\audit-log.json.
+    /// </param>
+    public AutomationAuditService(ILucidLogger? logger = null, string? auditFilePath = null)
     {
+        _logger        = logger;
+        _auditFilePath = string.IsNullOrWhiteSpace(auditFilePath)
+            ? DefaultAuditFilePath
+            : auditFilePath;
+
         LoadFromDisk();
         PruneStale();
+    }
+
+    /// <summary>
+    /// Waits briefly for any in-flight disk write to finish, then releases the
+    /// lock and write-gate handles. Called at app shutdown.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        // Give the last scheduled persist a moment to complete so the final
+        // audit entries reach disk; never block shutdown indefinitely.
+        try { _lastPersist.Wait(TimeSpan.FromSeconds(3)); }
+        catch { /* persist failures are already logged inside the task */ }
+
+        _writeGate.Dispose();
+        _lock.Dispose();
     }
 
     // ── Recording (called by AutomationConsentService) ────────────────────────
@@ -282,43 +336,71 @@ public sealed class AutomationAuditService
     {
         try
         {
-            if (!File.Exists(AuditFilePath)) return;
-            var json    = File.ReadAllText(AuditFilePath);
+            if (!File.Exists(_auditFilePath)) return;
+            var json    = File.ReadAllText(_auditFilePath);
             var loaded  = JsonSerializer.Deserialize<List<AutomationAuditEntry>>(json, _jsonOptions);
             if (loaded is null) return;
             _lock.EnterWriteLock();
             try { _entries.AddRange(loaded); }
             finally { _lock.ExitWriteLock(); }
         }
-        catch
+        catch (Exception ex)
         {
-            // Non-fatal — start with empty ledger if file is corrupted
+            // Non-fatal — start with an empty ledger, but never silently:
+            // losing the audit history is a trust-relevant event.
+            _logger?.Warning("Trust",
+                $"Audit ledger could not be read ({_auditFilePath}); starting with an empty ledger.", ex);
         }
     }
 
     private void PersistAsync()
     {
-        _ = Task.Run(PersistCoreAsync);
+        if (_disposed) return;
+        _lastPersist = Task.Run(PersistCoreAsync);
     }
 
     private async Task PersistCoreAsync()
     {
         try
         {
-            var dir = Path.GetDirectoryName(AuditFilePath)!;
-            Directory.CreateDirectory(dir);
+            // Single-writer gate: overlapping mutations queue here, and each
+            // pass writes the then-current snapshot — the file on disk is
+            // always one complete, consistent serialization.
+            await _writeGate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                var dir = Path.GetDirectoryName(_auditFilePath)!;
+                Directory.CreateDirectory(dir);
 
-            IReadOnlyList<AutomationAuditEntry> snapshot;
-            _lock.EnterReadLock();
-            try { snapshot = [.. _entries]; }
-            finally { _lock.ExitReadLock(); }
+                IReadOnlyList<AutomationAuditEntry> snapshot;
+                _lock.EnterReadLock();
+                try { snapshot = [.. _entries]; }
+                finally { _lock.ExitReadLock(); }
 
-            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
-            await File.WriteAllTextAsync(AuditFilePath, json).ConfigureAwait(false);
+                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+
+                // Write-then-rename: a crash mid-write leaves only a stale
+                // .tmp behind, never a truncated ledger.
+                var tmpPath = _auditFilePath + ".tmp";
+                await File.WriteAllTextAsync(tmpPath, json).ConfigureAwait(false);
+                File.Move(tmpPath, _auditFilePath, overwrite: true);
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
         }
-        catch
+        catch (ObjectDisposedException)
         {
-            // Non-fatal — audit persistence failure does not affect the app
+            // Shutdown raced an in-flight persist — the Dispose grace window
+            // already gave pending writes their chance.
+        }
+        catch (Exception ex)
+        {
+            // The app keeps running, but the failure must be visible: this
+            // ledger is the accountability record for autonomous actions.
+            _logger?.Error("Trust",
+                $"Audit ledger write failed ({_auditFilePath}); recent entries are only in memory.", ex);
         }
     }
 
