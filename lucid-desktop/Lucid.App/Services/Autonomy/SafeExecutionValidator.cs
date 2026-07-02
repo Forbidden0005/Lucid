@@ -1,3 +1,5 @@
+using Lucid.Services.Execution.Validation;
+
 namespace Lucid.Services.Autonomy;
 
 /// <summary>
@@ -9,6 +11,10 @@ namespace Lucid.Services.Autonomy;
 ///   • Hidden system data directories (AppData\Roaming\Microsoft, etc.)
 ///   • Recursive operations that would affect more than <see cref="MaxFilesPerOperation"/> files
 ///   • Operations on paths outside the user's profile unless explicitly scoped
+///
+/// Path rules are shared with the execution layer via
+/// <see cref="ExecutionPathGuard"/> so autonomy workflows and direct
+/// executors enforce identical protections.
 ///
 /// All methods are synchronous and pure — no I/O, no state mutations.
 /// Thread-safe: all members are static.
@@ -23,73 +29,16 @@ public sealed class SafeExecutionValidator
     /// <summary>Maximum total bytes that can be moved/deleted in one workflow execution (10 GB).</summary>
     public const long MaxBytesPerOperation = 10L * 1024 * 1024 * 1024;
 
-    // ── Blocked path fragments ────────────────────────────────────────────────
-
-    private static readonly string[] _blockedPathFragments =
-    [
-        // Windows system
-        @"\windows\",
-        @"\system32\",
-        @"\syswow64\",
-        @"\program files\",
-        @"\program files (x86)\",
-        @"\programdata\",
-        @"\windows.old\",
-        @"\boot\",
-        @"\efi\",
-        @"\recovery\",
-
-        // Driver / firmware
-        @"\drivers\",
-        @"\inf\",
-        @"\diagerr.xml",
-
-        // User credential / browser stores
-        @"\appdata\roaming\microsoft\credentials\",
-        @"\appdata\roaming\microsoft\protect\",
-        @"\appdata\local\microsoft\credentials\",
-        @"\appdata\local\microsoft\vault\",
-        @"\appdata\roaming\microsoft\wallet\",
-
-        // Browser profile data
-        @"\appdata\local\google\chrome\user data\default\login data",
-        @"\appdata\roaming\mozilla\firefox\profiles\",
-        @"\appdata\local\microsoft\edge\user data\default\login data",
-        @"\cookies\",
-        @"\login data",
-
-        // Hidden system data
-        @"\appdata\roaming\microsoft\windows\",
-        @"\appdata\local\packages\",
-        @"\appdata\local\temp\wer\",
-    ];
-
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Validates that the given target path is safe to operate on.
     /// Returns a block reason string if blocked, or null if safe.
+    /// Delegates to <see cref="ExecutionPathGuard.CheckDestructiveTarget"/> —
+    /// the single denylist shared with the execution layer.
     /// </summary>
-    public string? ValidatePath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return "Path is empty or null.";
-
-        var lower = path.ToLowerInvariant().Replace('/', '\\');
-
-        foreach (var fragment in _blockedPathFragments)
-        {
-            if (lower.Contains(fragment, StringComparison.Ordinal))
-                return $"Operation not permitted: the path '{Path.GetFileName(path)}' is in a " +
-                       "protected system directory. Lucid cannot modify this location.";
-        }
-
-        // Block operations on drive roots
-        if (lower.Length <= 3 && lower.Length >= 2 && lower[1] == ':')
-            return "Operations on drive roots are not permitted.";
-
-        return null;  // safe
-    }
+    public string? ValidatePath(string path) =>
+        ExecutionPathGuard.CheckDestructiveTarget(path);
 
     /// <summary>
     /// Validates a <see cref="FileOrganizationPreview"/> before execution.
