@@ -27,6 +27,47 @@ public sealed class DeleteLargeFileExecutorSafetyTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WithProtectedPath_FailsWithoutTouchingTheFile()
+    {
+        using var dir = new TestDir();
+        // The guard matches the "\drivers\" fragment, so a real file under a
+        // drivers subfolder proves the refusal happens before any mutation.
+        var filePath = dir.WriteFile(@"drivers\pseudo-driver.sys", new byte[] { 1, 2, 3 });
+        var executor = new DeleteLargeFileExecutor();
+
+        var result = await executor.ExecuteAsync(NewContext(filePath));
+
+        result.Status.Should().Be(ActionExecutionStatus.Failed);
+        result.CanRollback.Should().BeFalse();
+        result.Message.Should().Contain("protected system directory");
+        File.Exists(filePath).Should().BeTrue("a protected path must never be staged or moved");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_DryRunWithProtectedPath_SurfacesRefusalInPreview()
+    {
+        var executor = new DeleteLargeFileExecutor();
+        var context = new ActionExecutionContext
+        {
+            IsDryRun = true,
+            IsElevated = true,
+            ConfirmationGranted = true,
+            RequestedBy = "test",
+            Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [DeleteLargeFileExecutor.ParamFilePath] = @"C:\Windows\System32\config\SYSTEM"
+            },
+            Log = new ActionExecutionLog(),
+        };
+
+        var result = await executor.ExecuteAsync(context);
+
+        result.Status.Should().Be(ActionExecutionStatus.Failed,
+            "the preview the user approves must already surface the refusal");
+        result.Message.Should().Contain("protected system directory");
+    }
+
+    [Fact]
     public async Task ExecuteAsync_StagesFile_AndRollbackRestoresIt()
     {
         using var dir = new TestDir();

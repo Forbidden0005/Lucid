@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Lucid.Services.Cleanup;
+using Lucid.Services.Execution.Validation;
 
 namespace Lucid.Services.Execution.Executors;
 
@@ -11,6 +12,11 @@ namespace Lucid.Services.Execution.Executors;
 /// so it can be restored if the user changes their mind.
 ///
 /// Required context parameter: "FilePath" — the full path to delete.
+///
+/// Safety: the target path is checked against <see cref="ExecutionPathGuard"/>
+/// before any mutation (and during dry-run, so the preview surfaces the
+/// refusal). Protected system, driver, and credential locations are never
+/// staged or deleted regardless of what the caller supplies.
 ///
 /// Privilege: Standard (files in user profile) or may need admin for system files.
 /// The executor attempts the operation and surfaces an access-denied error if
@@ -44,6 +50,14 @@ internal sealed class DeleteLargeFileExecutor : IActionExecutor
             ctx.Log.Error("No file path provided.");
             return ActionExecutionResult.Failed("action.storage.delete-large-file",
                 "No file path specified.", sw.Elapsed, ctx.Log.Build());
+        }
+
+        if (ExecutionPathGuard.CheckDestructiveTarget(path) is { } dryRunBlockReason)
+        {
+            ctx.Log.Error(dryRunBlockReason);
+            sw.Stop();
+            return ActionExecutionResult.Failed("action.storage.delete-large-file",
+                dryRunBlockReason, sw.Elapsed, ctx.Log.Build());
         }
 
         ctx.Log.Info($"Preview — would delete: {path}");
@@ -85,6 +99,14 @@ internal sealed class DeleteLargeFileExecutor : IActionExecutor
             ctx.Log.Error("No file path provided.");
             return ActionExecutionResult.Failed("action.storage.delete-large-file",
                 "No file path specified.", sw.Elapsed, ctx.Log.Build());
+        }
+
+        if (ExecutionPathGuard.CheckDestructiveTarget(path) is { } blockReason)
+        {
+            ctx.Log.Error(blockReason);
+            sw.Stop();
+            return ActionExecutionResult.Failed("action.storage.delete-large-file",
+                blockReason, sw.Elapsed, ctx.Log.Build());
         }
 
         ctx.Log.Info($"Staging large file for deletion: {path}");
