@@ -59,6 +59,29 @@ public sealed class WindowsUpdateCacheExecutorSafetyTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenStagingCannotBeCreated_FailsWithoutDeletingAnything()
+    {
+        using var dir = new TestDir();
+        var cached = dir.WriteCacheFile("update-a.bin", new byte[] { 1, 2, 3, 4 });
+        var runtime = new TestRuntime(dir.CachePath, dir.StagingPath)
+        {
+            FailCreateDirectory = true
+        };
+        var executor = new WindowsUpdateCacheExecutor(runtime);
+
+        var result = await executor.ExecuteAsync(NewContext());
+
+        result.Status.Should().Be(ActionExecutionStatus.Failed,
+            "a rollback-capable cleanup must fail rather than delete permanently");
+        result.CanRollback.Should().BeFalse();
+        result.Message.Should().Contain("nothing was deleted");
+        File.Exists(cached).Should().BeTrue(
+            "no file may be removed when the rollback staging area is unavailable");
+        runtime.StartServiceCalls.Should().Be(1,
+            "the update service must be restarted even when cleanup aborts");
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenCancelledAfterFirstRemoval_RestoresFilesAndRestartsService()
     {
         using var dir = new TestDir();
@@ -106,6 +129,7 @@ public sealed class WindowsUpdateCacheExecutorSafetyTests
         public string CachePath { get; }
         public string StagingPath { get; }
         public bool StopServiceResult { get; set; } = true;
+        public bool FailCreateDirectory { get; set; }
         public int StopServiceCalls { get; private set; }
         public int StartServiceCalls { get; private set; }
         public HashSet<string> FailMoveFileNames { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -116,7 +140,13 @@ public sealed class WindowsUpdateCacheExecutorSafetyTests
 
         public bool DirectoryExists(string path) => Directory.Exists(path);
 
-        public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+        public void CreateDirectory(string path)
+        {
+            if (FailCreateDirectory)
+                throw new IOException("Simulated staging-creation failure.");
+
+            Directory.CreateDirectory(path);
+        }
 
         public (int FileCount, long TotalBytes) Scan(
             string rootPath,
@@ -135,8 +165,6 @@ public sealed class WindowsUpdateCacheExecutorSafetyTests
 
             File.Move(sourcePath, stagingPath);
         }
-
-        public void DeleteFile(string path) => File.Delete(path);
 
         public bool TryStopService(string serviceName, ActionExecutionLog log)
         {

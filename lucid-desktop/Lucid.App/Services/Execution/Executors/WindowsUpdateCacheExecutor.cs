@@ -132,17 +132,29 @@ internal sealed class WindowsUpdateCacheExecutor : IActionExecutor
         }
 
         // ── Create staging directory ──────────────────────────────────────────
-        bool stagingReady = false;
+        // This executor declares SupportsRollback = true, so a run that cannot
+        // stage must FAIL — never silently escalate to permanent deletion.
         try
         {
             _runtime.CreateDirectory(staging);
-            stagingReady = true;
         }
         catch (Exception ex)
         {
-            context.Log.Warn(
+            context.Log.Error(
                 $"Could not create staging area: {ex.Message}  " +
-                $"Files will be permanently deleted — rollback unavailable.");
+                $"Cleanup was not started — no files were touched.");
+
+            // The update service was stopped above — bring it back before failing.
+            context.Log.Info($"Restarting {ServiceName} service…");
+            _runtime.StartService(ServiceName, context.Log);
+
+            sw.Stop();
+            return ActionExecutionResult.Failed(
+                ActionId,
+                "Cleanup did not run because the rollback staging area could not be " +
+                "created — nothing was deleted. Free up disk space or check permissions " +
+                $"for {staging} and try again.",
+                sw.Elapsed, context.Log.Build(), ex.ToString());
         }
 
         // ── Scan and move files ───────────────────────────────────────────────
@@ -159,17 +171,10 @@ internal sealed class WindowsUpdateCacheExecutor : IActionExecutor
             {
                 var sz = file.Length;
 
-                if (stagingReady)
-                {
-                    var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
-                    var stagingPath = Path.Combine(staging, stagingName);
-                    _runtime.MoveFileToStaging(file.FullName, stagingPath);
-                    manifest.Add($"{stagingName}|{file.FullName}");
-                }
-                else
-                {
-                    _runtime.DeleteFile(file.FullName);
-                }
+                var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
+                var stagingPath = Path.Combine(staging, stagingName);
+                _runtime.MoveFileToStaging(file.FullName, stagingPath);
+                manifest.Add($"{stagingName}|{file.FullName}");
 
                 context.Log.Info($"  Removed  {file.Name}  ({CleanupScanner.FormatBytes(sz)})");
                 totalFiles++;
@@ -217,12 +222,12 @@ internal sealed class WindowsUpdateCacheExecutor : IActionExecutor
 
         // ── Write manifest, build result ──────────────────────────────────────
         string? rollbackToken = null;
-        if (stagingReady && manifest.Count > 0)
+        if (manifest.Count > 0)
         {
             if (_runtime.TryWriteManifest(staging, manifest, context.Log))
                 rollbackToken = staging;
         }
-        else if (stagingReady && totalFiles == 0)
+        else if (totalFiles == 0)
         {
             _runtime.TryDeleteDirectory(staging, context.Log);
         }
@@ -321,7 +326,6 @@ internal sealed class WindowsUpdateCacheExecutor : IActionExecutor
         (int FileCount, long TotalBytes) Scan(string rootPath, int minAgeMinutes, CancellationToken ct);
         IEnumerable<FileInfo> EnumerateFiles(string rootPath, int minAgeMinutes, CancellationToken ct);
         void MoveFileToStaging(string sourcePath, string stagingPath);
-        void DeleteFile(string path);
         bool TryStopService(string serviceName, ActionExecutionLog log);
         void StartService(string serviceName, ActionExecutionLog log);
         void RestoreFromStaging(IReadOnlyList<string> manifest, string stagingDir, ActionExecutionLog log);
@@ -353,8 +357,6 @@ internal sealed class WindowsUpdateCacheExecutor : IActionExecutor
 
         public void MoveFileToStaging(string sourcePath, string stagingPath) =>
             File.Move(sourcePath, stagingPath);
-
-        public void DeleteFile(string path) => File.Delete(path);
 
         public bool TryStopService(string serviceName, ActionExecutionLog log) =>
             WindowsUpdateCacheExecutor.StopService(serviceName, log);

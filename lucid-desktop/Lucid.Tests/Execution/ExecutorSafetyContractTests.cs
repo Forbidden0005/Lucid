@@ -422,7 +422,6 @@ public sealed class ExecutorSafetyContractTests
         public void CreateDirectory(string path) => throw Refuse(nameof(CreateDirectory));
         public void MoveFileToStaging(string sourcePath, string stagingPath) =>
             throw Refuse(nameof(MoveFileToStaging));
-        public void DeleteFile(string path) => throw Refuse(nameof(DeleteFile));
         public bool TryStopService(string serviceName, ActionExecutionLog log) =>
             throw Refuse(nameof(TryStopService));
         public void StartService(string serviceName, ActionExecutionLog log) =>
