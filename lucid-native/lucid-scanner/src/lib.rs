@@ -129,16 +129,22 @@ pub unsafe extern "C" fn lucid_scan_top_files(
         Err(_) => return -2,
     };
 
-    let written = top.len().min(n as usize);
-    for (i, entry) in top.into_iter().take(written).enumerate() {
+    // Write densely with a separate index: if CString::new rejects an entry
+    // (interior NUL), skipping the loop index would leave an uninitialized
+    // hole in out_entries while out_count still counted it — the caller would
+    // then read a garbage pointer. Only entries actually written are counted.
+    let capacity = top.len().min(n as usize);
+    let mut written: usize = 0;
+    for entry in top.into_iter().take(capacity) {
         let s = format!("{}\t{}", entry.path, entry.size_bytes);
         let cs = match CString::new(s) {
             Ok(c) => c,
             Err(_) => continue,
         };
         unsafe {
-            *out_entries.add(i) = cs.into_raw();
+            *out_entries.add(written) = cs.into_raw();
         }
+        written += 1;
     }
 
     unsafe {
