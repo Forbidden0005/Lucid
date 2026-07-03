@@ -158,7 +158,7 @@
 
                     <Button Content="Cancel Pairing"
                             Command="{Binding CancelPairingCommand}"
-                            Style="{StaticResource SecondaryButtonStyle}"
+                            Style="{StaticResource SecondaryButton}"
                             HorizontalAlignment="Left" />
                 </StackPanel>
             </Border>
@@ -191,7 +191,7 @@
                                Opacity="0.7" />
                     <Button Content="Link a Device"
                             Command="{Binding StartPairingCommand}"
-                            Style="{StaticResource PrimaryButtonStyle}"
+                            Style="{StaticResource PrimaryButton}"
                             HorizontalAlignment="Center"
                             Margin="0,8,0,0" />
                 </StackPanel>
@@ -213,7 +213,7 @@
                     <Button Grid.Column="1"
                             Content="Link Another"
                             Command="{Binding StartPairingCommand}"
-                            Style="{StaticResource SecondaryButtonStyle}" />
+                            Style="{StaticResource SecondaryButton}" />
                 </Grid>
 
                 <ItemsControl ItemsSource="{Binding TrustedDevices}">

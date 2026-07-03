@@ -737,9 +737,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
+                        <!-- UpdateSourceTrigger=PropertyChanged is required: the default
+                             (LostFocus) leaves ViewModel.InputText empty when the user
+                             presses Enter, so the send command silently no-ops. -->
                         <TextBox Grid.Column="0"
                                  x:Name="InputBox"
-                                 Text="{x:Bind ViewModel.InputText, Mode=TwoWay}"
+                                 Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  PlaceholderText="Ask about your system…"
                                  Background="#0D0D1A"
                                  BorderBrush="#3F3F5A"
