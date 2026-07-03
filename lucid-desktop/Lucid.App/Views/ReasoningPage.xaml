@@ -32,7 +32,7 @@
                                Opacity="0.5" />
                     <Button Content="Refresh"
                             Command="{Binding RefreshCommand}"
-                            Style="{StaticResource SecondaryButtonStyle}" />
+                            Style="{StaticResource SecondaryButton}" />
                 </StackPanel>
             </Grid>
 

@@ -147,6 +147,39 @@
                      Color="{StaticResource BorderSubtleColor}" />
 
     <!--
+        Missing-key aliases (added 2026-07-02).
+        Several pages referenced these names while the keys were never
+        defined — a StaticResource lookup failure inside InitializeComponent
+        crashes the whole app the moment the page is navigated to
+        (0xC000027B). Every name below aliases an existing palette token so
+        the pages render with the intended design language.
+    -->
+
+    <!-- Card surface (used by Diagnostics, MachineBehavior, RuntimeGovernance) -->
+    <SolidColorBrush x:Key="CardBackgroundBrush"
+                     Color="{StaticResource AppSurfaceColor}" />
+
+    <!-- Primary accent shorthand (used by Investigation) -->
+    <SolidColorBrush x:Key="AccentBrush"
+                     Color="{StaticResource AccentBlueColor}" />
+
+    <!-- Chip / tag background (used by DeviceIntelligence, Reasoning) -->
+    <SolidColorBrush x:Key="AppChipBrush"
+                     Color="{StaticResource AppElevatedSurfaceColor}" />
+
+    <!-- Divider shorthand (used by AutonomousRemediation) -->
+    <SolidColorBrush x:Key="DividerBrush"
+                     Color="{StaticResource BorderSubtleColor}" />
+
+    <!-- Muted / tertiary text (used by AutonomousRemediation, Simulation,
+         Watchtower, Investigation) — both alias the secondary text tone;
+         a dedicated tertiary tone is a ui-guidelines decision. -->
+    <SolidColorBrush x:Key="MutedTextBrush"
+                     Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextTertiaryBrush"
+                     Color="{StaticResource TextSecondaryColor}" />
+
+    <!--
         ════════════════════════════════════════════════════════════════
         NavigationView theme resource overrides
         These keys are consumed by the WinUI NavigationView control

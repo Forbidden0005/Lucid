@@ -51,7 +51,7 @@
                 <Button Grid.Column="1"
                         Command="{x:Bind ViewModel.BuildInvestigationCommand}"
                         VerticalAlignment="Center"
-                        Style="{StaticResource SecondaryButtonStyle}">
+                        Style="{StaticResource SecondaryButton}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
                         <TextBlock Text="Rebuild" />

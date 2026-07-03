@@ -134,4 +134,38 @@
         <Setter Property="LineHeight"   Value="20" />
     </Style>
 
+    <!--
+        Missing-key aliases (added 2026-07-02).
+        Pages referenced these style names while the keys were never defined —
+        a StaticResource lookup failure inside InitializeComponent crashes the
+        whole app on navigation (0xC000027B).
+    -->
+
+    <!-- Body copy inside cards (used by DeviceIntelligence, Reasoning) -->
+    <Style x:Key="CardBodyStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"   Value="Segoe UI Variable" />
+        <Setter Property="FontSize"     Value="13" />
+        <Setter Property="FontWeight"   Value="Normal" />
+        <Setter Property="Foreground"   Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight"   Value="20" />
+    </Style>
+
+    <!-- Chip / tag label (used by DeviceIntelligence) -->
+    <Style x:Key="ChipTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI Variable" />
+        <Setter Property="FontSize"    Value="11" />
+        <Setter Property="FontWeight"  Value="SemiBold" />
+        <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}" />
+    </Style>
+
+    <!-- Metadata / timestamp caption (used by DeviceIntelligence, Reasoning) -->
+    <Style x:Key="MetaTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"   Value="Segoe UI Variable" />
+        <Setter Property="FontSize"     Value="12" />
+        <Setter Property="FontWeight"   Value="Normal" />
+        <Setter Property="Foreground"   Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
 </ResourceDictionary>
