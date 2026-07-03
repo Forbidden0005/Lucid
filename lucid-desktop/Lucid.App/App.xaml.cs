@@ -20,18 +20,30 @@ public partial class App : Application
 
     public App()
     {
-        InitializeComponent();
-
-        // Crash visibility hooks. These log and let the process die honestly —
-        // no swallowing, no fake recovery. Note: exceptions raised natively
-        // inside XAML (e.g. during InitializeComponent) can bypass all managed
-        // hooks; for those, Windows Error Reporting remains the only trace.
+        // Crash visibility hooks — registered BEFORE InitializeComponent so a
+        // failure loading App.xaml resources (malformed dictionary, stale XAML
+        // intermediates) is also captured. These log and let the process die
+        // honestly — no swallowing, no fake recovery. Note: exceptions raised
+        // natively inside XAML can bypass all managed hooks; for those,
+        // Windows Error Reporting remains the only trace.
         UnhandledException += (_, e) =>
             TryLogFatal("XAML UnhandledException", e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
-            TryLogFatal("AppDomain UnhandledException", e.ExceptionObject as Exception);
+            TryLogFatal("AppDomain UnhandledException",
+                e.ExceptionObject as Exception
+                ?? new Exception(e.ExceptionObject?.ToString() ?? "Unknown non-Exception object"));
         System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) =>
             TryLogFatal("UnobservedTaskException", e.Exception);
+
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception ex)
+        {
+            TryLogFatal("App.InitializeComponent failed (App.xaml resource load)", ex);
+            throw;
+        }
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -58,6 +70,11 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Serializes crash-log writes — cascading failures can fire the
+    /// hooks concurrently on different threads, and an unsynchronized append
+    /// would drop one of the records.</summary>
+    private static readonly object _crashLogLock = new();
+
     /// <summary>
     /// Appends a fatal-error record to %LOCALAPPDATA%\Lucid\logs\crash.log using
     /// raw file I/O only — the structured logger may be the thing that failed,
@@ -70,9 +87,13 @@ public partial class App : Application
             var path = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Lucid", "logs", "crash.log");
-            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-            System.IO.File.AppendAllText(path,
-                $"[{DateTimeOffset.Now:O}] {source}: {ex}\n\n");
+
+            lock (_crashLogLock)
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+                System.IO.File.AppendAllText(path,
+                    $"[{DateTimeOffset.Now:O}] {source}: {ex}\n\n");
+            }
         }
         catch
         {
