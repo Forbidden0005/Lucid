@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
@@ -22,9 +23,7 @@ public sealed partial class WatchtowerPage : Page
     {
         base.OnNavigatedTo(e);
 
-        _viewModel = new WatchtowerViewModel(
-            AppServices.Watchtower,
-            DispatcherQueue.GetForCurrentThread());
+        _viewModel = Ioc.Default.GetRequiredService<WatchtowerViewModel>();
 
         DataContext = _viewModel;
 

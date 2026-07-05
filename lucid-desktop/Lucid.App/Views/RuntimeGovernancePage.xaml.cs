@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -15,7 +16,7 @@ public sealed partial class RuntimeGovernancePage : Page
     public RuntimeGovernancePage()
     {
         InitializeComponent();
-        ViewModel   = new RuntimeGovernanceViewModel(AppServices.Governance);
+        ViewModel   = Ioc.Default.GetRequiredService<RuntimeGovernanceViewModel>();
         DataContext = ViewModel;
     }
 

@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -24,7 +25,7 @@ public sealed partial class AutonomousRemediationPage : Page
     {
         base.OnNavigatedTo(e);
 
-        _viewModel     = new AutonomousRemediationViewModel(AppServices.RemediationService);
+        _viewModel     = Ioc.Default.GetRequiredService<AutonomousRemediationViewModel>();
         DataContext    = _viewModel;
     }
 

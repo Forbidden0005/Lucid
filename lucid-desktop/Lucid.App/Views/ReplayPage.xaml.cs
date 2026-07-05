@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -22,7 +23,7 @@ public sealed partial class ReplayPage : Page
     {
         InitializeComponent();
 
-        _vm = new ReplayViewModel(AppServices.ReplayService, AppServices.LearningService);
+        _vm = Ioc.Default.GetRequiredService<ReplayViewModel>();
         DataContext = _vm;
     }
 

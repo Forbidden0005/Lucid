@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -15,7 +16,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class RepairsPage : Page
 {
-    public RepairsViewModel ViewModel { get; } = new RepairsViewModel();
+    public RepairsViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<RepairsViewModel>();
 
     public RepairsPage()
     {

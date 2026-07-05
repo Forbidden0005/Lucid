@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Lucid.Helpers;
 using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
@@ -34,22 +35,11 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class DashboardPage : Page
 {
-    public DashboardViewModel ViewModel { get; } = new DashboardViewModel(
-        AppServices.Telemetry,
-        AppServices.Intelligence,
-        AppServices.EarlyWarning,
-        AppServices.AnomalyDetection,
-        AppServices.DriftDetection,
-        AppServices.HealthTrajectory,
-        AppServices.HistoricalAnalytics,
-        AppServices.InterventionMemory,
-        AppServices.PersonalizationEngine,
-        AppServices.UserBehaviorClassifier,
-        AppServices.Watchtower,
-        AppServices.PersonalityClassifier,
-        AppServices.AlertFatigueManager,
-        AppServices.RecommendationExplanation,
-        AppServices.LearningService);
+    // Resolved from the DI container (its 15 service dependencies are injected by
+    // the container). Pages are constructed parameterless by Frame.Navigate, so the
+    // ViewModel is resolved here rather than constructor-injected into the page.
+    public DashboardViewModel ViewModel { get; } =
+        Ioc.Default.GetRequiredService<DashboardViewModel>();
 
     public DashboardPage()
     {

@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -10,10 +11,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class StoragePage : Page
 {
-    public StorageViewModel ViewModel { get; } = new StorageViewModel(
-        AppServices.Timeline,
-        AppServices.ExecutionEngine,
-        AppServices.HistoryService);
+    public StorageViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<StorageViewModel>();
 
     public StoragePage()
     {

@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -6,10 +7,7 @@ namespace Lucid.Views;
 
 public sealed partial class ProcessesPage : Page
 {
-    public ProcessesViewModel ViewModel { get; } = new ProcessesViewModel(
-        AppServices.ProcessIntelligence,
-        AppServices.ExecutionEngine,
-        AppServices.HistoryService);
+    public ProcessesViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<ProcessesViewModel>();
 
     public ProcessesPage()
     {

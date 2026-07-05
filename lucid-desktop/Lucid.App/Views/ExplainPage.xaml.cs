@@ -1,4 +1,5 @@
-﻿using Lucid.Helpers;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.Helpers;
 using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -24,7 +25,7 @@ public sealed partial class ExplainPage : Page
         InitializeComponent();
 
         // Wire ViewModel to the live engine registered in AppServices
-        DataContext = new ExplainViewModel(AppServices.ExplainEngine, AppServices.LearningService);
+        DataContext = Ioc.Default.GetRequiredService<ExplainViewModel>();
 
         // Unsubscribe when the page is unloaded to prevent event-handler leaks
         // on back-navigation (each navigation creates a fresh ExplainViewModel).

@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -21,9 +22,7 @@ public sealed partial class MachineBehaviorPage : Page
     {
         base.OnNavigatedTo(e);
 
-        _viewModel  = new MachineBehaviorViewModel(
-            AppServices.BehavioralContext,
-            AppServices.WorkloadProfiling);
+        _viewModel  = Ioc.Default.GetRequiredService<MachineBehaviorViewModel>();
         DataContext = _viewModel;
 
         try

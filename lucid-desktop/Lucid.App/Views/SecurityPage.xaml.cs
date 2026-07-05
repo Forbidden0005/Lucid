@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -6,10 +7,7 @@ namespace Lucid.Views;
 
 public sealed partial class SecurityPage : Page
 {
-    public SecurityViewModel ViewModel { get; } = new SecurityViewModel(
-        AppServices.Timeline,
-        AppServices.ExecutionEngine,
-        AppServices.StartupManagement);
+    public SecurityViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<SecurityViewModel>();
 
     public SecurityPage()
     {

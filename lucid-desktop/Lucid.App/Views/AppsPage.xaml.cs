@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
@@ -8,7 +9,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class AppsPage : Page
 {
-    public AppsViewModel ViewModel { get; } = new AppsViewModel(AppServices.StartupManagement);
+    public AppsViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<AppsViewModel>();
 
     public AppsPage()
     {

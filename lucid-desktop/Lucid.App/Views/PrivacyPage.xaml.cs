@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
@@ -9,7 +10,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class PrivacyPage : Page
 {
-    public PrivacyViewModel ViewModel { get; } = new PrivacyViewModel();
+    public PrivacyViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<PrivacyViewModel>();
 
     public PrivacyPage()
     {

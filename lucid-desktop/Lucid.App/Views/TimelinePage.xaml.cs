@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -18,7 +19,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class TimelinePage : Page
 {
-    public TimelinePageViewModel ViewModel { get; } = new TimelinePageViewModel(AppServices.Timeline);
+    public TimelinePageViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<TimelinePageViewModel>();
 
     public TimelinePage()
     {

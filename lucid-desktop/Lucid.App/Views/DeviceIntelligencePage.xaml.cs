@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -21,12 +22,7 @@ public sealed partial class DeviceIntelligencePage : Page
     {
         base.OnNavigatedTo(e);
 
-        _viewModel = new DeviceIntelligenceViewModel(
-            AppServices.DeviceIdentity,
-            AppServices.TrustedDevices,
-            AppServices.LocalSync,
-            AppServices.DistributedTimeline,
-            AppServices.CrossMachineAnalytics);
+        _viewModel = Ioc.Default.GetRequiredService<DeviceIntelligenceViewModel>();
 
         DataContext = _viewModel;
 

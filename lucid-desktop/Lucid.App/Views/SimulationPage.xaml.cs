@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -27,14 +28,7 @@ public sealed partial class SimulationPage : Page
     {
         base.OnNavigatedTo(e);
 
-        _viewModel  = new SimulationViewModel(
-            AppServices.SimulationEngine,
-            AppServices.SimulationHistory,
-            AppServices.OutcomeVerification,
-            AppServices.AnomalyDetection,
-            AppServices.DriftDetection,
-            AppServices.EarlyWarning,
-            AppServices.Telemetry);
+        _viewModel  = Ioc.Default.GetRequiredService<SimulationViewModel>();
         DataContext = _viewModel;
     }
 

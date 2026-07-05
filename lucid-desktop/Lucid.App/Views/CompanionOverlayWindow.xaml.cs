@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Lucid.Services.Autonomy;
 using Lucid.Services.Companion;
 using Lucid.Services.DesktopContext;
@@ -97,7 +98,7 @@ public sealed partial class CompanionOverlayWindow : Window
     public CompanionOverlayWindow()
     {
         // Build ViewModel before InitializeComponent so x:Bind can resolve it.
-        ViewModel = new CompanionChatViewModel(AppServices.LlmChat);
+        ViewModel = Ioc.Default.GetRequiredService<CompanionChatViewModel>();
         InitializeComponent();
 
         _uiDispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();

@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
@@ -18,13 +19,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class InsightDetailPage : Page
 {
-    public InsightDetailViewModel ViewModel { get; } = new InsightDetailViewModel(
-        AppServices.Intelligence,
-        AppServices.Narrative,
-        AppServices.History,
-        AppServices.Baseline,
-        AppServices.Timeline,
-        AppServices.HistoryService);
+    public InsightDetailViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<InsightDetailViewModel>();
 
     public InsightDetailPage()
     {

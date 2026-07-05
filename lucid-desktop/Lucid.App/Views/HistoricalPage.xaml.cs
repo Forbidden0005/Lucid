@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -18,7 +19,7 @@ public sealed partial class HistoricalPage : Page
     public HistoricalPage()
     {
         InitializeComponent();
-        ViewModel   = new HistoricalViewModel(AppServices.HistoricalAnalytics);
+        ViewModel   = Ioc.Default.GetRequiredService<HistoricalViewModel>();
         DataContext = ViewModel;
     }
 

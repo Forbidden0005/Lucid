@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Lucid.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
@@ -24,17 +25,7 @@ public sealed partial class ReasoningPage : Page
     {
         base.OnNavigatedTo(e);
 
-        _viewModel = new ReasoningPageViewModel(
-            AppServices.ContextSynthesizer,
-            AppServices.CognitiveReasoning,
-            AppServices.PatternIntelligence,
-            AppServices.AdaptiveBaselines,
-            AppServices.CalibrationEngine,
-            AppServices.UnifiedRecommendations,
-            AppServices.AttentionCoordinator,
-            DispatcherQueue.GetForCurrentThread(),
-            AppServices.RecommendationArbitrator,
-            AppServices.Intelligence);
+        _viewModel = Ioc.Default.GetRequiredService<ReasoningPageViewModel>();
 
         DataContext = _viewModel;
 

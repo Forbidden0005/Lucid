@@ -1,4 +1,5 @@
-﻿using Lucid.Services.Reasoning;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.Services.Reasoning;
 using Lucid.Services.Workflow;
 using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
@@ -20,11 +21,7 @@ public sealed partial class InvestigationPage : Page
 
     public InvestigationPage()
     {
-        ViewModel = new InvestigationViewModel(
-            AppServices.EvidenceGraph,
-            AppServices.RootCauseEngine,
-            AppServices.EvidenceExplanation,
-            AppServices.WorkflowEngine);
+        ViewModel = Ioc.Default.GetRequiredService<InvestigationViewModel>();
 
         InitializeComponent();
         Loaded += async (_, _) =>

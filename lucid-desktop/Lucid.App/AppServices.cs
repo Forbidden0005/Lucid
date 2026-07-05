@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Lucid.ViewModels;
 using Lucid.Core.Infrastructure;
 using Lucid.Services.Infrastructure.Events;
 using Lucid.Services.Infrastructure.Lifecycle;
@@ -1987,6 +1988,34 @@ public static class AppServices
         s.AddSingleton<IVisualContextService>(VisualContext);
         s.AddSingleton<ConsentBoundScreenAnalysis>(VisualConsent);
         s.AddSingleton<ISettingsService>(Settings);
+
+        // ── ViewModels (transient — one per navigation, service deps injected) ──
+        // Every ctor parameter is one of the singletons registered above (or the
+        // DispatcherQueue), so the container resolves each page's ViewModel directly.
+        s.AddTransient<DashboardViewModel>();
+        s.AddTransient<AppsViewModel>();
+        s.AddTransient<AutonomousRemediationViewModel>();
+        s.AddTransient<CompanionChatViewModel>();
+        s.AddTransient<DeviceIntelligenceViewModel>();
+        s.AddTransient<DiagnosticsViewModel>();
+        s.AddTransient<ExplainViewModel>();
+        s.AddTransient<HistoricalViewModel>();
+        s.AddTransient<InsightDetailViewModel>();
+        s.AddTransient<InsightsPageViewModel>();
+        s.AddTransient<InvestigationViewModel>();
+        s.AddTransient<MachineBehaviorViewModel>();
+        s.AddTransient<PrivacyViewModel>();
+        s.AddTransient<ProcessesViewModel>();
+        s.AddTransient<ReasoningPageViewModel>();
+        s.AddTransient<RepairsViewModel>();
+        s.AddTransient<ReplayViewModel>();
+        s.AddTransient<RuntimeGovernanceViewModel>();
+        s.AddTransient<SecurityViewModel>();
+        s.AddTransient<SettingsViewModel>();
+        s.AddTransient<SimulationViewModel>();
+        s.AddTransient<StorageViewModel>();
+        s.AddTransient<TimelinePageViewModel>();
+        s.AddTransient<WatchtowerViewModel>();
 
         _serviceProvider = s.BuildServiceProvider();
         Ioc.Default.ConfigureServices(_serviceProvider);

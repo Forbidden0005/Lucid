@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -22,18 +23,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class InsightsPage : Page
 {
-    public InsightsPageViewModel ViewModel { get; } = new InsightsPageViewModel(
-        AppServices.Intelligence,
-        AppServices.EarlyWarning,
-        AppServices.AnomalyDetection,
-        AppServices.DriftDetection,
-        AppServices.HistoryService,
-        AppServices.InterventionMemory,
-        AppServices.PersonalizationEngine,
-        AppServices.UserBehaviorClassifier,
-        AppServices.LearningService,
-        AppServices.AlertFatigueManager,
-        AppServices.RecommendationExplanation);
+    public InsightsPageViewModel ViewModel { get; } = Ioc.Default.GetRequiredService<InsightsPageViewModel>();
 
     public InsightsPage()
     {

@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Lucid.Services.Automation;
 using Lucid.Services.Trust;
 using Lucid.ViewModels;
@@ -17,13 +18,7 @@ public sealed partial class SettingsPage : Page
     {
         InitializeComponent();
 
-        ViewModel = new SettingsViewModel(
-            AppServices.Settings,
-            AppServices.Governance,
-            AppServices.TrustManager,
-            AppServices.AutomationConsent,
-            AppServices.AutomationOrchestrator,
-            AppServices.LlmChat);
+        ViewModel = Ioc.Default.GetRequiredService<SettingsViewModel>();
 
         Loaded   += (_, _) => ViewModel.Initialize();
         Unloaded += (_, _) => ViewModel.Cleanup();

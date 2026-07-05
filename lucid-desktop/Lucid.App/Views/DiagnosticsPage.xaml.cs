@@ -1,4 +1,5 @@
-﻿using Lucid.ViewModels;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using Lucid.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -21,7 +22,7 @@ public sealed partial class DiagnosticsPage : Page
     {
         base.OnNavigatedTo(e);
 
-        _viewModel = new DiagnosticsViewModel(AppServices.Diagnostics);
+        _viewModel = Ioc.Default.GetRequiredService<DiagnosticsViewModel>();
         DataContext  = _viewModel;
 
         try
