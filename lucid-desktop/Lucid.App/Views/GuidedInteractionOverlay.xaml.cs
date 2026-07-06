@@ -89,6 +89,12 @@ public sealed partial class GuidedInteractionOverlay : Window
         _presenter.IsMinimizable  = false;
         _appWindow.SetPresenter(_presenter);
 
+        // Remove the native title bar AND its caption buttons — same fix as
+        // CompanionOverlayWindow (PR #24): without this, the OS close button
+        // overlaps this overlay's own ✕ button and destroys the window
+        // instead of raising GuideCancelled cleanly.
+        _presenter.SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false);
+
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(null);
 
