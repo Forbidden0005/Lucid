@@ -170,6 +170,36 @@ public sealed class SQLitePersistenceDurabilityTests
     }
 
     [Fact]
+    public async Task Dispose_WithDanglingRolledBackTransaction_DoesNotThrow()
+    {
+        // Field crash 2026-07-03 (via crash.log): closing the app disposed the
+        // connection while a SqliteTransaction object was still attached whose
+        // underlying transaction SQLite had already rolled back. Close() then
+        // disposed the dangling transaction and RollbackInternal threw
+        // "cannot rollback - no transaction is active" — crashing the exit.
+        using var dir = new TestDir();
+        var service = CreateService(dir.DatabasePath);
+        await service.InitializeAsync();
+
+        // Reconstruct that exact state: open an ADO transaction, roll back the
+        // UNDERLYING transaction behind its back, and abandon the object.
+        await service.QueryAsync<object?>(conn =>
+        {
+            var tx = conn.BeginTransaction();
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = "ROLLBACK;";
+            cmd.ExecuteNonQuery();
+            return null;   // tx deliberately not disposed — it dangles on the connection
+        });
+
+        var act = () => service.Dispose();
+
+        act.Should().NotThrow(
+            "shutdown must never crash the app — WAL recovery reconciles on next open");
+    }
+
+    [Fact]
     public async Task EnqueueWrite_AfterDispose_IsIgnoredWithoutThrowing()
     {
         using var dir = new TestDir();

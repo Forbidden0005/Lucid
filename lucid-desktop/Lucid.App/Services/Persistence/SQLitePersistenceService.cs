@@ -338,8 +338,28 @@ public sealed class SQLitePersistenceService : IDisposable
             _logger?.Warning("Persistence", "Exception during final flush", ex);
         }
 
-        _connection?.Dispose();
-        _lock.Dispose();
+        // Exception-safe teardown. Closing the connection disposes any
+        // transaction still attached to it (e.g. a background flush that held
+        // the lock past the 5s wait above, or a commit failure that left the
+        // transaction object dangling after SQLite auto-rolled-back). In that
+        // state SqliteTransaction.Dispose throws "cannot rollback - no
+        // transaction is active" — which previously escaped Dispose() and
+        // crashed the app ON EXIT (caught in the field 2026-07-03 via
+        // crash.log). Shutdown must never throw: the process is ending and
+        // WAL replay makes the database consistent on next open regardless.
+        try
+        {
+            _connection?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning("Persistence",
+                "Closing the database connection failed during shutdown — " +
+                "safe to ignore; WAL recovery reconciles on next launch.", ex);
+        }
+
+        try { _lock.Dispose(); }
+        catch { /* teardown must never throw */ }
     }
 
     // ── Schema / migrations ────────────────────────────────────────────────────

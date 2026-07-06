@@ -115,6 +115,12 @@ public sealed partial class CompanionOverlayWindow : Window
         _presenter.IsMinimizable  = false;
         _appWindow.SetPresenter(_presenter);
 
+        // Remove the native title bar AND its caption buttons. Without this,
+        // ExtendsContentIntoTitleBar alone leaves the OS close button floating
+        // over the overlay's own header — two overlapping X's, and the native
+        // one destroys the window instead of hiding it to the bubble.
+        _presenter.SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false);
+
         // Frameless — content fills the full client area.
         // SetTitleBar(null) disables OS-managed drag so we can manage it manually.
         ExtendsContentIntoTitleBar = true;

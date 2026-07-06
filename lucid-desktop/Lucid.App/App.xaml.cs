@@ -56,8 +56,14 @@ public partial class App : Application
 
             _mainWindow = new MainWindow();
 
-            // Release PerformanceCounter handles and background tasks when the window closes.
-            _mainWindow.Closed += (_, _) => AppServices.Shutdown();
+            // Release PerformanceCounter handles and background tasks when the
+            // window closes. Shutdown must never crash the exit: log any
+            // teardown failure and let the process end cleanly.
+            _mainWindow.Closed += (_, _) =>
+            {
+                try { AppServices.Shutdown(); }
+                catch (Exception ex) { TryLogFatal("Shutdown failed on window close", ex); }
+            };
 
             _mainWindow.Activate();
         }
