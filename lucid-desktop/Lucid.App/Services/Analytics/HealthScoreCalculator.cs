@@ -23,11 +23,16 @@ namespace Lucid.Services.Analytics;
 /// </summary>
 public static class HealthScoreCalculator
 {
+    /// <summary>Points deducted per distinct warning-class condition.</summary>
     public const int PenaltyPerWarning        = 5;
+
+    /// <summary>Points deducted per distinct recommendation-class condition.</summary>
     public const int PenaltyPerRecommendation = 2;
 
     /// <summary>Extra penalty when a warning-class condition recurs (≥ this many onsets).</summary>
     public const int RecurrenceOnsetThreshold = 3;
+
+    /// <summary>Additional points deducted when a warning meets the recurrence threshold.</summary>
     public const int RecurrencePenalty        = 5;
 
     /// <summary>
@@ -86,8 +91,10 @@ public static class HealthScoreCalculator
             if (maxSeverity < 1)
                 continue; // informational-only condition — no score impact
 
-            // Latest row supplies the display title (titles can evolve over time).
+            // Latest row supplies the display title (titles can evolve over time)
+            // and tells us whether the condition is still active.
             var latest = group.OrderByDescending(r => r.OnsetAt).First();
+            bool isActive = latest.ResolvedAt is null;
 
             int points;
             if (maxSeverity >= 2)
@@ -108,7 +115,8 @@ public static class HealthScoreCalculator
                 Occurrences:     occurrences,
                 PointsDeducted:  points,
                 FirstSeen:       group.Min(r => r.OnsetAt),
-                LastSeen:        latest.OnsetAt));
+                LastSeen:        latest.OnsetAt,
+                IsActive:        isActive));
         }
 
         return list
@@ -117,6 +125,7 @@ public static class HealthScoreCalculator
             .ToList();
     }
 
+    /// <summary>Maps a clamped score value to its human-readable label.</summary>
     public static string LabelFor(int score) => score switch
     {
         >= 90 => "Excellent",

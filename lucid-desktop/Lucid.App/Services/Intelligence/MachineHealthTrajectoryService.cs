@@ -158,8 +158,10 @@ public sealed class MachineHealthTrajectoryService : IMachineHealthTrajectorySer
                                 : null;
         string  ramTrendLabel = summary.RamTrend.TrendLabel;
 
-        // Narrative
-        int issueCount = sevenDay.WarningCount + sevenDay.RecommendationCount;
+        // Narrative — count DISTINCT conditions, not raw occurrences, so the
+        // "N issues" summary matches how the score is computed. A single
+        // disk-full condition that re-fires 30× is one issue, not thirty.
+        int issueCount = sevenDay.Contributions.Count;
         string healthDesc   = HealthDescription(healthScore, momentumPts);
         string statusText   = issueCount == 0
                               ? "All systems normal"

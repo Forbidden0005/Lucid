@@ -772,12 +772,30 @@
             <!-- ══════════════════════════════════════════════════════════
                  HEALTH SCORE CARD
             ══════════════════════════════════════════════════════════ -->
+            <!-- Wrapped in a Button so the whole card is keyboard-focusable and
+                 exposes button semantics to screen readers (a Border cannot take
+                 focus). Button chrome is neutralised so the visual is unchanged;
+                 the inner Border keeps the card look + hover animation. -->
+            <Button Click="HealthCard_Tapped"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="0" BorderThickness="0"
+                    Background="Transparent"
+                    ToolTipService.ToolTip="See what's affecting your score"
+                    AutomationProperties.Name="System health score. Activate to see what's affecting your score.">
+                <Button.Resources>
+                    <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+                </Button.Resources>
             <Border Style="{StaticResource CardSurface}"
                     Padding="28"
-                    Tapped="HealthCard_Tapped"
                     PointerEntered="Card_PointerEntered"
-                    PointerExited="Card_PointerExited"
-                    ToolTipService.ToolTip="See what's affecting your score">
+                    PointerExited="Card_PointerExited">
                 <Border.RenderTransform>
                     <CompositeTransform />
                 </Border.RenderTransform>
@@ -871,6 +889,7 @@
                     </StackPanel>
                 </Grid>
             </Border>
+            </Button>
 
             <!-- ══════════════════════════════════════════════════════════
                  LIVE METRICS — progress bars animate on page load

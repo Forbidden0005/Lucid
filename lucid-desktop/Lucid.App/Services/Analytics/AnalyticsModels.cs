@@ -68,7 +68,14 @@ public sealed record HealthScoreContribution(
     DateTimeOffset FirstSeen,
 
     /// <summary>Most recent onset inside the window.</summary>
-    DateTimeOffset LastSeen);
+    DateTimeOffset LastSeen,
+
+    /// <summary>
+    /// True when the condition's latest occurrence is still unresolved — i.e.
+    /// it is currently active and has a live fix path. Resolved (historical)
+    /// conditions are shown for context but no longer offer a "fix".
+    /// </summary>
+    bool           IsActive);
 
 /// <summary>
 /// Operational health score for a rolling time window.

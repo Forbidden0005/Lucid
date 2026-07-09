@@ -109,8 +109,9 @@ public sealed partial class DashboardPage : Page
         => AppServices.CompanionSession.Expand();
 
     // ── Health card → score breakdown ─────────────────────────────────────────
+    // Fired from the wrapping Button's Click (keyboard + pointer + screen reader).
 
-    private void HealthCard_Tapped(object sender, TappedRoutedEventArgs e)
+    private void HealthCard_Tapped(object sender, RoutedEventArgs e)
         => Frame?.Navigate(typeof(HealthBreakdownPage),
                null, new Microsoft.UI.Xaml.Media.Animation.DrillInNavigationTransitionInfo());
 

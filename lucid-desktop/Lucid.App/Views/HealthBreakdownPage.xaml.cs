@@ -12,6 +12,7 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class HealthBreakdownPage : Page
 {
+    /// <summary>Backing ViewModel that computes and exposes the score breakdown.</summary>
     public HealthBreakdownViewModel ViewModel { get; } =
         new HealthBreakdownViewModel(AppServices.HistoricalAnalytics);
 

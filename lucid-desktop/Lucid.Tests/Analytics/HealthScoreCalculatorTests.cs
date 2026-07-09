@@ -14,13 +14,15 @@ namespace Lucid.Tests.Analytics;
 public sealed class HealthScoreCalculatorTests
 {
     private static PersistedInsightRecord Rec(
-        string insightId, int severity, DateTimeOffset onset, string title = "t")
+        string insightId, int severity, DateTimeOffset onset,
+        string title = "t", DateTimeOffset? resolvedAt = null)
         => new()
         {
             InsightId       = insightId,
             Title           = title,
             SeverityOrdinal = severity,
             OnsetAt         = onset,
+            ResolvedAt      = resolvedAt,
         };
 
     private static readonly DateTimeOffset T0 = new(2026, 7, 1, 12, 0, 0, TimeSpan.Zero);
@@ -131,6 +133,23 @@ public sealed class HealthScoreCalculatorTests
         s.Contributions[0].InsightId.Should().Be("recurring", "highest deduction first");
         s.Contributions[0].PointsDeducted.Should().Be(10);
         s.Contributions.Last().InsightId.Should().Be("light");
+    }
+
+    [Fact]
+    public void Contribution_IsActive_TracksLatestOnsetResolution()
+    {
+        // Latest onset is unresolved → active (has a live fix path).
+        var active = HealthScoreCalculator.Compute(
+            [Rec("x", 2, T0, resolvedAt: T0.AddHours(1)),   // earlier, resolved
+             Rec("x", 2, T0.AddHours(2), resolvedAt: null)], // latest, still open
+            [], TimeSpan.FromDays(7));
+        active.Contributions[0].IsActive.Should().BeTrue();
+
+        // Latest onset resolved → historical, no live fix.
+        var resolved = HealthScoreCalculator.Compute(
+            [Rec("y", 2, T0, resolvedAt: T0.AddHours(3))],
+            [], TimeSpan.FromDays(7));
+        resolved.Contributions[0].IsActive.Should().BeFalse();
     }
 
     [Fact]

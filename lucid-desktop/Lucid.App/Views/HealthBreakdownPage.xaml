@@ -50,7 +50,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Fix / review -->
+                    <!-- Fix / review — label depends on whether the condition is still active -->
                     <Button Grid.Column="2"
                             VerticalAlignment="Center"
                             Tag="{x:Bind InsightId}"
@@ -58,7 +58,7 @@
                             Style="{StaticResource SecondaryButton}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE90F;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
-                            <TextBlock Text="Review &amp; fix" />
+                            <TextBlock Text="{x:Bind ActionText}" />
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -121,7 +121,7 @@
                           ItemsSource="{x:Bind ViewModel.Contributions}"
                           ItemTemplate="{StaticResource ContributionTemplate}" />
 
-            <!-- Empty state -->
+            <!-- Empty state (genuinely healthy) -->
             <Border Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"
                     Style="{StaticResource CardSurface}" Padding="28">
                 <StackPanel Spacing="6" HorizontalAlignment="Center">
@@ -132,6 +132,21 @@
                     <TextBlock Text="No conditions worth reviewing were recorded in the past 7 days."
                                Style="{StaticResource CaptionTextStyle}"
                                HorizontalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- Error state — a data-load failure, NOT a healthy machine -->
+            <Border Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"
+                    Style="{StaticResource CardSurface}" Padding="28">
+                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                    <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="24"
+                              Foreground="{StaticResource StatusModerateBrush}" />
+                    <TextBlock Text="Couldn't load your score breakdown"
+                               Style="{StaticResource BodyTextStyle}" HorizontalAlignment="Center" />
+                    <TextBlock Text="The analytics database was unavailable or busy. This isn't a health result — reopen this page in a moment to try again."
+                               Style="{StaticResource CaptionTextStyle}"
+                               HorizontalAlignment="Center" TextWrapping="Wrap"
+                               TextAlignment="Center" />
                 </StackPanel>
             </Border>
 
