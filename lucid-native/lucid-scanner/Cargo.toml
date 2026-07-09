@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 # windows-sys gives zero-overhead bindings to Win32 APIs we need for
 # fast directory enumeration (FindFirstFileExW / FindNextFileW).
-windows-sys = { version = "0.59", features = [
+windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
 ] }
