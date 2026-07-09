@@ -1,4 +1,5 @@
 ﻿using Lucid.Helpers;
+using Lucid.Services.Security;
 
 namespace Lucid.Services.ProcessIntel;
 
@@ -36,6 +37,14 @@ public enum ProcessAnomalyFlags
     HighRamAbsolute   = 1 << 5,  // working set > 1.5 GB
     ZombieBackground  = 1 << 6,  // > 2% CPU, no visible window, no user action
     GpuHeavy          = 1 << 7,  // heuristically identified GPU consumer
+
+    // Security-oriented signals — see ProcessSecurityHeuristics. Each is a single
+    // contextual signal, not a verdict; language stays confidence-aware everywhere
+    // these are surfaced (see docs/PROJECT_INTEGRITY.md security-language doctrine).
+    MasqueradeSuspected   = 1 << 8,  // known system process name running outside its normal directory
+    SuspiciousParentChild = 1 << 9,  // office/browser process spawned a scripting or system utility
+    LolbinSuspiciousArgs  = 1 << 10, // living-off-the-land binary launched with obfuscated/hidden args
+    UnsignedSystemPath    = 1 << 11, // unsigned executable running from a Windows system directory
 }
 
 // ── Extended process record ───────────────────────────────────────────────────
@@ -61,6 +70,15 @@ public sealed class ProcessRecord
     public ProcessCategory    Category       { get; init; }
     public ProcessAnomalyFlags Anomalies     { get; init; }
     public bool               IsCritical     { get; init; }
+
+    // Parent/child and security-enrichment data — see ProcessParentMap and
+    // SignatureVerificationService. Populated on a throttled background refresh,
+    // not every telemetry tick — may briefly lag the rest of the record.
+    public int         ParentProcessId    { get; init; }
+    public string      ParentProcessName  { get; init; } = string.Empty;
+    public bool        IsSigned           { get; init; }
+    public string      Publisher          { get; init; } = string.Empty;
+    public TrustLevel  TrustLevel         { get; init; } = TrustLevel.SignedKnownVendor;
 
     // Computed display helpers
     public string RamFormatted   => FormatBytes(RamBytes);
@@ -91,6 +109,10 @@ public sealed class ProcessRecord
             if (Anomalies.HasFlag(ProcessAnomalyFlags.RepeatedCrashes))  parts.Add("Repeated crashes");
             if (Anomalies.HasFlag(ProcessAnomalyFlags.HighRamAbsolute))  parts.Add("High RAM");
             if (Anomalies.HasFlag(ProcessAnomalyFlags.ZombieBackground)) parts.Add("Background hog");
+            if (Anomalies.HasFlag(ProcessAnomalyFlags.MasqueradeSuspected))   parts.Add("Possible masquerading");
+            if (Anomalies.HasFlag(ProcessAnomalyFlags.SuspiciousParentChild)) parts.Add("Unusual parent process");
+            if (Anomalies.HasFlag(ProcessAnomalyFlags.LolbinSuspiciousArgs))  parts.Add("Suspicious command line");
+            if (Anomalies.HasFlag(ProcessAnomalyFlags.UnsignedSystemPath))    parts.Add("Unsigned in system path");
             return string.Join(", ", parts);
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Lucid.Helpers;
+using Lucid.Services.Security;
 using Lucid.Services.Timeline;
 using Microsoft.UI.Dispatching;
 
@@ -24,6 +25,8 @@ public sealed class ProcessIntelligenceService
     private readonly DispatcherQueue             _dispatcher;
     private readonly TimelineAggregationService? _timeline;
     private readonly ProcessBehaviorTracker      _tracker = new();
+    private readonly SignatureVerificationService _signer;
+    private readonly ProcessParentMap             _parentMap = new();
 
     // Anomaly debounce: don't re-emit a timeline event for the same PID+anomaly
     // within 5 minutes.
@@ -35,11 +38,13 @@ public sealed class ProcessIntelligenceService
     public ProcessIntelligenceService(
         ITelemetryService           telemetry,
         DispatcherQueue             dispatcher,
-        TimelineAggregationService? timeline = null)
+        TimelineAggregationService? timeline = null,
+        SignatureVerificationService? signer = null)
     {
         _telemetry  = telemetry;
         _dispatcher = dispatcher;
         _timeline   = timeline;
+        _signer     = signer ?? new SignatureVerificationService();
     }
 
     public void Start()  => _telemetry.ReadingAvailable += OnReading;
@@ -50,6 +55,10 @@ public sealed class ProcessIntelligenceService
     private void OnReading(object? sender, TelemetrySnapshot snap)
     {
         if (snap.TopProcesses.Count == 0) return;
+
+        // Throttled bulk WMI refresh for parent PID / command line — see ProcessParentMap
+        // for why this can't be a per-process query on every tick.
+        _parentMap.RefreshIfDue();
 
         // Enrich top processes with extended data
         var enriched = new List<ProcessRecord>(snap.TopProcesses.Count);
@@ -80,7 +89,6 @@ public sealed class ProcessIntelligenceService
     {
         string execPath    = string.Empty;
         string companyName = string.Empty;
-        string commandLine = string.Empty;
         int    threads     = 0;
         int    handles     = 0;
         DateTime startTime = DateTime.Now;
@@ -112,8 +120,18 @@ public sealed class ProcessIntelligenceService
             return null;
         }
 
+        // Parent PID / command line come from the throttled bulk WMI snapshot — may
+        // briefly lag on a brand-new process that started since the last refresh.
+        var wmiInfo = _parentMap.TryGet(sample.ProcessId);
+        int    parentPid    = wmiInfo?.ParentProcessId ?? 0;
+        string parentName   = wmiInfo?.ParentProcessName ?? string.Empty;
+        string commandLine  = wmiInfo?.CommandLine ?? string.Empty;
+
+        var (isSigned, publisher) = _signer.Verify(execPath);
+
         return _tracker.Enrich(sample, threads, handles,
-            execPath, companyName, commandLine, startTime, hasWindow);
+            execPath, companyName, commandLine, startTime, hasWindow,
+            parentPid, parentName, isSigned, publisher);
     }
 
     // ── Timeline event emission ───────────────────────────────────────────────
@@ -146,7 +164,11 @@ public sealed class ProcessIntelligenceService
                 Detail     = detail,
                 Severity   = flag is ProcessAnomalyFlags.RunawayCpu or
                                      ProcessAnomalyFlags.MemoryGrowth or
-                                     ProcessAnomalyFlags.HighRamAbsolute
+                                     ProcessAnomalyFlags.HighRamAbsolute or
+                                     ProcessAnomalyFlags.MasqueradeSuspected or
+                                     ProcessAnomalyFlags.SuspiciousParentChild or
+                                     ProcessAnomalyFlags.LolbinSuspiciousArgs or
+                                     ProcessAnomalyFlags.UnsignedSystemPath
                     ? TimelineEventSeverity.Warning : TimelineEventSeverity.Info,
                 ActionId   = record.ProcessId.ToString(),
             };
@@ -165,6 +187,10 @@ public sealed class ProcessIntelligenceService
         ProcessAnomalyFlags.HighRamAbsolute   => "High RAM usage",
         ProcessAnomalyFlags.ZombieBackground  => "Background resource hog",
         ProcessAnomalyFlags.GpuHeavy         => "GPU intensive",
+        ProcessAnomalyFlags.MasqueradeSuspected   => "Possible masquerading",
+        ProcessAnomalyFlags.SuspiciousParentChild => "Unusual parent process",
+        ProcessAnomalyFlags.LolbinSuspiciousArgs  => "Suspicious command line",
+        ProcessAnomalyFlags.UnsignedSystemPath    => "Unsigned in system path",
         _                                     => flag.ToString(),
     };
 }

@@ -102,13 +102,29 @@
                                                 <TextBlock Text="CRITICAL" FontSize="9"
                                                            Foreground="{StaticResource StatusCriticalBrush}" />
                                             </Border>
+                                            <Border Background="{StaticResource StatusCriticalSubtleBrush}"
+                                                    CornerRadius="4" Padding="5,2"
+                                                    Visibility="{x:Bind SecurityBadgeVisibility}"
+                                                    ToolTipService.ToolTip="Worth reviewing — see anomaly detail">
+                                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                                    <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets"
+                                                              FontSize="9"
+                                                              Foreground="{StaticResource StatusCriticalBrush}" />
+                                                    <TextBlock Text="REVIEW" FontSize="9"
+                                                               Foreground="{StaticResource StatusCriticalBrush}" />
+                                                </StackPanel>
+                                            </Border>
                                         </StackPanel>
                                         <TextBlock Text="{x:Bind AnomalySummary}"
                                                    FontSize="11"
                                                    Foreground="{StaticResource StatusModerateBrush}"
                                                    Visibility="{x:Bind AnomalyBadgeVisibility}" />
-                                        <TextBlock Text="{x:Bind Category}"
-                                                   Style="{StaticResource CaptionTextStyle}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{x:Bind Category}"
+                                                       Style="{StaticResource CaptionTextStyle}" />
+                                            <TextBlock Text="{x:Bind Publisher, Mode=OneWay}"
+                                                       Style="{StaticResource CaptionTextStyle}" />
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- CPU -->
@@ -202,11 +218,21 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Spacing="4">
-                                            <TextBlock Text="{x:Bind Name}"
-                                                       Style="{StaticResource CardTitleStyle}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{x:Bind Name}"
+                                                           Style="{StaticResource CardTitleStyle}" />
+                                                <Border Background="{StaticResource StatusCriticalSubtleBrush}"
+                                                        CornerRadius="4" Padding="5,2"
+                                                        Visibility="{x:Bind SecurityBadgeVisibility}">
+                                                    <TextBlock Text="REVIEW" FontSize="9"
+                                                               Foreground="{StaticResource StatusCriticalBrush}" />
+                                                </Border>
+                                            </StackPanel>
                                             <TextBlock Text="{x:Bind AnomalySummary}"
                                                        Style="{StaticResource CaptionTextStyle}"
                                                        Foreground="{StaticResource StatusModerateBrush}" />
+                                            <TextBlock Text="{x:Bind Publisher, Mode=OneWay}"
+                                                       Style="{StaticResource CaptionTextStyle}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Spacing="2"
                                                     VerticalAlignment="Center"

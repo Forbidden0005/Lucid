@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Lucid.Helpers;
+using Lucid.Services.Security;
 
 namespace Lucid.Services.ProcessIntel;
 
@@ -54,7 +55,9 @@ internal sealed class ProcessBehaviorTracker
     /// </summary>
     internal ProcessRecord Enrich(ProcessSample sample, int threadCount, int handleCount,
         string execPath, string companyName, string commandLine,
-        DateTime startTime, bool hasWindow)
+        DateTime startTime, bool hasWindow,
+        int parentProcessId, string parentProcessName,
+        bool isSigned, string publisher)
     {
         if (!_history.TryGetValue(sample.ProcessId, out var hist))
         {
@@ -67,27 +70,34 @@ internal sealed class ProcessBehaviorTracker
         hist.PushRam(sample.RamBytes);
         hist.LastSeenAt = DateTime.UtcNow;
 
-        var anomalies = DetectAnomalies(sample, hist, threadCount, handleCount, hasWindow);
-        var category  = ProcessClassifier.Classify(sample.ProcessName);
-        var critical  = ProcessClassifier.IsCritical(sample.ProcessName);
+        var anomalies = DetectAnomalies(sample, hist, threadCount, handleCount, hasWindow,
+            execPath, commandLine, parentProcessName, isSigned);
+        var category   = ProcessClassifier.Classify(sample.ProcessName);
+        var critical    = ProcessClassifier.IsCritical(sample.ProcessName);
+        var trustLevel  = SignatureVerificationService.ClassifyPublisher(publisher, execPath);
 
         return new ProcessRecord
         {
-            ProcessId      = sample.ProcessId,
-            ProcessName    = sample.ProcessName,
-            DisplayName    = sample.DisplayName,
-            CpuPercent     = sample.CpuPercent,
-            RamBytes       = sample.RamBytes,
-            ThreadCount    = threadCount,
-            HandleCount    = handleCount,
-            ExecutablePath = execPath,
-            CompanyName    = companyName,
-            CommandLine    = commandLine,
-            StartTime      = startTime,
-            HasWindow      = hasWindow,
-            Category       = category,
-            Anomalies      = anomalies,
-            IsCritical     = critical,
+            ProcessId         = sample.ProcessId,
+            ProcessName       = sample.ProcessName,
+            DisplayName       = sample.DisplayName,
+            CpuPercent        = sample.CpuPercent,
+            RamBytes          = sample.RamBytes,
+            ThreadCount       = threadCount,
+            HandleCount       = handleCount,
+            ExecutablePath    = execPath,
+            CompanyName       = companyName,
+            CommandLine       = commandLine,
+            StartTime         = startTime,
+            HasWindow         = hasWindow,
+            Category          = category,
+            Anomalies         = anomalies,
+            IsCritical        = critical,
+            ParentProcessId   = parentProcessId,
+            ParentProcessName = parentProcessName,
+            IsSigned          = isSigned,
+            Publisher         = publisher,
+            TrustLevel        = trustLevel,
         };
     }
 
@@ -106,7 +116,8 @@ internal sealed class ProcessBehaviorTracker
 
     private static ProcessAnomalyFlags DetectAnomalies(
         ProcessSample sample, PidHistory hist,
-        int threadCount, int handleCount, bool hasWindow)
+        int threadCount, int handleCount, bool hasWindow,
+        string execPath, string commandLine, string parentProcessName, bool isSigned)
     {
         var flags = ProcessAnomalyFlags.None;
 
@@ -146,6 +157,23 @@ internal sealed class ProcessBehaviorTracker
                        not ProcessCategory.Runtime)
                 flags |= ProcessAnomalyFlags.ZombieBackground;
         }
+
+        // Masquerading: known system process name running outside its normal directory
+        if (ProcessSecurityHeuristics.IsMasquerading(sample.ProcessName, execPath))
+            flags |= ProcessAnomalyFlags.MasqueradeSuspected;
+
+        // Suspicious parent/child: office/browser process spawned a scripting or system utility
+        if (ProcessSecurityHeuristics.IsSuspiciousParentChild(parentProcessName, sample.ProcessName))
+            flags |= ProcessAnomalyFlags.SuspiciousParentChild;
+
+        // LOLBin with obfuscated/hidden command-line arguments
+        if (ProcessSecurityHeuristics.IsLolbin(sample.ProcessName) &&
+            ProcessSecurityHeuristics.HasSuspiciousCommandLine(commandLine))
+            flags |= ProcessAnomalyFlags.LolbinSuspiciousArgs;
+
+        // Unsigned executable running from a Windows system directory
+        if (ProcessSecurityHeuristics.IsUnsignedInSystemPath(execPath, isSigned))
+            flags |= ProcessAnomalyFlags.UnsignedSystemPath;
 
         return flags;
     }

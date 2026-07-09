@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Execution;
 using Lucid.Services.History;
 using Lucid.Services.ProcessIntel;
+using Lucid.Services.Security;
 using Microsoft.UI.Xaml;
 
 namespace Lucid.ViewModels;
@@ -34,8 +35,24 @@ public sealed partial class ProcessRowViewModel : ObservableObject
     public bool   IsCritical        => Record.IsCritical;
     public bool   HasWindow         => Record.HasWindow;
 
+    public string ParentProcessName => Record.ParentProcessName;
+    public bool   IsSigned          => Record.IsSigned;
+    public string Publisher         => string.IsNullOrEmpty(Record.Publisher) ? "Unsigned" : Record.Publisher;
+    public TrustLevel TrustLevel    => Record.TrustLevel;
+
+    // Security-oriented anomalies (masquerade/parent-child/LOLBin/unsigned-in-system-path)
+    // are surfaced with the "worth reviewing" badge — never "malicious" language,
+    // per the project's security-language doctrine.
+    public bool HasSecurityFlag =>
+        Record.Anomalies.HasFlag(ProcessAnomalyFlags.MasqueradeSuspected) ||
+        Record.Anomalies.HasFlag(ProcessAnomalyFlags.SuspiciousParentChild) ||
+        Record.Anomalies.HasFlag(ProcessAnomalyFlags.LolbinSuspiciousArgs) ||
+        Record.Anomalies.HasFlag(ProcessAnomalyFlags.UnsignedSystemPath);
+
     public Visibility AnomalyBadgeVisibility =>
         Record.HasAnomalies ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility SecurityBadgeVisibility =>
+        HasSecurityFlag ? Visibility.Visible : Visibility.Collapsed;
     public Visibility CriticalBadgeVisibility =>
         Record.IsCritical ? Visibility.Visible : Visibility.Collapsed;
     public Visibility TerminateButtonVisibility =>
@@ -53,6 +70,12 @@ public sealed partial class ProcessRowViewModel : ObservableObject
         OnPropertyChanged(nameof(HasAnomalies));
         OnPropertyChanged(nameof(AnomalySummary));
         OnPropertyChanged(nameof(AnomalyBadgeVisibility));
+        OnPropertyChanged(nameof(ParentProcessName));
+        OnPropertyChanged(nameof(IsSigned));
+        OnPropertyChanged(nameof(Publisher));
+        OnPropertyChanged(nameof(TrustLevel));
+        OnPropertyChanged(nameof(HasSecurityFlag));
+        OnPropertyChanged(nameof(SecurityBadgeVisibility));
     }
 }
 

@@ -156,6 +156,8 @@
              Link="App\Services\Process\ProcessClassifier.cs" />
     <Compile Include="..\Lucid.App\Services\Process\ProcessRecord.cs"
              Link="App\Services\Process\ProcessRecord.cs" />
+    <Compile Include="..\Lucid.App\Services\Security\SecurityModels.cs"
+             Link="App\Services\Security\SecurityModels.cs" />
     <Compile Include="..\Lucid.App\Helpers\ProcessSample.cs"
              Link="App\Helpers\ProcessSample.cs" />
     <Compile Include="..\Lucid.App\Services\Startup\IStartupManagementService.cs"
