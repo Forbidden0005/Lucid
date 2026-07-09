@@ -45,14 +45,42 @@ public sealed record LongTermMetricTrend(
 // ── Health score ───────────────────────────────────────────────────────────────
 
 /// <summary>
+/// One distinct condition's contribution to a health score — the unit the
+/// score-breakdown UI renders so the user can see exactly where points went.
+/// </summary>
+public sealed record HealthScoreContribution(
+    /// <summary>Stable identifier of the insight rule/condition.</summary>
+    string         InsightId,
+
+    /// <summary>Human-readable condition title (latest occurrence's title).</summary>
+    string         Title,
+
+    /// <summary>Highest severity ordinal seen for this condition in the window.</summary>
+    int            SeverityOrdinal,
+
+    /// <summary>How many times the condition fired in the window.</summary>
+    int            Occurrences,
+
+    /// <summary>Points deducted from the score for this condition (positive number).</summary>
+    int            PointsDeducted,
+
+    /// <summary>First onset inside the window.</summary>
+    DateTimeOffset FirstSeen,
+
+    /// <summary>Most recent onset inside the window.</summary>
+    DateTimeOffset LastSeen);
+
+/// <summary>
 /// Operational health score for a rolling time window.
-/// Derived from insight occurrence frequency and severity.
+/// Derived from DISTINCT insight conditions, not raw occurrence counts — a
+/// single persistent condition that re-fires all week is one bounded finding,
+/// not an unbounded pile of penalties.
 ///
-/// Scoring formula:
+/// Scoring formula (see <see cref="HealthScoreCalculator"/>):
 ///   Start at 100.
-///   Each Warning insight occurrence:       −5
-///   Each Recommendation insight occurrence: −2
-///   Each unresolved insight per day:       −1 additional
+///   Each distinct Warning condition:          −5
+///     …and −5 more if it recurred (≥3 onsets)
+///   Each distinct Recommendation condition:   −2
 ///   Clamp to [0, 100].
 ///
 /// A score of 90–100 means minimal issues; below 60 means frequent problems.
@@ -64,17 +92,24 @@ public sealed record HealthScore(
     /// <summary>The time window this score covers.</summary>
     TimeSpan       Window,
 
-    /// <summary>Number of Warning-class insight events in the window.</summary>
+    /// <summary>Number of Warning-class insight events in the window (raw occurrences).</summary>
     int            WarningCount,
 
-    /// <summary>Number of Recommendation-class insight events in the window.</summary>
+    /// <summary>Number of Recommendation-class insight events in the window (raw occurrences).</summary>
     int            RecommendationCount,
 
-    /// <summary>Human-readable label: "Excellent", "Good", "Fair", "Poor", "Critical"</summary>
+    /// <summary>Human-readable label: "Excellent", "Good", "Fair", "Poor", "Needs Attention"</summary>
     string         Label,
 
     /// <summary>Trend vs. the previous equivalent window.</summary>
-    TrendDirection Trend);
+    TrendDirection Trend)
+{
+    /// <summary>
+    /// Per-condition score contributions, ordered by points deducted descending.
+    /// Empty when the window had no insight activity.
+    /// </summary>
+    public IReadOnlyList<HealthScoreContribution> Contributions { get; init; } = [];
+}
 
 // ── Recurring insight pattern ──────────────────────────────────────────────────
 

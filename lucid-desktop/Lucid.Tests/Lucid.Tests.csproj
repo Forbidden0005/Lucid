@@ -40,6 +40,12 @@
     need. Keep this list focused on production files covered by tests.
   -->
   <ItemGroup>
+    <Compile Include="..\Lucid.App\Services\Persistence\PersistenceModels.cs"
+             Link="App\Services\Persistence\PersistenceModels.cs" />
+    <Compile Include="..\Lucid.App\Services\Analytics\AnalyticsModels.cs"
+             Link="App\Services\Analytics\AnalyticsModels.cs" />
+    <Compile Include="..\Lucid.App\Services\Analytics\HealthScoreCalculator.cs"
+             Link="App\Services\Analytics\HealthScoreCalculator.cs" />
     <Compile Include="..\Lucid.App\Services\Cleanup\CleanupScanner.cs"
              Link="App\Services\Cleanup\CleanupScanner.cs" />
     <Compile Include="..\Lucid.App\Services\Cleanup\RollbackStagingSweeper.cs"

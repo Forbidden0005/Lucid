@@ -21,10 +21,7 @@ namespace Lucid.Services.Analytics;
 /// </summary>
 public sealed class HistoricalAnalyticsEngine : IHistoricalAnalyticsEngine
 {
-    // ── Health score constants ────────────────────────────────────────────────
-
-    private const int PenaltyPerWarning        =  5;
-    private const int PenaltyPerRecommendation =  2;
+    // Health-score math lives in HealthScoreCalculator (pure + unit-tested).
 
     private readonly HistoricalTelemetryRepository _telemetry;
     private readonly InsightHistoryRepository       _insights;
@@ -125,39 +122,7 @@ public sealed class HistoricalAnalyticsEngine : IHistoricalAnalyticsEngine
         IReadOnlyList<Persistence.PersistedInsightRecord> current,
         IReadOnlyList<Persistence.PersistedInsightRecord> previous,
         TimeSpan window)
-    {
-        int warnings  = current.Count(r => r.SeverityOrdinal >= 2);
-        int recs      = current.Count(r => r.SeverityOrdinal == 1);
-
-        int score = Math.Clamp(
-            100 - (warnings * PenaltyPerWarning) - (recs * PenaltyPerRecommendation),
-            0, 100);
-
-        string label = score switch
-        {
-            >= 90 => "Excellent",
-            >= 75 => "Good",
-            >= 55 => "Fair",
-            >= 35 => "Poor",
-            _     => "Needs Attention",
-        };
-
-        // Trend vs. previous equivalent window
-        int prevWarnings = previous.Count(r => r.SeverityOrdinal >= 2);
-        int prevRecs     = previous.Count(r => r.SeverityOrdinal == 1);
-        int prevScore    = Math.Clamp(
-            100 - (prevWarnings * PenaltyPerWarning) - (prevRecs * PenaltyPerRecommendation),
-            0, 100);
-
-        var trend = (score - prevScore) switch
-        {
-            > 5  => TrendDirection.Improving,
-            < -5 => TrendDirection.Worsening,
-            _    => TrendDirection.Stable,
-        };
-
-        return new HealthScore(score, window, warnings, recs, label, trend);
-    }
+        => HealthScoreCalculator.Compute(current, previous, window);
 
     // ── Metric trend calculation ───────────────────────────────────────────────
 

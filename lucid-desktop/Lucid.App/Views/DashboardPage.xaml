@@ -774,8 +774,10 @@
             ══════════════════════════════════════════════════════════ -->
             <Border Style="{StaticResource CardSurface}"
                     Padding="28"
+                    Tapped="HealthCard_Tapped"
                     PointerEntered="Card_PointerEntered"
-                    PointerExited="Card_PointerExited">
+                    PointerExited="Card_PointerExited"
+                    ToolTipService.ToolTip="See what's affecting your score">
                 <Border.RenderTransform>
                     <CompositeTransform />
                 </Border.RenderTransform>

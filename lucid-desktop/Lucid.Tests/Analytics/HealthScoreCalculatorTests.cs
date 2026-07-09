@@ -1,0 +1,144 @@
+using FluentAssertions;
+using Lucid.Services.Analytics;
+using Lucid.Services.Persistence;
+using Xunit;
+
+namespace Lucid.Tests.Analytics;
+
+/// <summary>
+/// Guards the health-score math — specifically the regression where a single
+/// persistent condition that re-fired all week collapsed the score to 0/100
+/// ("Needs Attention" on an otherwise-healthy machine). Scoring is now by
+/// DISTINCT condition, not raw occurrence count.
+/// </summary>
+public sealed class HealthScoreCalculatorTests
+{
+    private static PersistedInsightRecord Rec(
+        string insightId, int severity, DateTimeOffset onset, string title = "t")
+        => new()
+        {
+            InsightId       = insightId,
+            Title           = title,
+            SeverityOrdinal = severity,
+            OnsetAt         = onset,
+        };
+
+    private static readonly DateTimeOffset T0 = new(2026, 7, 1, 12, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void NoInsights_ScoresPerfect()
+    {
+        var s = HealthScoreCalculator.Compute([], [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(100);
+        s.Label.Should().Be("Excellent");
+        s.Contributions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OnePersistentCondition_FiringManyTimes_DoesNotCollapseScore()
+    {
+        // The exact field bug: one warning condition re-fires 30× in a week.
+        // Old formula: 100 - 30*5 = clamped to 0. New: one distinct warning
+        // (+ recurrence bump) = 100 - 10 = 90.
+        var records = Enumerable.Range(0, 30)
+            .Select(i => Rec("disk.almost-full", severity: 2, T0.AddHours(i)))
+            .ToList();
+
+        var s = HealthScoreCalculator.Compute(records, [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(90, "one recurring warning costs 5 + 5 recurrence, not 5×30");
+        s.Contributions.Should().ContainSingle();
+        s.Contributions[0].InsightId.Should().Be("disk.almost-full");
+        s.Contributions[0].Occurrences.Should().Be(30);
+        s.Contributions[0].PointsDeducted.Should().Be(10);
+    }
+
+    [Fact]
+    public void SingleWarningOccurrence_CostsBasePenaltyOnly()
+    {
+        var s = HealthScoreCalculator.Compute(
+            [Rec("cpu.spike", severity: 2, T0)], [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(95, "a one-off warning costs 5, no recurrence bump");
+        s.Contributions[0].PointsDeducted.Should().Be(5);
+    }
+
+    [Fact]
+    public void DistinctConditions_EachCountOnce()
+    {
+        var records = new[]
+        {
+            Rec("a", 2, T0),
+            Rec("b", 2, T0),
+            Rec("c", 1, T0), // recommendation
+        };
+
+        var s = HealthScoreCalculator.Compute(records, [], TimeSpan.FromDays(7));
+
+        // 100 - 5(a) - 5(b) - 2(c) = 88
+        s.Score.Should().Be(88);
+        s.Contributions.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void InformationalInsights_DoNotAffectScoreOrBreakdown()
+    {
+        var s = HealthScoreCalculator.Compute(
+            [Rec("info", severity: 0, T0), Rec("info2", severity: 0, T0)],
+            [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(100);
+        s.Contributions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ManyDistinctWarnings_ClampsAtZero_NeverNegative()
+    {
+        var records = Enumerable.Range(0, 40)
+            .Select(i => Rec($"cond-{i}", severity: 2, T0))
+            .ToList();
+
+        var s = HealthScoreCalculator.Compute(records, [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(0, "clamped, not negative");
+    }
+
+    [Fact]
+    public void Trend_ReflectsImprovementVsPreviousWindow()
+    {
+        var current  = new[] { Rec("a", 2, T0) };                    // score 95
+        var previous = new[] { Rec("a", 2, T0), Rec("b", 2, T0),     // score 85
+                               Rec("c", 2, T0) };
+
+        var s = HealthScoreCalculator.Compute(current, previous, TimeSpan.FromDays(7));
+
+        s.Trend.Should().Be(TrendDirection.Improving, "95 vs 85 is +10");
+    }
+
+    [Fact]
+    public void Contributions_OrderedByPointsThenOccurrences()
+    {
+        var records = new[]
+        {
+            Rec("light", 1, T0),                                  // -2
+            Rec("heavy", 2, T0), Rec("heavy", 2, T0.AddHours(1)), // recurring? only 2 < threshold 3 → -5
+            Rec("recurring", 2, T0), Rec("recurring", 2, T0.AddHours(1)), Rec("recurring", 2, T0.AddHours(2)), // -10
+        };
+
+        var s = HealthScoreCalculator.Compute(records, [], TimeSpan.FromDays(7));
+
+        s.Contributions[0].InsightId.Should().Be("recurring", "highest deduction first");
+        s.Contributions[0].PointsDeducted.Should().Be(10);
+        s.Contributions.Last().InsightId.Should().Be("light");
+    }
+
+    [Fact]
+    public void NullInputs_TreatedAsEmpty_NoThrow()
+    {
+        var act = () => HealthScoreCalculator.Compute(null!, null!, TimeSpan.FromDays(7));
+
+        act.Should().NotThrow();
+        HealthScoreCalculator.Compute(null!, null!, TimeSpan.FromDays(7)).Score.Should().Be(100);
+    }
+}

@@ -108,6 +108,12 @@ public sealed partial class DashboardPage : Page
     private void OpenCompanionButton_Click(object sender, RoutedEventArgs e)
         => AppServices.CompanionSession.Expand();
 
+    // ── Health card → score breakdown ─────────────────────────────────────────
+
+    private void HealthCard_Tapped(object sender, TappedRoutedEventArgs e)
+        => Frame?.Navigate(typeof(HealthBreakdownPage),
+               null, new Microsoft.UI.Xaml.Media.Animation.DrillInNavigationTransitionInfo());
+
     // ── Hover effects ─────────────────────────────────────────────────────
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)
