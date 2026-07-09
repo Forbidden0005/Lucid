@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lucid.Core.Infrastructure;
 using Lucid.Services.Automation;
 using Lucid.Services.DesktopContext;
 using Lucid.Services.Distributed;
@@ -43,6 +44,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ILlmChatService           _llmChat;
     private readonly IDesktopContextService    _desktopContext;
     private readonly LocalSyncCoordinator      _localSync;
+    private readonly ILucidLogger?             _logger;
     private readonly DispatcherQueue           _dispatcher;
 
     private bool _isInitializing;
@@ -87,7 +89,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutomationOrchestrator    automationOrchestrator,
         ILlmChatService           llmChat,
         IDesktopContextService    desktopContext,
-        LocalSyncCoordinator      localSync)
+        LocalSyncCoordinator      localSync,
+        ILucidLogger?             logger = null)
     {
         _settings               = settings;
         _governance             = governance;
@@ -97,6 +100,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _llmChat                = llmChat;
         _desktopContext         = desktopContext;
         _localSync              = localSync;
+        _logger                 = logger;
         _dispatcher             = DispatcherQueue.GetForCurrentThread()
                                   ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
     }
@@ -376,7 +380,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SettingsVM] SaveAsync failed: {ex}");
+            // Structured logger, not Debug.WriteLine — the failure must stay
+            // visible in Release builds (the user believes the setting saved).
+            _logger?.Error("Settings", "Saving settings failed — the change was not persisted.", ex);
         }
     }
 
@@ -388,7 +394,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SettingsVM] LlmChat.ReconfigureAsync failed: {ex}");
+            _logger?.Error("Settings",
+                $"Applying the AI endpoint configuration failed (endpoint: {url}).", ex);
         }
     }
 }

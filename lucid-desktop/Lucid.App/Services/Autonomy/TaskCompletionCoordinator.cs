@@ -1,3 +1,4 @@
+using Lucid.Core.Infrastructure;
 using Lucid.Services.Execution;
 using Lucid.Services.Timeline;
 
@@ -23,6 +24,7 @@ public sealed class TaskCompletionCoordinator
     private readonly OperationalFileDiscoveryService _discovery;
     private readonly IActionExecutionEngine          _executionEngine;
     private readonly ITimelineAggregationService     _timeline;
+    private readonly ILucidLogger?                   _logger;
 
     // Per-workflow pending previews (workflow ID → preview built in the Preview step)
     private readonly Dictionary<string, FileOrganizationPreview> _pendingPreviews = [];
@@ -35,7 +37,8 @@ public sealed class TaskCompletionCoordinator
         FileOrganizationWorkflowService fileOrg,
         OperationalFileDiscoveryService discovery,
         IActionExecutionEngine          executionEngine,
-        ITimelineAggregationService     timeline)
+        ITimelineAggregationService     timeline,
+        ILucidLogger?                   logger = null)
     {
         _validator       = validator;
         _reviewGate      = reviewGate;
@@ -45,6 +48,7 @@ public sealed class TaskCompletionCoordinator
         _discovery       = discovery;
         _executionEngine = executionEngine;
         _timeline        = timeline;
+        _logger          = logger;
     }
 
     // ── Events ────────────────────────────────────────────────────────────────
@@ -259,12 +263,14 @@ public sealed class TaskCompletionCoordinator
 
             case WorkflowStepType.Navigation:
             {
-                // Open a system tool — fire and don't await failures
+                // Open a system tool — deliberately non-blocking for the
+                // workflow, but failures must be OBSERVED: an unawaited task's
+                // exception is otherwise silently unobserved.
                 if (!string.IsNullOrWhiteSpace(step.ActionId) &&
                     _executionEngine.IsSupported(step.ActionId))
                 {
                     var ctx = new ActionExecutionContext { ConfirmationGranted = true, RequestedBy = "autonomy" };
-                    _ = _executionEngine.ExecuteAsync(step.ActionId!, ctx, CancellationToken.None);
+                    _ = ObserveNavigationAsync(step.ActionId!, ctx);
                 }
                 return true;
             }
@@ -278,6 +284,30 @@ public sealed class TaskCompletionCoordinator
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Awaits a best-effort navigation launch off the workflow's critical path
+    /// and logs any failure — the workflow proceeds either way, but the
+    /// failure is never silently unobserved.
+    /// </summary>
+    private async Task ObserveNavigationAsync(string actionId, ActionExecutionContext ctx)
+    {
+        try
+        {
+            var result = await _executionEngine
+                .ExecuteAsync(actionId, ctx, CancellationToken.None)
+                .ConfigureAwait(false);
+
+            if (result.Status == ActionExecutionStatus.Failed)
+                _logger?.Warning("Autonomy",
+                    $"Best-effort navigation step '{actionId}' reported failure: {result.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning("Autonomy",
+                $"Best-effort navigation step '{actionId}' threw: {ex.Message}", ex);
+        }
+    }
 
     private void RaiseProgress(
         AutonomousWorkflow workflow,

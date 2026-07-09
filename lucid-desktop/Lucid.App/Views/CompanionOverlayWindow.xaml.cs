@@ -97,7 +97,10 @@ public sealed partial class CompanionOverlayWindow : Window
     public CompanionOverlayWindow()
     {
         // Build ViewModel before InitializeComponent so x:Bind can resolve it.
-        ViewModel = new CompanionChatViewModel(AppServices.LlmChat);
+        ViewModel = new CompanionChatViewModel(
+            AppServices.LlmChat,
+            AppServices.AutomationOrchestrator,
+            AppServices.Logger);
         InitializeComponent();
 
         _uiDispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
@@ -111,6 +114,12 @@ public sealed partial class CompanionOverlayWindow : Window
         _presenter.IsMaximizable  = false;
         _presenter.IsMinimizable  = false;
         _appWindow.SetPresenter(_presenter);
+
+        // Remove the native title bar AND its caption buttons. Without this,
+        // ExtendsContentIntoTitleBar alone leaves the OS close button floating
+        // over the overlay's own header — two overlapping X's, and the native
+        // one destroys the window instead of hiding it to the bubble.
+        _presenter.SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false);
 
         // Frameless — content fills the full client area.
         // SetTitleBar(null) disables OS-managed drag so we can manage it manually.
@@ -465,7 +474,9 @@ public sealed partial class CompanionOverlayWindow : Window
         // Phase 17D: automation: prefix routes to the orchestrator instead of navigation.
         if (action.IsAutomationAction && action.AutomationTarget is { } autoTarget)
         {
-            LaunchAutomation(autoTarget);
+            // Planning/execution/event wiring live in the ViewModel — the
+            // window only routes the action tag (no business logic in views).
+            ViewModel.LaunchAutomation(autoTarget);
             return;
         }
 
@@ -477,58 +488,6 @@ public sealed partial class CompanionOverlayWindow : Window
         }
 
         NavigationRequested?.Invoke(this, action.NavigationTag);
-    }
-
-    // ── Phase 17D: automation launch ─────────────────────────────────────────
-
-    private void LaunchAutomation(string target)
-    {
-        var orchestrator = AppServices.AutomationOrchestrator;
-        var plan = orchestrator.PlanLaunch(target);
-
-        // Subscribe to orchestrator events for narration feedback
-        // (subscribed fresh for each plan; unsubscribed on plan end)
-        WireOrchestratorEvents(orchestrator);
-
-        // Publish plan to timeline before asking for approval
-        // For zero/low risk plans: execute immediately (approval card shown via ConfirmationRequired)
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await orchestrator.ExecutePlanAsync(plan).ConfigureAwait(false);
-            }
-            catch { /* narration events surface errors; don't crash */ }
-        });
-    }
-
-    private void WireOrchestratorEvents(Services.Automation.AutomationOrchestrator orchestrator)
-    {
-        // These handlers are lightweight — they just add a narration message to the chat.
-        // Use one-shot subscriptions to avoid leaking if the window is recycled.
-        EventHandler<Services.Automation.AutomationNarrationEventArgs>? onNarration = null;
-        EventHandler<Services.Automation.AutomationPlanEventArgs>?      onComplete  = null;
-        EventHandler<Services.Automation.AutomationPlanEventArgs>?      onCancel    = null;
-
-        onNarration = (_, args) =>
-            ViewModel.AddAutomationNarration(args.Message, args.IsWarning);
-
-        onComplete = (_, _) =>
-        {
-            orchestrator.NarrationUpdated -= onNarration;
-            orchestrator.PlanCompleted    -= onComplete;
-            orchestrator.PlanCancelled    -= onCancel;
-        };
-        onCancel = (_, _) =>
-        {
-            orchestrator.NarrationUpdated -= onNarration;
-            orchestrator.PlanCompleted    -= onComplete;
-            orchestrator.PlanCancelled    -= onCancel;
-        };
-
-        orchestrator.NarrationUpdated += onNarration;
-        orchestrator.PlanCompleted    += onComplete;
-        orchestrator.PlanCancelled    += onCancel;
     }
 
     // ── Input box ─────────────────────────────────────────────────────────────

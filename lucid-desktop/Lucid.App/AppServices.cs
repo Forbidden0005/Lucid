@@ -1796,7 +1796,8 @@ public static class AppServices
         // Planner is pure — no dependencies on runtime services.
         _workflowPlanner = new WorkflowExecutionPlanner();
 
-        // Coordinator wires together all step-level concerns.
+        // Coordinator wires together all step-level concerns. Given the logger
+        // so best-effort (fire-and-forget) step failures are observed.
         _taskCoordinator = new TaskCompletionCoordinator(
             _safeExecutionValidator,
             _humanReviewGate,
@@ -1805,7 +1806,8 @@ public static class AppServices
             _fileOrgWorkflow,
             _fileDiscovery,
             _executionEngine!,
-            _timeline!);
+            _timeline!,
+            _logger);
 
         // Top-level engine — created last so all dependencies are ready.
         _autonomousWorkflowEngine = new AutonomousWorkflowEngine(
@@ -1840,8 +1842,21 @@ public static class AppServices
         // Aggregates raw telemetry into coarser buckets and evicts stale rows.
         // Runs on a thread-pool thread — never touches the UI thread.
         // Idle-only behavior: SQLite WAL means the main thread is never blocked.
+        // Failures are logged, never unobserved — a silently-dead retention
+        // sweep would let telemetry rows accumulate unbounded over long uptime.
         _downsampleTimer = new System.Threading.Timer(
-            _ => _ = _telHistoryRepo!.DownsampleAndPurgeAsync(),
+            _ => _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _telHistoryRepo!.DownsampleAndPurgeAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.Warning("Persistence",
+                        "Hourly telemetry downsample/purge failed — retention will retry next hour.", ex);
+                }
+            }),
             state:        null,
             dueTime:      TimeSpan.FromHours(1),
             period:       TimeSpan.FromHours(1));
