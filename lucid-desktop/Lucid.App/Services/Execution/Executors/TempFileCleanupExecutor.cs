@@ -226,12 +226,38 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
                 sw.Elapsed, context.Log.Build(), ex.ToString());
         }
 
+        // ── Open rollback manifest ────────────────────────────────────────────
+        // Opened before any file is moved, and each mapping is flushed as its
+        // file is staged, so an I/O failure or crash mid-run can never leave
+        // staged files behind without a usable rollback record.
+        StreamWriter manifestWriter;
+        try
+        {
+            manifestWriter = new StreamWriter(
+                Path.Combine(staging, ManifestFileName), append: false);
+        }
+        catch (Exception ex)
+        {
+            context.Log.Error(
+                $"Could not create rollback manifest: {ex.Message}  " +
+                $"Cleanup was not started — no files were touched.");
+            TryDeleteDirectory(staging, context.Log);
+            sw.Stop();
+            return ActionExecutionResult.Failed(
+                ActionId,
+                "Cleanup did not run because the rollback manifest could not be " +
+                "created — nothing was deleted. Free up disk space or check permissions " +
+                $"for {staging} and try again.",
+                sw.Elapsed, context.Log.Build(), ex.ToString());
+        }
+
         // ── Scan and clean each target directory ──────────────────────────────
 
-        long         totalBytes = 0;
-        int          totalFiles = 0;
-        int          skipped    = 0;
-        List<string> manifest   = [];   // "{stagingName}|{originalPath}" per line
+        long         totalBytes    = 0;
+        int          totalFiles    = 0;
+        int          skipped       = 0;
+        string?      manifestFault = null;  // set → run stopped early
+        List<string> manifest      = [];    // "{stagingName}|{originalPath}" per line
 
         foreach (var target in s_targets)
         {
@@ -264,6 +290,21 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
                     var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
                     var stagingPath = Path.Combine(staging, stagingName);
                     File.Move(file.FullName, stagingPath);
+
+                    try
+                    {
+                        manifestWriter.WriteLine($"{stagingName}|{file.FullName}");
+                        manifestWriter.Flush();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Without its manifest entry the staged file would be
+                        // orphaned — put it back and stop the run. Everything
+                        // staged so far has a flushed entry and stays reversible.
+                        TryMoveBack(stagingPath, file.FullName, context.Log);
+                        manifestFault = ex.Message;
+                        break;
+                    }
                     manifest.Add($"{stagingName}|{file.FullName}");
 
                     context.Log.Info(
@@ -290,7 +331,13 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
                     $"  → {dirFiles} file(s) removed ({FormatBytes(dirBytes)}).");
             else if (!ct.IsCancellationRequested)
                 context.Log.Info($"  → Nothing to clean.");
+
+            if (manifestFault is not null) break;
         }
+
+        // Close the manifest before any restore/delete below — the file lives
+        // inside the staging directory and must not be held open.
+        manifestWriter.Dispose();
 
         // ── Cancellation: restore staged files and return clean state ─────────
         if (ct.IsCancellationRequested)
@@ -320,16 +367,19 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
                 ActionId, cancelMsg, sw.Elapsed, context.Log.Build());
         }
 
-        // ── Write rollback manifest ───────────────────────────────────────────
+        // ── Finalise rollback state ───────────────────────────────────────────
+        // Manifest entries were flushed as files were staged, so if anything
+        // was moved the on-disk manifest is already complete and usable.
         string? rollbackToken = null;
         if (manifest.Count > 0)
         {
-            if (TryWriteManifest(staging, manifest, context.Log))
-                rollbackToken = staging;
+            rollbackToken = staging;
         }
-        else if (totalFiles == 0)
+        else if (manifestFault is null)
         {
-            // Nothing moved — clean up the empty staging directory.
+            // Nothing moved — clean up the staging directory (empty manifest).
+            // Kept when a manifest fault occurred: a failed move-back may have
+            // left a file in staging that must not be deleted with it.
             TryDeleteDirectory(staging, context.Log);
         }
 
@@ -350,11 +400,17 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
                 msg += " Rollback available.";
         }
 
+        if (manifestFault is not null)
+            msg += " The run stopped early because a rollback record could not " +
+                   $"be written ({manifestFault}); files already cleaned remain " +
+                   "fully reversible.";
+
         context.Log.Info($"Done. {msg}");
 
-        // Partial success when some files were cleaned but others were skipped.
+        // Partial success when some files were cleaned but others were skipped,
+        // or when the run stopped early on a manifest write failure.
         // Pass the rollback token so the user can restore the files that were moved.
-        if (totalFiles > 0 && skipped > 0)
+        if (manifestFault is not null || (totalFiles > 0 && skipped > 0))
             return ActionExecutionResult.PartiallySucceeded(
                 ActionId, msg, sw.Elapsed, context.Log.Build(),
                 rollbackToken: rollbackToken);
@@ -550,14 +606,23 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
                 if (ct.IsCancellationRequested) yield break;
                 // Skip files that are too recent (only relevant for Windows\Temp).
                 if (file.LastWriteTimeUtc > cutoff) continue;
+                // Skip file symlinks — staging would move the link, and rollback
+                // would restore something other than what the user saw removed.
+                if ((file.Attributes & FileAttributes.ReparsePoint) != 0) continue;
                 yield return file;
             }
 
             // Enqueue subdirectories for BFS traversal.
             try
             {
-                foreach (var sub in Directory.GetDirectories(dir))
-                    queue.Enqueue(sub);
+                foreach (var sub in new DirectoryInfo(dir).GetDirectories())
+                {
+                    // Never traverse junctions/symlinks — a link planted in a
+                    // world-writable temp directory could point anywhere on the
+                    // system, and following it would clean files outside the target.
+                    if ((sub.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                    queue.Enqueue(sub.FullName);
+                }
             }
             catch (Exception ex) when (
                 ex is IOException or UnauthorizedAccessException)
@@ -610,22 +675,26 @@ internal sealed class TempFileCleanupExecutor : IActionExecutor
 
     // ── Manifest helpers ──────────────────────────────────────────────────────
 
-    private static bool TryWriteManifest(
-        string             staging,
-        IReadOnlyList<string> lines,
+    /// <summary>
+    /// Best-effort return of a just-staged file whose manifest entry could not
+    /// be persisted. If the move back also fails, the staging path is logged so
+    /// the file can be recovered manually.
+    /// </summary>
+    private static void TryMoveBack(
+        string             stagingPath,
+        string             originalPath,
         ActionExecutionLog log)
     {
         try
         {
-            File.WriteAllLines(Path.Combine(staging, ManifestFileName), lines);
-            return true;
+            File.Move(stagingPath, originalPath);
         }
         catch (Exception ex)
         {
-            log.Warn(
-                $"Could not write rollback manifest: {ex.Message}  " +
-                $"Rollback will not be available for this run.");
-            return false;
+            log.Error(
+                $"Could not return {Path.GetFileName(originalPath)} after a " +
+                $"manifest write failure: {ex.Message}  " +
+                $"The file is preserved at: {stagingPath}");
         }
     }
 
