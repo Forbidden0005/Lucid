@@ -19,6 +19,14 @@ mod scanner;
 use scanner::{scan_directory, scan_top_files};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+
+/// Returned by a fallible FFI function when a Rust panic was caught at the
+/// boundary instead of being allowed to unwind into the C# caller (which is
+/// undefined behaviour). Callers should treat it like an I/O failure and fall
+/// back to the managed scanner. The pointer contract is unchanged: on this
+/// path no heap strings are handed out and no out-params are considered valid.
+const FFI_PANIC: c_int = -3;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
@@ -43,6 +51,7 @@ pub extern "C" fn lucid_scanner_version() -> *const c_char {
 /// - `0`  success
 /// - `-1` path argument is null or not valid UTF-8
 /// - `-2` I/O error (path does not exist or access denied)
+/// - `-3` internal error — a panic was caught at the boundary; treat as I/O failure
 ///
 /// # Safety
 /// `path` must point to a valid null-terminated UTF-8 string. All output
@@ -62,22 +71,28 @@ pub unsafe extern "C" fn lucid_scan_directory(
         return -1;
     }
 
-    let root = match unsafe { CStr::from_ptr(path) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return -1,
-    };
+    // Catch any panic (OOM, arithmetic, a surprise inside the traversal) so it
+    // cannot unwind across the C boundary — that is undefined behaviour and
+    // could take the whole host process down.
+    catch_unwind(AssertUnwindSafe(|| {
+        let root = match unsafe { CStr::from_ptr(path) }.to_str() {
+            Ok(s) => s,
+            Err(_) => return -1,
+        };
 
-    match scan_directory(root) {
-        Ok(result) => {
-            unsafe {
-                *out_total_bytes = result.total_bytes;
-                *out_file_count = result.file_count;
-                *out_dir_count = result.dir_count;
+        match scan_directory(root) {
+            Ok(result) => {
+                unsafe {
+                    *out_total_bytes = result.total_bytes;
+                    *out_file_count = result.file_count;
+                    *out_dir_count = result.dir_count;
+                }
+                0
             }
-            0
+            Err(_) => -2,
         }
-        Err(_) => -2,
-    }
+    }))
+    .unwrap_or(FFI_PANIC)
 }
 
 // ── Top-N largest files ───────────────────────────────────────────────────────
@@ -101,6 +116,7 @@ pub unsafe extern "C" fn lucid_scan_directory(
 /// - `0`  success
 /// - `-1` bad arguments
 /// - `-2` I/O error
+/// - `-3` internal error — a panic was caught at the boundary; treat as I/O failure
 ///
 /// # Safety
 /// `path` must point to a valid null-terminated UTF-8 string. `out_entries`
@@ -119,38 +135,44 @@ pub unsafe extern "C" fn lucid_scan_top_files(
         return -1;
     }
 
-    let root = match unsafe { CStr::from_ptr(path) }.to_str() {
-        Ok(s) => s,
-        Err(_) => return -1,
-    };
-
-    let top = match scan_top_files(root, n as usize) {
-        Ok(v) => v,
-        Err(_) => return -2,
-    };
-
-    // Write densely with a separate index: if CString::new rejects an entry
-    // (interior NUL), skipping the loop index would leave an uninitialized
-    // hole in out_entries while out_count still counted it — the caller would
-    // then read a garbage pointer. Only entries actually written are counted.
-    let capacity = top.len().min(n as usize);
-    let mut written: usize = 0;
-    for entry in top.into_iter().take(capacity) {
-        let s = format!("{}\t{}", entry.path, entry.size_bytes);
-        let cs = match CString::new(s) {
-            Ok(c) => c,
-            Err(_) => continue,
+    // Catch any panic so it cannot unwind across the C boundary (UB). On the
+    // panic path no out-params are written and no heap strings are handed out,
+    // so the caller's -3 handling stays consistent with the pointer contract.
+    catch_unwind(AssertUnwindSafe(|| {
+        let root = match unsafe { CStr::from_ptr(path) }.to_str() {
+            Ok(s) => s,
+            Err(_) => return -1,
         };
-        unsafe {
-            *out_entries.add(written) = cs.into_raw();
-        }
-        written += 1;
-    }
 
-    unsafe {
-        *out_count = written as u32;
-    }
-    0
+        let top = match scan_top_files(root, n as usize) {
+            Ok(v) => v,
+            Err(_) => return -2,
+        };
+
+        // Write densely with a separate index: if CString::new rejects an entry
+        // (interior NUL), skipping the loop index would leave an uninitialized
+        // hole in out_entries while out_count still counted it — the caller would
+        // then read a garbage pointer. Only entries actually written are counted.
+        let capacity = top.len().min(n as usize);
+        let mut written: usize = 0;
+        for entry in top.into_iter().take(capacity) {
+            let s = format!("{}\t{}", entry.path, entry.size_bytes);
+            let cs = match CString::new(s) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            unsafe {
+                *out_entries.add(written) = cs.into_raw();
+            }
+            written += 1;
+        }
+
+        unsafe {
+            *out_count = written as u32;
+        }
+        0
+    }))
+    .unwrap_or(FFI_PANIC)
 }
 
 // ── Memory management ─────────────────────────────────────────────────────────
