@@ -256,25 +256,34 @@ public sealed class SQLitePersistenceService : IDisposable
         await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
-            using var tx = _connection.BeginTransaction();
-            int count = 0;
+            var tx = BeginTransactionOrRecycle();
+            if (tx is null) return;   // connection unrecoverable — logged inside
 
-            while (count < MaxFlushBatchSize &&
-                   _writeQueue.TryDequeue(out var action))
+            try
             {
-                try
-                {
-                    action(_connection);
-                }
-                catch (Exception ex)
-                {
-                    _logger?.Debug("Persistence", $"Queued write skipped in batch flush: {ex.Message}");
-                }
-                count++;
-            }
+                int count = 0;
 
-            tx.Commit();
-            QueueMetrics.RecordFlush();
+                while (count < MaxFlushBatchSize &&
+                       _writeQueue.TryDequeue(out var action))
+                {
+                    try
+                    {
+                        action(_connection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.Debug("Persistence", $"Queued write skipped in batch flush: {ex.Message}");
+                    }
+                    count++;
+                }
+
+                tx.Commit();
+                QueueMetrics.RecordFlush();
+            }
+            finally
+            {
+                DisposeTransactionOrRecycle(tx);
+            }
         }
         catch (Exception ex)
         {
@@ -283,6 +292,84 @@ public sealed class SQLitePersistenceService : IDisposable
         finally
         {
             _lock.Release();
+        }
+    }
+
+    // ── Transaction lifecycle recovery ────────────────────────────────────────
+    //
+    // Failure mode observed in the field (2026-07-10 logs): when a statement
+    // error makes SQLite auto-roll-back the active transaction (or a caller
+    // rolls it back behind ADO's back), SqliteTransaction.Commit/Dispose throw
+    // "cannot commit/rollback - no transaction is active" WITHOUT detaching the
+    // transaction object from the connection. The connection is then poisoned:
+    // every subsequent BeginTransaction throws "SqliteConnection does not
+    // support nested transactions" and every flush batch is lost, forever.
+    // Both helpers below must be called while holding _lock.
+
+    /// <summary>
+    /// Begins a transaction, recycling the connection once if a dangling
+    /// transaction from a failed teardown is still attached to it.
+    /// Returns null when the connection could not be recovered.
+    /// </summary>
+    private SqliteTransaction? BeginTransactionOrRecycle()
+    {
+        try
+        {
+            return _connection!.BeginTransaction();
+        }
+        catch (InvalidOperationException)
+        {
+            if (!TryRecycleConnection()) return null;
+            return _connection!.BeginTransaction();
+        }
+    }
+
+    /// <summary>
+    /// Disposes a transaction; if teardown fails the transaction object stays
+    /// attached to the connection, so the connection is recycled to keep the
+    /// next flush working.
+    /// </summary>
+    private void DisposeTransactionOrRecycle(SqliteTransaction tx)
+    {
+        try
+        {
+            tx.Dispose();
+        }
+        catch
+        {
+            TryRecycleConnection();
+        }
+    }
+
+    /// <summary>
+    /// Closes and reopens the database connection to shed a dangling
+    /// transaction. On reopen failure, persistence is disabled (_healthy=false)
+    /// rather than left silently losing every batch.
+    /// </summary>
+    private bool TryRecycleConnection()
+    {
+        _logger?.Warning("Persistence",
+            "A failed transaction left the connection unusable — recycling the connection");
+
+        // Dispose may itself throw while a dangling transaction is attached
+        // (rollback of an already-rolled-back transaction) — same class of
+        // failure the shutdown path guards against.
+        try { _connection?.Dispose(); }
+        catch { /* handle is released regardless */ }
+        _connection = null;
+
+        try
+        {
+            _connection = OpenConnectionCore(_dbPath);
+            ApplyPragmas(_connection);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _healthy = false;
+            _logger?.Error("Persistence",
+                "Could not reopen the database after recycling a poisoned connection — persistence disabled", ex);
+            return false;
         }
     }
 
@@ -310,17 +397,27 @@ public sealed class SQLitePersistenceService : IDisposable
                 {
                     if (_healthy && _connection is not null && !_writeQueue.IsEmpty)
                     {
-                        using var tx = _connection.BeginTransaction();
-                        while (_writeQueue.TryDequeue(out var action))
+                        var tx = BeginTransactionOrRecycle();
+                        if (tx is not null)
                         {
-                            try { action(_connection); }
-                            catch (Exception ex)
+                            try
                             {
-                                _logger?.Debug("Persistence", $"Write skipped in final flush: {ex.Message}");
+                                while (_writeQueue.TryDequeue(out var action))
+                                {
+                                    try { action(_connection); }
+                                    catch (Exception ex)
+                                    {
+                                        _logger?.Debug("Persistence", $"Write skipped in final flush: {ex.Message}");
+                                    }
+                                }
+                                tx.Commit();
+                                _logger?.Debug("Persistence", $"Final flush committed {pendingCount} pending write(s)");
+                            }
+                            finally
+                            {
+                                DisposeTransactionOrRecycle(tx);
                             }
                         }
-                        tx.Commit();
-                        _logger?.Debug("Persistence", $"Final flush committed {pendingCount} pending write(s)");
                     }
                 }
                 catch (Exception ex)
