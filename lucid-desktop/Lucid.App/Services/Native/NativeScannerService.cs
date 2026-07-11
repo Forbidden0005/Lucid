@@ -72,7 +72,9 @@ public sealed class NativeScannerService
     /// The scan runs on the thread pool so it never blocks the UI thread.
     /// </summary>
     /// <exception cref="InvalidOperationException">If the native library is unavailable.</exception>
-    /// <exception cref="IOException">If the native scanner returns an I/O error.</exception>
+    /// <exception cref="IOException">If the native scanner returns an I/O error, or an
+    /// internal error (a panic caught at the FFI boundary) — both signal the caller
+    /// to fall back to the managed scanner.</exception>
     public Task<DirectoryScanResult> ScanDirectoryAsync(
         string rootPath, CancellationToken ct = default) =>
         Task.Run(() => ScanDirectoryCore(rootPath), ct);
@@ -103,6 +105,10 @@ public sealed class NativeScannerService
         {
             0  => new DirectoryScanResult(rootPath, totalBytes, fileCount, dirCount),
             -2 => throw new IOException($"Native scanner: access denied or path not found: {rootPath}"),
+            // -3 = a panic was caught at the FFI boundary. Per the native contract
+            // it's an internal failure to be treated like I/O — so callers fall back
+            // to the managed scanner rather than seeing a spurious "bad arguments".
+            -3 => throw new IOException($"Native scanner: internal error while scanning: {rootPath}"),
             _  => throw new ArgumentException($"Native scanner: bad arguments for path: {rootPath}"),
         };
     }
@@ -128,6 +134,11 @@ public sealed class NativeScannerService
 
             if (rc == -2) throw new IOException(
                 $"Native scanner: access denied or path not found: {rootPath}");
+            // -3 = panic caught at the FFI boundary — an internal failure treated
+            // like I/O so callers fall back to the managed scanner (see the native
+            // contract in lucid-scanner/src/lib.rs), not "bad arguments".
+            if (rc == -3) throw new IOException(
+                $"Native scanner: internal error while scanning: {rootPath}");
             if (rc != 0)  throw new ArgumentException(
                 $"Native scanner: bad arguments for path: {rootPath}");
 
