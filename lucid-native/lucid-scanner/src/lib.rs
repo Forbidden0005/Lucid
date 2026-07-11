@@ -162,6 +162,13 @@ pub unsafe extern "C" fn lucid_scan_top_files(
                 Err(_) => continue,
             };
             unsafe {
+                // Ownership of this heap string is transferred to the caller here.
+                // If a panic somehow occurred after this point but before out_count
+                // is written below, catch_unwind returns -3 and the caller sees no
+                // valid count — so these already-exported strings would leak. That
+                // is an accepted trade-off: the only alternative (letting the panic
+                // unwind across the C boundary) is undefined behaviour, and any
+                // "cleanup on panic" logic here could itself panic. Do not add it.
                 *out_entries.add(written) = cs.into_raw();
             }
             written += 1;
