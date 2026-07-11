@@ -152,6 +152,67 @@ public sealed class SQLitePersistenceDurabilityTests
             "writes after a poison write in the same batch must still commit");
     }
 
+    // ── Poisoned-connection recovery (dangling transaction) ──────────────────
+
+    [Fact]
+    public async Task FlushQueueAsync_WithDanglingTransactionOnConnection_RecyclesAndCommits()
+    {
+        // Field failure 2026-07-10: a transaction whose underlying SQLite
+        // transaction was rolled back behind ADO's back stays attached to the
+        // connection, so every later BeginTransaction threw "SqliteConnection
+        // does not support nested transactions" and every 30s flush batch was
+        // silently lost from then on.
+        using var dir = new TestDir();
+        using var service = CreateService(dir.DatabasePath);
+        await service.InitializeAsync();
+
+        await service.QueryAsync<object?>(conn =>
+        {
+            var tx = conn.BeginTransaction();
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = "ROLLBACK;";
+            cmd.ExecuteNonQuery();
+            return null;   // tx deliberately not disposed — it dangles on the connection
+        });
+
+        service.EnqueueWrite(conn => InsertMetadata(conn, "poisoned-batch", "1"));
+        await service.FlushQueueAsync();
+
+        service.IsHealthy.Should().BeTrue();
+        service.QueueMetrics.TotalFlushCount.Should().Be(1,
+            "the flush must recover the connection and commit, not lose the batch");
+        (await ReadMetadataAsync(service, "poisoned-batch")).Should().Be("1");
+    }
+
+    [Fact]
+    public async Task FlushQueueAsync_WhenBatchRollsBackUnderneathTransaction_NextFlushStillCommits()
+    {
+        // A statement error (e.g. SQLITE_FULL) auto-rolls-back the flush
+        // transaction; Commit then throws and the transaction object dangles.
+        // The failed batch is lost by design, but the NEXT flush must work —
+        // pre-fix it failed with "nested transactions" forever.
+        using var dir = new TestDir();
+        using var service = CreateService(dir.DatabasePath);
+        await service.InitializeAsync();
+
+        service.EnqueueWrite(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "ROLLBACK;";   // rolls back the flush transaction behind ADO's back
+            cmd.ExecuteNonQuery();
+        });
+        await service.FlushQueueAsync();     // commit fails — this batch is lost (accepted)
+
+        service.EnqueueWrite(conn => InsertMetadata(conn, "after-recovery", "1"));
+        await service.FlushQueueAsync();
+
+        service.IsHealthy.Should().BeTrue(
+            "one failed transaction teardown must not disable or poison persistence");
+        (await ReadMetadataAsync(service, "after-recovery")).Should().Be("1",
+            "flushes after a commit failure must keep committing");
+    }
+
     // ── Lifecycle write gating ────────────────────────────────────────────────
 
     [Fact]
