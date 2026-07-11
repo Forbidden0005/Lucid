@@ -22,7 +22,8 @@ namespace Lucid.Services.Trust;
 ///
 /// Persistence integrity (this ledger is the accountability record for every
 /// autonomous action, so its durability is a trust requirement):
-///   • Disk writes are serialized through a single-writer gate — overlapping
+///   • Disk writes are serialized through a single persist chain — each write
+///     runs strictly after the previous one completes, so overlapping
 ///     mutations never produce interleaved or torn writes to the file.
 ///   • Each write goes to a temp file first and then atomically replaces the
 ///     ledger, so a crash mid-write can never leave truncated JSON behind.
@@ -51,17 +52,15 @@ public sealed class AutomationAuditService : IDisposable
     private readonly List<AutomationAuditEntry>       _entries = [];
     private readonly System.Threading.ReaderWriterLockSlim _lock = new();
 
-    /// <summary>Serializes disk writes — exactly one persist runs at a time.</summary>
-    private readonly SemaphoreSlim _writeGate = new(1, 1);
-
     private readonly string        _auditFilePath;
     private readonly ILucidLogger? _logger;
     private volatile bool          _disposed;
 
     /// <summary>
-    /// The most recently scheduled persist task. Dispose waits on this (not on
-    /// the gate) so a write that is scheduled but not yet started still gets
-    /// its chance to land before handles are released.
+    /// Tail of the persist chain: every scheduled write is appended as a
+    /// continuation of this task, so the tail transitively represents ALL
+    /// outstanding persists. Dispose waits on it to drain every pending write,
+    /// leaving no background writer touching the file after shutdown.
     /// </summary>
     private volatile Task _lastPersist = Task.CompletedTask;
 
@@ -108,12 +107,12 @@ public sealed class AutomationAuditService : IDisposable
             lastPersist = _lastPersist;
         }
 
-        // Give the last scheduled persist a moment to complete so the final
-        // audit entries reach disk; never block shutdown indefinitely.
+        // Wait for the persist chain to drain so the final audit entries reach
+        // disk AND no background writer is still touching the file once we
+        // release handles; never block shutdown indefinitely.
         try { lastPersist.Wait(TimeSpan.FromSeconds(3)); }
         catch { /* persist failures are already logged inside the task */ }
 
-        _writeGate.Dispose();
         _lock.Dispose();
     }
 
@@ -406,46 +405,49 @@ public sealed class AutomationAuditService : IDisposable
     }
 
     /// <summary>
-    /// Schedules a persist for the current entry set. Must be called while
-    /// holding <see cref="_shutdownGate"/>: that ordering guarantees Dispose
-    /// (which flips <see cref="_disposed"/> under the same gate) always sees —
-    /// and waits for — the persist of every accepted mutation.
+    /// Appends a persist to the chain for the current entry set. Must be called
+    /// while holding <see cref="_shutdownGate"/>: that ordering guarantees
+    /// Dispose (which flips <see cref="_disposed"/> under the same gate) always
+    /// sees — and, via the chain tail, waits for — the persist of every
+    /// accepted mutation.
+    ///
+    /// Chaining each write as a continuation of the previous one serializes all
+    /// disk writes (no overlapping <c>File.Move</c> replaces) and makes
+    /// <see cref="_lastPersist"/> represent every outstanding persist, so a
+    /// write scheduled but not yet started is still drained by Dispose.
     /// </summary>
     private void SchedulePersistLocked()
     {
-        _lastPersist = Task.Run(PersistCoreAsync);
+        _lastPersist = _lastPersist.ContinueWith(
+            static (_, state) => ((AutomationAuditService)state!).PersistCoreAsync(),
+            this,
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default).Unwrap();
     }
 
     private async Task PersistCoreAsync()
     {
         try
         {
-            // Single-writer gate: overlapping mutations queue here, and each
-            // pass writes the then-current snapshot — the file on disk is
-            // always one complete, consistent serialization.
-            await _writeGate.WaitAsync().ConfigureAwait(false);
-            try
-            {
-                var dir = Path.GetDirectoryName(_auditFilePath)!;
-                Directory.CreateDirectory(dir);
+            // Runs as a link in the persist chain, so exactly one write is ever
+            // in flight and each pass writes the then-current snapshot — the
+            // file on disk is always one complete, consistent serialization.
+            var dir = Path.GetDirectoryName(_auditFilePath)!;
+            Directory.CreateDirectory(dir);
 
-                IReadOnlyList<AutomationAuditEntry> snapshot;
-                _lock.EnterReadLock();
-                try { snapshot = [.. _entries]; }
-                finally { _lock.ExitReadLock(); }
+            IReadOnlyList<AutomationAuditEntry> snapshot;
+            _lock.EnterReadLock();
+            try { snapshot = [.. _entries]; }
+            finally { _lock.ExitReadLock(); }
 
-                var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
 
-                // Write-then-rename: a crash mid-write leaves only a stale
-                // .tmp behind, never a truncated ledger.
-                var tmpPath = _auditFilePath + ".tmp";
-                await File.WriteAllTextAsync(tmpPath, json).ConfigureAwait(false);
-                File.Move(tmpPath, _auditFilePath, overwrite: true);
-            }
-            finally
-            {
-                _writeGate.Release();
-            }
+            // Write-then-rename: a crash mid-write leaves only a stale
+            // .tmp behind, never a truncated ledger.
+            var tmpPath = _auditFilePath + ".tmp";
+            await File.WriteAllTextAsync(tmpPath, json).ConfigureAwait(false);
+            File.Move(tmpPath, _auditFilePath, overwrite: true);
         }
         catch (ObjectDisposedException)
         {
