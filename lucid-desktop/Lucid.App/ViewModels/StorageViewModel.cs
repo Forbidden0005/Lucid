@@ -227,6 +227,7 @@ public sealed partial class StorageViewModel : ObservableObject
         StatusText  = string.Empty;
         LargeFiles.Clear();
         DuplicateGroups.Clear();
+        ProtectedDuplicateGroups.Clear();
         Categories.Clear();
         OldDownloads.Clear();
 
