@@ -45,6 +45,38 @@ public sealed class InsightHistoryRepository
     // ── Write ─────────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Closes rows left open (resolved_at IS NULL) by a previous app session.
+    /// <see cref="_openRows"/> is in-memory only, so after a restart no open row
+    /// can ever be resolved — it would stay "active" in the database forever,
+    /// making the health-score breakdown claim conditions are active when the
+    /// live engine has no such finding. Call once at startup, before the
+    /// intelligence engine starts producing insights.
+    ///
+    /// The true resolution time is unknown (it happened while the app wasn't
+    /// running), so resolved_at is set to the row's own onset_at and
+    /// duration_seconds is left NULL (= unknown) rather than fabricating one.
+    /// Rows opened by THIS session (onset_at ≥ <paramref name="sessionStart"/>)
+    /// are never touched.
+    /// </summary>
+    public async Task<int> CloseOrphanedRowsAsync(DateTimeOffset sessionStart)
+    {
+        int closed = 0;
+        await _db.ExecuteDirectAsync(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                UPDATE insight_history
+                SET    resolved_at = onset_at
+                WHERE  resolved_at IS NULL
+                  AND  onset_at < @sessionStart;
+                """;
+            cmd.Parameters.AddWithValue("@sessionStart", sessionStart.ToUnixTimeMilliseconds());
+            closed = cmd.ExecuteNonQuery();
+        }).ConfigureAwait(false);
+        return closed;
+    }
+
+    /// <summary>
     /// Records the onset of an insight.  If this insight_id already has an open
     /// (unresolved) row in the database, the call is a no-op (prevents duplicates
     /// from rapid re-firing of the same rule).

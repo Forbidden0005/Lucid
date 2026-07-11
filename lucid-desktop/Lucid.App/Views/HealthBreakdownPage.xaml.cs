@@ -41,6 +41,28 @@ public sealed partial class HealthBreakdownPage : Page
             Frame.GoBack();
     }
 
+    // Recompute the breakdown on demand. Disabled while a load is in flight so
+    // rapid clicks can't overlap two LoadAsync calls on the same collections.
+    private async void OnRefreshClick(object sender, RoutedEventArgs e)
+    {
+        RefreshButton.IsEnabled = false;
+        try
+        {
+            await ViewModel.LoadAsync();
+        }
+        catch
+        {
+            // Best-effort, same as OnNavigatedTo — never crash on a refresh.
+        }
+        finally
+        {
+            RefreshButton.IsEnabled = true;
+        }
+    }
+
+    private void OnResolvedToggleClick(object sender, RoutedEventArgs e)
+        => ViewModel.IsResolvedExpanded = !ViewModel.IsResolvedExpanded;
+
     // Each contribution's "Review & fix" deep-links to the insight detail page,
     // where the recommended actions / fix flow already live.
     private void OnReviewClick(object sender, RoutedEventArgs e)

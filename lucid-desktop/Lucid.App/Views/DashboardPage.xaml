@@ -871,10 +871,30 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- Recompute the health score from the latest data. Nested
+                         inside the card button on purpose: the inner button
+                         handles its own click, so it refreshes without
+                         navigating to the breakdown page. -->
+                    <Button x:Name="HealthRefreshButton"
+                            Grid.Column="2"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Right"
+                            Padding="6"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="HealthRefresh_Click"
+                            ToolTipService.ToolTip="Refresh health score"
+                            AutomationProperties.Name="Refresh health score">
+                        <FontIcon Glyph="&#xE72C;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Button>
+
                     <!-- Weekly trend indicator -->
                     <StackPanel Grid.Column="2"
                                 VerticalAlignment="Center"
-                                Spacing="2">
+                                Spacing="2"
+                                Margin="0,24,0,0">
                         <FontIcon Glyph="&#xE70E;" FontFamily="Segoe MDL2 Assets"
                                   FontSize="16"
                                   Foreground="{StaticResource StatusGoodBrush}"

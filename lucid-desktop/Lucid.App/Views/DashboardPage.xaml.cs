@@ -115,6 +115,25 @@ public sealed partial class DashboardPage : Page
         => Frame?.Navigate(typeof(HealthBreakdownPage),
                null, new Microsoft.UI.Xaml.Media.Animation.DrillInNavigationTransitionInfo());
 
+    // Refresh icon inside the health card — recomputes the score without
+    // navigating (the inner button swallows the click before the card sees it).
+    private async void HealthRefresh_Click(object sender, RoutedEventArgs e)
+    {
+        HealthRefreshButton.IsEnabled = false;
+        try
+        {
+            await ViewModel.RefreshAnalyticsAsync();
+        }
+        catch
+        {
+            // Best-effort — the card keeps its last values on failure.
+        }
+        finally
+        {
+            HealthRefreshButton.IsEnabled = true;
+        }
+    }
+
     // ── Hover effects ─────────────────────────────────────────────────────
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)

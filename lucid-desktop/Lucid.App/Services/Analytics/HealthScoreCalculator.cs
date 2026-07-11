@@ -20,20 +20,37 @@ namespace Lucid.Services.Analytics;
 ///   ≥ 2 → Warning-class      (heavier penalty)
 ///     1 → Recommendation     (light penalty)
 ///     0 → Informational      (no penalty)
+///
+/// Active vs. resolved (second score-collapse fix):
+///   Penalising resolved conditions at full weight let a busy week — many
+///   distinct conditions that all cleared — still collapse the score to 0
+///   even though nothing needs attention now. Active conditions carry the
+///   full penalty; resolved ones carry a token penalty (recent instability
+///   is a real signal) whose combined total is capped, so history can never
+///   bury the current picture.
 /// </summary>
 public static class HealthScoreCalculator
 {
-    /// <summary>Points deducted per distinct warning-class condition.</summary>
+    /// <summary>Points deducted per distinct ACTIVE warning-class condition.</summary>
     public const int PenaltyPerWarning        = 5;
 
-    /// <summary>Points deducted per distinct recommendation-class condition.</summary>
+    /// <summary>Points deducted per distinct ACTIVE recommendation-class condition.</summary>
     public const int PenaltyPerRecommendation = 2;
 
     /// <summary>Extra penalty when a warning-class condition recurs (≥ this many onsets).</summary>
     public const int RecurrenceOnsetThreshold = 3;
 
-    /// <summary>Additional points deducted when a warning meets the recurrence threshold.</summary>
+    /// <summary>Additional points deducted when an active warning meets the recurrence threshold.</summary>
     public const int RecurrencePenalty        = 5;
+
+    /// <summary>Points deducted per distinct RESOLVED recurring warning-class condition.</summary>
+    public const int PenaltyPerResolvedRecurringWarning = 3;
+
+    /// <summary>Points deducted per distinct RESOLVED one-off warning or resolved recommendation.</summary>
+    public const int PenaltyPerResolvedCondition        = 1;
+
+    /// <summary>Ceiling on the combined deduction from ALL resolved conditions.</summary>
+    public const int MaxResolvedPenalty                 = 15;
 
     /// <summary>
     /// Computes the full <see cref="HealthScore"/> for a window, including the
@@ -53,7 +70,7 @@ public static class HealthScoreCalculator
         previous ??= [];
 
         var contributions = BuildContributions(current);
-        int score         = ClampScore(100 - contributions.Sum(c => c.PointsDeducted));
+        int score         = ClampScore(100 - TotalDeduction(contributions));
 
         // Raw occurrence counts are kept for backward-compatible display fields.
         int warnings = current.Count(r => r.SeverityOrdinal >= 2);
@@ -61,7 +78,7 @@ public static class HealthScoreCalculator
 
         string label = LabelFor(score);
 
-        int prevScore = ClampScore(100 - BuildContributions(previous).Sum(c => c.PointsDeducted));
+        int prevScore = ClampScore(100 - TotalDeduction(BuildContributions(previous)));
         var trend = (score - prevScore) switch
         {
             > 5  => TrendDirection.Improving,
@@ -97,15 +114,26 @@ public static class HealthScoreCalculator
             bool isActive = latest.ResolvedAt is null;
 
             int points;
-            if (maxSeverity >= 2)
+            if (isActive)
             {
-                points = PenaltyPerWarning;
-                if (occurrences >= RecurrenceOnsetThreshold)
-                    points += RecurrencePenalty;
+                if (maxSeverity >= 2)
+                {
+                    points = PenaltyPerWarning;
+                    if (occurrences >= RecurrenceOnsetThreshold)
+                        points += RecurrencePenalty;
+                }
+                else
+                {
+                    points = PenaltyPerRecommendation;
+                }
             }
             else
             {
-                points = PenaltyPerRecommendation;
+                // Resolved — token penalty only. A recurring warning that keeps
+                // coming back costs a little more than a one-off.
+                points = maxSeverity >= 2 && occurrences >= RecurrenceOnsetThreshold
+                    ? PenaltyPerResolvedRecurringWarning
+                    : PenaltyPerResolvedCondition;
             }
 
             list.Add(new HealthScoreContribution(
@@ -123,6 +151,17 @@ public static class HealthScoreCalculator
             .OrderByDescending(c => c.PointsDeducted)
             .ThenByDescending(c => c.Occurrences)
             .ToList();
+    }
+
+    /// <summary>
+    /// Total points to subtract from 100: active conditions at full weight,
+    /// resolved conditions summed then clamped to <see cref="MaxResolvedPenalty"/>.
+    /// </summary>
+    public static int TotalDeduction(IReadOnlyList<HealthScoreContribution> contributions)
+    {
+        int active   = contributions.Where(c => c.IsActive).Sum(c => c.PointsDeducted);
+        int resolved = contributions.Where(c => !c.IsActive).Sum(c => c.PointsDeducted);
+        return active + Math.Min(resolved, MaxResolvedPenalty);
     }
 
     /// <summary>Maps a clamped score value to its human-readable label.</summary>

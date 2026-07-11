@@ -1206,6 +1206,29 @@ public static class AppServices
         _telHistoryRepo    = new HistoricalTelemetryRepository(dbService);
         _timelineEventRepo = new TimelineEventRepository(dbService);
         _insightHistoryRepo = new InsightHistoryRepository(dbService);
+
+        // Close insight rows orphaned by the previous session (open-row tracking
+        // is in-memory, so anything still open at startup can never resolve and
+        // would read as permanently "active" in the health breakdown). Runs
+        // before the intelligence engine produces this session's first insights;
+        // the sessionStart guard protects any row this session creates meanwhile.
+        var orphanSweepStart = DateTimeOffset.UtcNow;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                int closed = await _insightHistoryRepo.CloseOrphanedRowsAsync(orphanSweepStart)
+                    .ConfigureAwait(false);
+                if (closed > 0)
+                    _logger?.Info("Persistence",
+                        $"Closed {closed} insight-history row(s) left open by a previous session");
+            }
+            catch (Exception ex)
+            {
+                _logger?.Warning("Persistence", $"Orphaned insight-row sweep failed: {ex.Message}");
+            }
+        });
+
         _outcomeRepo       = new RecommendationOutcomeRepository(dbService);
         _historicalAnalytics = new HistoricalAnalyticsEngine(
             _telHistoryRepo, _insightHistoryRepo, _timelineEventRepo);

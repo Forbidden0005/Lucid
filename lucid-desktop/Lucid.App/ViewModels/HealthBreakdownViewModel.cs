@@ -87,27 +87,66 @@ public sealed partial class HealthBreakdownViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmptyVisibility))]
     [NotifyPropertyChangedFor(nameof(ListVisibility))]
+    [NotifyPropertyChangedFor(nameof(NoActiveVisibility))]
+    [NotifyPropertyChangedFor(nameof(ResolvedSectionVisibility))]
     private bool _isLoaded;
 
     /// <summary>True when computing the breakdown failed (DB busy/unavailable).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmptyVisibility))]
     [NotifyPropertyChangedFor(nameof(ListVisibility))]
+    [NotifyPropertyChangedFor(nameof(NoActiveVisibility))]
+    [NotifyPropertyChangedFor(nameof(ResolvedSectionVisibility))]
     [NotifyPropertyChangedFor(nameof(ErrorVisibility))]
     [NotifyPropertyChangedFor(nameof(ScoreText))]
     private bool _loadFailed;
 
-    /// <summary>The per-condition contributions to render, most-impactful first.</summary>
-    public ObservableCollection<HealthContributionRow> Contributions { get; } = [];
+    /// <summary>Conditions that are still active — the ones with a live fix path.</summary>
+    public ObservableCollection<HealthContributionRow> ActiveContributions   { get; } = [];
+
+    /// <summary>Conditions that already resolved — shown collapsed, for context.</summary>
+    public ObservableCollection<HealthContributionRow> ResolvedContributions { get; } = [];
 
     /// <summary>True when there is at least one contributing condition to show.</summary>
-    public bool HasContributions => Contributions.Count > 0;
+    public bool HasContributions => ActiveContributions.Count > 0 || ResolvedContributions.Count > 0;
+
+    /// <summary>User-toggled: whether the resolved section's rows are shown.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ResolvedListVisibility))]
+    [NotifyPropertyChangedFor(nameof(ResolvedChevronGlyph))]
+    private bool _isResolvedExpanded;
+
+    /// <summary>Chevron for the resolved-section toggle: down when collapsed, up when expanded.</summary>
+    public string ResolvedChevronGlyph => IsResolvedExpanded ? "" : "";
+
+    /// <summary>Header for the resolved section, e.g. "Resolved in the past 7 days (12)".</summary>
+    public string ResolvedHeaderText =>
+        $"Resolved in the past 7 days ({ResolvedContributions.Count})";
+
+    /// <summary>Sub-caption explaining how little resolved conditions weigh.</summary>
+    public string ResolvedCaptionText =>
+        "These cleared on their own or after a fix. Together they cost at most " +
+        $"{HealthScoreCalculator.MaxResolvedPenalty} points — recent instability, not current problems.";
 
     // Visibility helpers (string form matches the app's other pages).
     // A load failure must NOT masquerade as a healthy "nothing wrong" state.
 
-    /// <summary>"Visible" when the contribution list should show; else "Collapsed".</summary>
-    public string ListVisibility  => IsLoaded && !LoadFailed && HasContributions ? "Visible" : "Collapsed";
+    /// <summary>"Visible" when the active-condition list should show; else "Collapsed".</summary>
+    public string ListVisibility =>
+        IsLoaded && !LoadFailed && ActiveContributions.Count > 0 ? "Visible" : "Collapsed";
+
+    /// <summary>"Visible" when everything recorded has resolved (calm now, history exists).</summary>
+    public string NoActiveVisibility =>
+        IsLoaded && !LoadFailed && ActiveContributions.Count == 0 && ResolvedContributions.Count > 0
+            ? "Visible" : "Collapsed";
+
+    /// <summary>"Visible" when the resolved section (header row) should show; else "Collapsed".</summary>
+    public string ResolvedSectionVisibility =>
+        IsLoaded && !LoadFailed && ResolvedContributions.Count > 0 ? "Visible" : "Collapsed";
+
+    /// <summary>"Visible" when the resolved rows themselves are expanded; else "Collapsed".</summary>
+    public string ResolvedListVisibility =>
+        IsResolvedExpanded && ResolvedContributions.Count > 0 ? "Visible" : "Collapsed";
 
     /// <summary>"Visible" for the genuinely-healthy empty state; else "Collapsed".</summary>
     public string EmptyVisibility  => IsLoaded && !LoadFailed && !HasContributions ? "Visible" : "Collapsed";
@@ -117,11 +156,12 @@ public sealed partial class HealthBreakdownViewModel : ObservableObject
 
     /// <summary>The scoring rule, in plain language — the "why" behind the number.</summary>
     public string FormulaExplanation =>
-        "Your score starts at 100. Each distinct condition worth reviewing subtracts a few points — " +
-        $"about {HealthScoreCalculator.PenaltyPerWarning} for a warning " +
-        $"(a little more if it keeps recurring) and {HealthScoreCalculator.PenaltyPerRecommendation} " +
-        "for a suggestion. A single ongoing issue only counts once, no matter how often it reappears, " +
-        "so the number reflects how many things actually need attention — not how noisy they are.";
+        "Your score starts at 100 and mainly reflects what needs attention right now: each active " +
+        $"warning subtracts about {HealthScoreCalculator.PenaltyPerWarning} points (a little more if it " +
+        $"keeps recurring) and each active suggestion {HealthScoreCalculator.PenaltyPerRecommendation}. " +
+        "Conditions that already resolved barely count — a point or three each, and never more than " +
+        $"{HealthScoreCalculator.MaxResolvedPenalty} points combined — so past noise can't bury the " +
+        "current picture. A single ongoing issue only counts once, no matter how often it re-fires.";
 
     // ── Load ────────────────────────────────────────────────────────────────
 
@@ -149,15 +189,19 @@ public sealed partial class HealthBreakdownViewModel : ObservableObject
             failed = true;
         }
 
-        Contributions.Clear();
+        ActiveContributions.Clear();
+        ResolvedContributions.Clear();
 
         if (health is not null)
         {
             Score      = health.Score;
             ScoreLabel = $"System Health: {health.Label}";
 
+            // Active conditions carry the score; resolved ones are context and
+            // live in a collapsed section so they don't crowd out what still
+            // needs attention.
             foreach (var c in health.Contributions)
-                Contributions.Add(ToRow(c));
+                (c.IsActive ? ActiveContributions : ResolvedContributions).Add(ToRow(c));
         }
         else
         {
@@ -166,9 +210,19 @@ public sealed partial class HealthBreakdownViewModel : ObservableObject
             ScoreLabel = "Score unavailable";
         }
 
-        OnPropertyChanged(nameof(HasContributions));
         LoadFailed = failed;
         IsLoaded   = true;
+
+        // Explicit notifications: on a refresh, IsLoaded/LoadFailed often keep
+        // their old values, so the [ObservableProperty] setters raise nothing —
+        // but the collection-derived properties still changed.
+        OnPropertyChanged(nameof(HasContributions));
+        OnPropertyChanged(nameof(ResolvedHeaderText));
+        OnPropertyChanged(nameof(ListVisibility));
+        OnPropertyChanged(nameof(EmptyVisibility));
+        OnPropertyChanged(nameof(NoActiveVisibility));
+        OnPropertyChanged(nameof(ResolvedSectionVisibility));
+        OnPropertyChanged(nameof(ResolvedListVisibility));
     }
 
     private static HealthContributionRow ToRow(HealthScoreContribution c)

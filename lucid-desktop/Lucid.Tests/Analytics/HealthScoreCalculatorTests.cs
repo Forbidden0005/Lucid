@@ -152,6 +152,78 @@ public sealed class HealthScoreCalculatorTests
         resolved.Contributions[0].IsActive.Should().BeFalse();
     }
 
+    // ── Resolved-condition weighting (second score-collapse fix) ─────────────
+    // A busy week whose conditions all cleared must not read as a broken
+    // machine: resolved conditions carry a token penalty with a combined cap.
+
+    [Fact]
+    public void ResolvedWarning_CostsTokenPenaltyOnly()
+    {
+        var s = HealthScoreCalculator.Compute(
+            [Rec("x", 2, T0, resolvedAt: T0.AddHours(1))], [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(99, "a resolved one-off warning costs 1, not 5");
+        s.Contributions[0].PointsDeducted.Should().Be(
+            HealthScoreCalculator.PenaltyPerResolvedCondition);
+    }
+
+    [Fact]
+    public void ResolvedRecurringWarning_CostsSlightlyMore()
+    {
+        var records = Enumerable.Range(0, 5)
+            .Select(i => Rec("x", 2, T0.AddHours(i), resolvedAt: T0.AddHours(i).AddMinutes(10)))
+            .ToList();
+
+        var s = HealthScoreCalculator.Compute(records, [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(97, "a resolved recurring warning costs 3");
+        s.Contributions[0].PointsDeducted.Should().Be(
+            HealthScoreCalculator.PenaltyPerResolvedRecurringWarning);
+    }
+
+    [Fact]
+    public void ManyResolvedConditions_CappedAtMaxResolvedPenalty()
+    {
+        // 30 distinct resolved warnings — the exact field bug where a noisy but
+        // fully-recovered week collapsed the score to 0.
+        var records = Enumerable.Range(0, 30)
+            .Select(i => Rec($"cond-{i}", severity: 2, T0.AddMinutes(i),
+                             resolvedAt: T0.AddMinutes(i + 5)))
+            .ToList();
+
+        var s = HealthScoreCalculator.Compute(records, [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(100 - HealthScoreCalculator.MaxResolvedPenalty,
+            "resolved history is capped so it can never bury the current picture");
+    }
+
+    [Fact]
+    public void ActiveConditions_NotAffectedByResolvedCap()
+    {
+        var records = new List<PersistedInsightRecord>
+        {
+            Rec("active-1", 2, T0),                                   // active warning −5
+            Rec("active-2", 2, T0),                                   // active warning −5
+        };
+        // 20 resolved warnings → raw 20, capped at 15
+        records.AddRange(Enumerable.Range(0, 20)
+            .Select(i => Rec($"res-{i}", 2, T0.AddMinutes(i), resolvedAt: T0.AddHours(1))));
+
+        var s = HealthScoreCalculator.Compute(records, [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(100 - 10 - HealthScoreCalculator.MaxResolvedPenalty,
+            "active conditions keep full weight; only the resolved pile is capped");
+    }
+
+    [Fact]
+    public void ResolvedSuggestion_CostsTokenPenalty()
+    {
+        var s = HealthScoreCalculator.Compute(
+            [Rec("tip", 1, T0, resolvedAt: T0.AddHours(1))], [], TimeSpan.FromDays(7));
+
+        s.Score.Should().Be(99);
+    }
+
     [Fact]
     public void NullInputs_TreatedAsEmpty_NoThrow()
     {

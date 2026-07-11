@@ -85,9 +85,12 @@ public sealed record HealthScoreContribution(
 ///
 /// Scoring formula (see <see cref="HealthScoreCalculator"/>):
 ///   Start at 100.
-///   Each distinct Warning condition:          −5
+///   Each distinct ACTIVE Warning condition:          −5
 ///     …and −5 more if it recurred (≥3 onsets)
-///   Each distinct Recommendation condition:   −2
+///   Each distinct ACTIVE Recommendation condition:   −2
+///   Each distinct RESOLVED condition:                −1
+///     (−3 for a resolved recurring warning)
+///   All resolved deductions together capped at:      −15
 ///   Clamp to [0, 100].
 ///
 /// A score of 90–100 means minimal issues; below 60 means frequent problems.

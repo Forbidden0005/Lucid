@@ -158,14 +158,15 @@ public sealed class MachineHealthTrajectoryService : IMachineHealthTrajectorySer
                                 : null;
         string  ramTrendLabel = summary.RamTrend.TrendLabel;
 
-        // Narrative — count DISTINCT conditions, not raw occurrences, so the
-        // "N issues" summary matches how the score is computed. A single
-        // disk-full condition that re-fires 30× is one issue, not thirty.
-        int issueCount = sevenDay.Contributions.Count;
+        // Narrative — count DISTINCT ACTIVE conditions, not raw occurrences, so
+        // the "N issues" summary matches how the score is computed. A single
+        // disk-full condition that re-fires 30× is one issue, not thirty — and
+        // a condition that already resolved is no longer an "issue" at all.
+        int issueCount = sevenDay.Contributions.Count(c => c.IsActive);
         string healthDesc   = HealthDescription(healthScore, momentumPts);
         string statusText   = issueCount == 0
                               ? "All systems normal"
-                              : $"{issueCount} issue{(issueCount == 1 ? "" : "s")} in the past 7 days";
+                              : $"{issueCount} active issue{(issueCount == 1 ? "" : "s")}";
 
         return new MachineHealthReport(
             HealthScore:      healthScore,
