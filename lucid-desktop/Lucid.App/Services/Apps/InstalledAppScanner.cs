@@ -101,6 +101,7 @@ public static class InstalledAppScanner
                 var version     = (sub.GetValue("DisplayVersion")   as string) ?? "";
                 var sizeKb      = sub.GetValue("EstimatedSize") is int kb ? (long)kb : 0L;
                 var installDate = TryParseInstallDate(sub.GetValue("InstallDate") as string);
+                var uninstall   = (sub.GetValue("UninstallString")  as string) ?? "";
                 var startup     = FindStartupEntry(name, startupLookup);
 
                 seen[name] = new InstalledAppRecord
@@ -111,6 +112,7 @@ public static class InstalledAppScanner
                     InstallDate        = installDate,
                     EstimatedSizeKb    = sizeKb,
                     LinkedStartupEntry = startup,
+                    UninstallCommand   = uninstall,
                 };
             }
             catch { /* skip individual malformed entries */ }

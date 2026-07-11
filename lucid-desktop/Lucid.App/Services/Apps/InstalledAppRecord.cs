@@ -35,4 +35,13 @@ public sealed record InstalledAppRecord
     /// Null when the app has no startup registration.
     /// </summary>
     public StartupEntry? LinkedStartupEntry { get; init; }
+
+    /// <summary>
+    /// The app's registered interactive uninstall command (the UninstallString
+    /// registry value — the same command Windows Settings launches). Empty when
+    /// the app does not register one. Deliberately NOT the quiet/silent variant:
+    /// launching this shows the app's own uninstaller UI, so removal always
+    /// happens with the user's explicit confirmation in that flow.
+    /// </summary>
+    public string UninstallCommand { get; init; } = "";
 }
