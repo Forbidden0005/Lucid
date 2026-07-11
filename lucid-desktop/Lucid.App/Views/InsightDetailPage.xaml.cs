@@ -24,7 +24,8 @@ public sealed partial class InsightDetailPage : Page
         AppServices.History,
         AppServices.Baseline,
         AppServices.Timeline,
-        AppServices.HistoryService);
+        AppServices.HistoryService,
+        AppServices.InsightHistory);
 
     public InsightDetailPage()
     {

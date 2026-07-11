@@ -157,6 +157,37 @@ public sealed class InsightHistoryRepository
     }
 
     /// <summary>
+    /// Returns the history rows for a single insight condition whose onset falls
+    /// within the given time range, newest-first. Used by the insight detail page
+    /// to show historical context for findings that are no longer active.
+    /// </summary>
+    public async Task<IReadOnlyList<PersistedInsightRecord>> GetHistoryForInsightAsync(
+        string         insightId,
+        DateTimeOffset from,
+        DateTimeOffset to,
+        int            maxCount = 200)
+    {
+        return await _db.QueryAsync<IReadOnlyList<PersistedInsightRecord>>(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT id, insight_id, title, severity, onset_at, resolved_at, duration_seconds
+                FROM   insight_history
+                WHERE  insight_id = @id
+                  AND  onset_at BETWEEN @from AND @to
+                ORDER  BY onset_at DESC
+                LIMIT  @limit;
+                """;
+            cmd.Parameters.AddWithValue("@id",    insightId);
+            cmd.Parameters.AddWithValue("@from",  from.ToUnixTimeMilliseconds());
+            cmd.Parameters.AddWithValue("@to",    to.ToUnixTimeMilliseconds());
+            cmd.Parameters.AddWithValue("@limit", maxCount);
+
+            return ReadRecords(cmd);
+        }) ?? [];
+    }
+
+    /// <summary>
     /// Returns all distinct insight_ids, together with their occurrence count,
     /// last onset time, and average duration, over the past <paramref name="days"/> days.
     /// Ordered by occurrence count descending.

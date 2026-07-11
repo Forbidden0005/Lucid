@@ -36,7 +36,7 @@ public sealed class HealthContributionRow
     public bool   IsActive        { get; init; }
 
     /// <summary>"Review &amp; fix" for active conditions, "View details" for resolved ones —
-    /// resolved insights open the detail page as "Finding Cleared" with no fix action.</summary>
+    /// resolved insights open the detail page in its historical (resolved) state with no fix action.</summary>
     public string ActionText      => IsActive ? "Review & fix" : "View details";
 }
 

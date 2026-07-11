@@ -675,6 +675,17 @@ public static class AppServices
             "Call it from App.OnLaunched before creating the main window.");
 
     /// <summary>
+    /// Insight onset/resolution history repository.
+    /// Read by the insight detail page to show historical context for findings
+    /// that are no longer active in the live intelligence engine (e.g. rows
+    /// deep-linked from the health-score breakdown).
+    /// </summary>
+    public static InsightHistoryRepository InsightHistory =>
+        _insightHistoryRepo ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
     /// Runtime governance service.
     /// Monitors system pressure (CPU, GPU, battery, thermal) and manages
     /// concurrency budgets, adaptive polling rates, and workload deferral.
