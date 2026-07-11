@@ -255,7 +255,10 @@
                             Spacing="12">
                     <TextBlock Text="Duplicate File Groups"
                                Style="{StaticResource SectionTitleStyle}" />
-                    <ItemsControl ItemsSource="{x:Bind ViewModel.DuplicateGroups, Mode=OneWay}">
+
+                    <!-- Actionable groups — safe to remove -->
+                    <ItemsControl Visibility="{x:Bind ViewModel.ActionableDuplicatesVisibility, Mode=OneWay}"
+                                  ItemsSource="{x:Bind ViewModel.DuplicateGroups, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Spacing="8" />
@@ -301,6 +304,85 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- No actionable duplicates (but some may be protected, below) -->
+                    <Border Visibility="{x:Bind ViewModel.NoActionableDuplicatesVisibility, Mode=OneWay}"
+                            Style="{StaticResource CardSurface}" Padding="16,14">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                      Foreground="{StaticResource StatusGoodBrush}"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="No duplicates need action right now. Anything found in a protected system location is listed below to review manually."
+                                       Style="{StaticResource BodyTextStyle}"
+                                       VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Protected — review manually. In system-managed locations, so
+                         Lucid won't delete them (removing an app-managed copy can
+                         break the program that owns it). -->
+                    <StackPanel Visibility="{x:Bind ViewModel.ProtectedDuplicatesVisibility, Mode=OneWay}"
+                                Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Text="Protected — review manually"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="These duplicates live in protected system locations (Windows, Program Files, ProgramData, driver and credential stores). Lucid won't remove them automatically, because deleting an app-managed copy can break the program that owns it. Open the location to review or remove them yourself if you're sure."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextWrapping="Wrap" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.ProtectedDuplicateGroups, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DuplicateGroupViewModel">
+                                    <Border Style="{StaticResource CardSurface}" Padding="16,14">
+                                        <StackPanel Spacing="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Spacing="2">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <FontIcon Glyph="&#xE72E;" FontFamily="Segoe MDL2 Assets"
+                                                                  FontSize="12"
+                                                                  Foreground="{StaticResource TextSecondaryBrush}"
+                                                                  VerticalAlignment="Center" />
+                                                        <TextBlock Text="{x:Bind KeepName}"
+                                                                   Style="{StaticResource CardTitleStyle}" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{x:Bind KeepPath}"
+                                                               Style="{StaticResource CaptionTextStyle}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Spacing="2"
+                                                            Margin="12,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind Count}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind Waste}"
+                                                               Style="{StaticResource CardTitleStyle}"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                </StackPanel>
+                                                <Button Grid.Column="2"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Command="{Binding DataContext.OpenGroupLocationCommand, ElementName=RootScrollViewer}"
+                                                        CommandParameter="{x:Bind}"
+                                                        VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <FontIcon Glyph="&#xE838;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                                                        <TextBlock Text="Open location" FontSize="11" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- ── Old Downloads tab ─────────────────────────── -->
