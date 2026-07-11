@@ -649,6 +649,12 @@ public partial class DashboardViewModel : ObservableObject
     /// Mock values remain until this completes — the method is cold-start safe
     /// and swallows all exceptions.
     /// </summary>
+    /// <summary>
+    /// Re-runs the analytics intake on demand — the Dashboard health card's
+    /// refresh button. Same pipeline as the load-time intake.
+    /// </summary>
+    public Task RefreshAnalyticsAsync() => LoadAnalyticsAsync();
+
     private async Task LoadAnalyticsAsync()
     {
         try

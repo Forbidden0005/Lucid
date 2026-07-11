@@ -108,6 +108,32 @@ public sealed partial class DashboardPage : Page
     private void OpenCompanionButton_Click(object sender, RoutedEventArgs e)
         => AppServices.CompanionSession.Expand();
 
+    // ── Health card → score breakdown ─────────────────────────────────────────
+    // Fired from the wrapping Button's Click (keyboard + pointer + screen reader).
+
+    private void HealthCard_Tapped(object sender, RoutedEventArgs e)
+        => Frame?.Navigate(typeof(HealthBreakdownPage),
+               null, new Microsoft.UI.Xaml.Media.Animation.DrillInNavigationTransitionInfo());
+
+    // Refresh icon inside the health card — recomputes the score without
+    // navigating (the inner button swallows the click before the card sees it).
+    private async void HealthRefresh_Click(object sender, RoutedEventArgs e)
+    {
+        HealthRefreshButton.IsEnabled = false;
+        try
+        {
+            await ViewModel.RefreshAnalyticsAsync();
+        }
+        catch
+        {
+            // Best-effort — the card keeps its last values on failure.
+        }
+        finally
+        {
+            HealthRefreshButton.IsEnabled = true;
+        }
+    }
+
     // ── Hover effects ─────────────────────────────────────────────────────
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)

@@ -1,10 +1,12 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services;
+using Lucid.Services.Analytics;
 using Lucid.Services.Baseline;
 using Lucid.Services.History;
 using Lucid.Services.Intelligence;
 using Lucid.Services.Narrative;
+using Lucid.Services.Persistence;
 using Lucid.Services.Telemetry;
 using Lucid.Services.Timeline;
 using Microsoft.UI.Xaml;
@@ -35,6 +37,10 @@ namespace Lucid.ViewModels;
 ///   AppServices.Timeline      — related timeline events (filtered by RelatedInsightId)
 ///   AppServices.HistoryService — action / remediation history (async)
 ///   AppServices.Narrative     — current operational narrative prose
+///   AppServices.InsightHistory — persisted onset/resolution rows, used as a
+///                                fallback when the finding is not currently
+///                                active (e.g. deep-linked from the
+///                                health-score breakdown after it resolved)
 ///
 /// Cleanup
 /// ───────
@@ -50,11 +56,20 @@ public sealed partial class InsightDetailViewModel : ObservableObject
     private readonly ISystemBaselineService      _baseline;
     private readonly ITimelineAggregationService _timeline;
     private readonly IOperationHistoryService    _historyService;
+    private readonly InsightHistoryRepository    _insightHistory;
 
     // ── State ─────────────────────────────────────────────────────────────────
 
     private string         _insightId = string.Empty;
     private SystemInsight? _insight;
+
+    /// <summary>
+    /// Persisted context for a finding that is not currently active — its real
+    /// title, severity, and occurrence range from the SQLite insight history.
+    /// Populated by <see cref="LoadHistoricalContextAsync"/> so a resolved
+    /// finding shows what it was, not a bare "Finding Cleared" placeholder.
+    /// </summary>
+    private HealthScoreContribution? _historical;
 
     // ── Static brush palette ──────────────────────────────────────────────────
 
@@ -129,23 +144,66 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         _                      => "",
     };
 
-    public SolidColorBrush AccentBrush            => Accent(_insight?.Severity ?? InsightSeverity.Info, _insightId);
-    public SolidColorBrush BadgeBackground        => Bg(_insight?.Severity ?? InsightSeverity.Info, _insightId);
-    public SolidColorBrush IconContainerBg        => Bg(_insight?.Severity ?? InsightSeverity.Info, _insightId);
+    public SolidColorBrush AccentBrush            => Accent(EffectiveSeverity, _insightId);
+    public SolidColorBrush BadgeBackground        => Bg(EffectiveSeverity, _insightId);
+    public SolidColorBrush IconContainerBg        => Bg(EffectiveSeverity, _insightId);
 
-    public string          Title           => _insight?.Title       ?? "Finding Cleared";
-    public string          Detail          => _insight?.Detail      ?? "This finding is no longer active.";
+    public string          Title           => _insight?.Title  ?? _historical?.Title ?? "Finding Cleared";
+    public string          Detail          => _insight?.Detail ?? HistoricalDetail   ?? "This finding is no longer active.";
     public string?         ActionHint      => _insight?.ActionHint;
-    public string          SeverityLabel   => (_insight?.Severity ?? InsightSeverity.Info) switch
+    public string          SeverityLabel
     {
-        InsightSeverity.Warning        => "Warning",
-        InsightSeverity.Recommendation => "Tip",
-        _                              => "Info",
-    };
+        get
+        {
+            string label = EffectiveSeverity switch
+            {
+                InsightSeverity.Warning        => "Warning",
+                InsightSeverity.Recommendation => "Tip",
+                _                              => "Info",
+            };
+            // A finding shown purely from history has resolved — say so in the
+            // chip rather than presenting a stale severity as current.
+            return _insight is null && _historical is not null ? $"{label} · resolved" : label;
+        }
+    }
     public int             ConfidencePercent => _insight?.ConfidencePercent ?? 0;
-    public string          ConfidenceText    => $"{ConfidencePercent}%";
+
+    /// <summary>Confidence applies to live findings only — a resolved finding shows "—".</summary>
+    public string          ConfidenceText    => _insight is null ? "—" : $"{ConfidencePercent}%";
     public string          RelativeTime      { get; private set; } = string.Empty;
     public string          RuleIdDisplay     => _insightId;
+
+    /// <summary>
+    /// Severity used for the chip and brushes: the live finding's severity when
+    /// active, else the highest severity recorded in its persisted history.
+    /// </summary>
+    private InsightSeverity EffectiveSeverity =>
+        _insight?.Severity
+        ?? _historical?.SeverityOrdinal switch
+        {
+            >= 2 => InsightSeverity.Warning,
+            1    => InsightSeverity.Recommendation,
+            _    => InsightSeverity.Info,
+        };
+
+    /// <summary>
+    /// Plain-language summary of a resolved finding's history, e.g.
+    /// "This condition is not active right now. It was observed 9 times
+    /// between Jul 6 and Jul 10." Null until history has loaded.
+    /// </summary>
+    private string? HistoricalDetail
+    {
+        get
+        {
+            if (_historical is null) return null;
+
+            string last = $"{_historical.LastSeen.LocalDateTime:MMM d}";
+            return _historical.Occurrences <= 1
+                ? $"This condition is not active right now. It was last observed on {last}."
+                : $"This condition is not active right now. It was observed {_historical.Occurrences} times " +
+                  $"between {_historical.FirstSeen.LocalDateTime:MMM d} and {last}.";
+        }
+    }
 
     public Visibility ActionHintVisibility =>
         _insight?.ActionHint is not null ? Visibility.Visible : Visibility.Collapsed;
@@ -217,7 +275,8 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         ITelemetryHistoryBuffer     history,
         ISystemBaselineService      baseline,
         ITimelineAggregationService timeline,
-        IOperationHistoryService    historyService)
+        IOperationHistoryService    historyService,
+        InsightHistoryRepository    insightHistory)
     {
         _intelligence    = intelligence;
         _narrativeEngine = narrativeEngine;
@@ -225,6 +284,7 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         _baseline        = baseline;
         _timeline        = timeline;
         _historyService  = historyService;
+        _insightHistory  = insightHistory;
     }
 
     public void Load(string insightId)
@@ -239,6 +299,12 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         RefreshAll();
 
         _ = LoadHistoryAsync();
+
+        // Not in the live engine — deep-linked to a resolved/historical finding
+        // (e.g. from the health-score breakdown). Pull its persisted context so
+        // the page shows what the finding was instead of an empty placeholder.
+        if (_insight is null)
+            _ = LoadHistoricalContextAsync();
     }
 
     /// <summary>Unsubscribes from live services. Call from Page.Unloaded.</summary>
@@ -254,6 +320,11 @@ public sealed partial class InsightDetailViewModel : ObservableObject
     {
         _insight = insights.FirstOrDefault(i => i.Id == _insightId);
         RefreshAll();
+
+        // The finding resolved while the page was open — fetch its persisted
+        // context so the header keeps the real title instead of going blank.
+        if (_insight is null && _historical is null)
+            _ = LoadHistoricalContextAsync();
     }
 
     private void OnNarrativeUpdated(object? sender, OperationalNarrative narrative)
@@ -269,9 +340,9 @@ public sealed partial class InsightDetailViewModel : ObservableObject
     private void RefreshAll()
     {
         // Relative time
-        RelativeTime = _insight is not null
-            ? FormatAge(_insight.DetectedAt)
-            : string.Empty;
+        RelativeTime = _insight is not null ? FormatAge(_insight.DetectedAt)
+                     : _historical is not null ? $"last seen {FormatAge(_historical.LastSeen)}"
+                     : string.Empty;
 
         // Processes
         AttributedProcesses = _insight?.AttributedProcesses ?? [];
@@ -536,6 +607,43 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         }
     }
 
+    // ── Historical fallback ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Loads persisted onset/resolution rows for a finding that is not in the
+    /// live engine and condenses them into one <see cref="HealthScoreContribution"/>
+    /// (same grouping the health-score breakdown uses, so the two pages agree).
+    /// Looks at the score's 7-day window first, widening to 30 days for links
+    /// from longer-horizon views. Best-effort: on failure the page keeps the
+    /// generic cleared state.
+    /// </summary>
+    private async Task LoadHistoricalContextAsync()
+    {
+        try
+        {
+            var now  = DateTimeOffset.UtcNow;
+            var rows = await _insightHistory
+                .GetHistoryForInsightAsync(_insightId, now.AddDays(-7), now)
+                .ConfigureAwait(true);
+
+            if (rows.Count == 0)
+                rows = await _insightHistory
+                    .GetHistoryForInsightAsync(_insightId, now.AddDays(-30), now)
+                    .ConfigureAwait(true);
+
+            _historical = HealthScoreCalculator.BuildContributions(rows).FirstOrDefault();
+        }
+        catch
+        {
+            _historical = null;   // history is context, not critical — keep the generic cleared state
+        }
+
+        // Only repaint if the finding is still inactive; a live insight that
+        // reappeared meanwhile already owns the header.
+        if (_insight is null && _historical is not null)
+            RefreshAll();
+    }
+
     // ── Narrative ─────────────────────────────────────────────────────────────
 
     private void ApplyNarrative(OperationalNarrative n)
@@ -627,7 +735,8 @@ public sealed partial class InsightDetailViewModel : ObservableObject
         if (age.TotalSeconds < 30) return "just now";
         if (age.TotalMinutes  < 1) return $"{(int)age.TotalSeconds}s ago";
         if (age.TotalMinutes  < 60) return $"{(int)age.TotalMinutes} min ago";
-        return $"{(int)age.TotalHours}h ago";
+        if (age.TotalHours    < 48) return $"{(int)age.TotalHours}h ago";
+        return $"{(int)age.TotalDays} days ago";
     }
 
     private static string MetricDisplayName(TelemetryMetric m) => m switch

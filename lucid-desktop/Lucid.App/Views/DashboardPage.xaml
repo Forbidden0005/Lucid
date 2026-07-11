@@ -772,6 +772,26 @@
             <!-- ══════════════════════════════════════════════════════════
                  HEALTH SCORE CARD
             ══════════════════════════════════════════════════════════ -->
+            <!-- Wrapped in a Button so the whole card is keyboard-focusable and
+                 exposes button semantics to screen readers (a Border cannot take
+                 focus). Button chrome is neutralised so the visual is unchanged;
+                 the inner Border keeps the card look + hover animation. -->
+            <Button Click="HealthCard_Tapped"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="0" BorderThickness="0"
+                    Background="Transparent"
+                    ToolTipService.ToolTip="See what's affecting your score"
+                    AutomationProperties.Name="System health score. Activate to see what's affecting your score.">
+                <Button.Resources>
+                    <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+                </Button.Resources>
             <Border Style="{StaticResource CardSurface}"
                     Padding="28"
                     PointerEntered="Card_PointerEntered"
@@ -851,10 +871,30 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- Recompute the health score from the latest data. Nested
+                         inside the card button on purpose: the inner button
+                         handles its own click, so it refreshes without
+                         navigating to the breakdown page. -->
+                    <Button x:Name="HealthRefreshButton"
+                            Grid.Column="2"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Right"
+                            Padding="6"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="HealthRefresh_Click"
+                            ToolTipService.ToolTip="Refresh health score"
+                            AutomationProperties.Name="Refresh health score">
+                        <FontIcon Glyph="&#xE72C;" FontFamily="Segoe MDL2 Assets"
+                                  FontSize="13"
+                                  Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Button>
+
                     <!-- Weekly trend indicator -->
                     <StackPanel Grid.Column="2"
                                 VerticalAlignment="Center"
-                                Spacing="2">
+                                Spacing="2"
+                                Margin="0,24,0,0">
                         <FontIcon Glyph="&#xE70E;" FontFamily="Segoe MDL2 Assets"
                                   FontSize="16"
                                   Foreground="{StaticResource StatusGoodBrush}"
@@ -869,6 +909,7 @@
                     </StackPanel>
                 </Grid>
             </Border>
+            </Button>
 
             <!-- ══════════════════════════════════════════════════════════
                  LIVE METRICS — progress bars animate on page load
