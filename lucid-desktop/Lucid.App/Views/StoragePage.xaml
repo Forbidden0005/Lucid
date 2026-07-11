@@ -6,7 +6,12 @@
     Background="{StaticResource AppBackgroundBrush}"
     Loaded="Page_Loaded">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <!-- DataContext is set to the ViewModel so item templates below can reach
+         its RelayCommands via {Binding DataContext.…, ElementName=RootScrollViewer};
+         the page's own x:Bind bindings use the ViewModel property and are unaffected. -->
+    <ScrollViewer x:Name="RootScrollViewer"
+                  DataContext="{x:Bind ViewModel}"
+                  VerticalScrollBarVisibility="Auto">
         <StackPanel Padding="32,32,32,48" Spacing="24">
 
             <!-- ── Header ──────────────────────────────────────────── -->
@@ -233,6 +238,7 @@
                                                    VerticalAlignment="Center" />
                                         <Button Grid.Column="3"
                                                 Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding DataContext.DeleteLargeFileCommand, ElementName=RootScrollViewer}"
                                                 CommandParameter="{x:Bind}"
                                                 VerticalAlignment="Center">
                                             <TextBlock Text="Stage for deletion" FontSize="11" />
@@ -284,6 +290,7 @@
                                             </StackPanel>
                                             <Button Grid.Column="2"
                                                     Style="{StaticResource PrimaryButton}"
+                                                    Command="{Binding DataContext.DeleteDuplicatesCommand, ElementName=RootScrollViewer}"
                                                     CommandParameter="{x:Bind}"
                                                     VerticalAlignment="Center">
                                                 <TextBlock Text="Remove duplicates" FontSize="11" />
