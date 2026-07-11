@@ -89,8 +89,67 @@ public sealed partial class AppEntryViewModel : ObservableObject
     /// <summary>Segoe MDL2 glyph: blocked circle when enabled, play arrow when disabled.</summary>
     public string ToggleStartupGlyph => IsStartupEnabled ? "" : ""; // Blocked / Play
 
+    // ── Uninstall ─────────────────────────────────────────────────────────────
+
+    /// <summary>True when the app registers an interactive uninstall command.</summary>
+    public bool CanUninstall => !string.IsNullOrWhiteSpace(_record.UninstallCommand);
+
+    /// <summary>
+    /// Launches the app's own uninstaller (the registered UninstallString —
+    /// the same command Windows Settings runs). Removal is confirmed and
+    /// carried out inside that uninstaller's UI, never silently by Lucid.
+    /// Returns false when no command is registered or the launch failed.
+    /// </summary>
+    public bool LaunchUninstaller()
+    {
+        if (!CanUninstall) return false;
+
+        try
+        {
+            var (file, args) = SplitCommandLine(_record.UninstallCommand);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName        = file,
+                Arguments       = args,
+                UseShellExecute = true,
+            });
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Splits a registry command line into file + arguments: a leading quoted
+    /// segment wins; otherwise split after the first ".exe"; otherwise treat
+    /// the whole string as the file (covers bare paths without arguments).
+    /// </summary>
+    private static (string File, string Args) SplitCommandLine(string command)
+    {
+        command = command.Trim();
+
+        if (command.StartsWith('"'))
+        {
+            int close = command.IndexOf('"', 1);
+            if (close > 0)
+                return (command[1..close], command[(close + 1)..].Trim());
+        }
+
+        int exe = command.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+        if (exe > 0)
+        {
+            int end = exe + 4;
+            return (command[..end], command[end..].Trim());
+        }
+
+        return (command, "");
+    }
+
     // ── Visibility helpers ────────────────────────────────────────────────────
 
+    public Visibility UninstallVisibility  => CanUninstall                           ? Visibility.Visible : Visibility.Collapsed;
     public Visibility StartupVisibility    => HasStartup                             ? Visibility.Visible : Visibility.Collapsed;
     public Visibility PublisherVisibility  => !string.IsNullOrEmpty(Publisher)       ? Visibility.Visible : Visibility.Collapsed;
     public Visibility VersionVisibility    => !string.IsNullOrEmpty(Version)         ? Visibility.Visible : Visibility.Collapsed;
