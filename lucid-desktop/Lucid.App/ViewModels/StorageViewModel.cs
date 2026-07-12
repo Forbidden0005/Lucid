@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Execution;
+using Lucid.Services.Execution.Validation;
 using Lucid.Services.History;
 using Lucid.Services.Storage;
 using Lucid.Services.Timeline;
@@ -42,7 +43,27 @@ public sealed class DuplicateGroupViewModel
     public IReadOnlyList<LargeFileViewModel> Files =>
         Group.Files.Select(f => new LargeFileViewModel(f)).ToList();
 
-    public DuplicateGroupViewModel(DuplicateFileGroup g) => Group = g;
+    /// <summary>
+    /// True when at least one file in the group sits in a protected location,
+    /// so the delete executor would refuse the whole group. Such groups belong
+    /// in the "review manually" section, never in the actionable list with a
+    /// live delete button.
+    /// </summary>
+    public bool   IsProtected      { get; }
+
+    /// <summary>Plain-English reason the group is protected (empty when actionable).</summary>
+    public string ProtectionReason { get; }
+
+    public DuplicateGroupViewModel(DuplicateFileGroup g)
+    {
+        Group = g;
+        // Same policy the delete executor enforces, so a group shown in the
+        // actionable list is never one the executor would refuse.
+        ProtectionReason = DuplicateProtectionPolicy.FindBlockedReason(
+            g.KeepCandidate.FullPath,
+            g.DeleteCandidates.Select(f => f.FullPath)) ?? string.Empty;
+        IsProtected = ProtectionReason.Length > 0;
+    }
 }
 
 // ── Category heatmap row ─────────────────────────────────────────────────────
@@ -102,6 +123,16 @@ public sealed partial class StorageViewModel : ObservableObject
     [ObservableProperty] private string _wasteSummary      = string.Empty;
     [ObservableProperty] private string _scanDuration      = string.Empty;
 
+    // Duplicate-tab section state (set after each scan completes).
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActionableDuplicatesVisibility))]
+    [NotifyPropertyChangedFor(nameof(NoActionableDuplicatesVisibility))]
+    private bool _hasActionableDuplicates;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProtectedDuplicatesVisibility))]
+    private bool _hasProtectedDuplicates;
+
     // ── Tab state ─────────────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -132,13 +163,29 @@ public sealed partial class StorageViewModel : ObservableObject
     public Visibility DuplicatesPanelVisibility => V(IsDuplicatesTab && HasResults);
     public Visibility DownloadsPanelVisibility  => V(IsDownloadsTab);
 
+    // Within the Duplicates panel: the actionable list, the "nothing to act on"
+    // note, and the protected-locations section are shown independently.
+    public Visibility ActionableDuplicatesVisibility   => V(HasActionableDuplicates);
+    public Visibility NoActionableDuplicatesVisibility => V(!HasActionableDuplicates);
+    public Visibility ProtectedDuplicatesVisibility    => V(HasProtectedDuplicates);
+
     private static Visibility V(bool show) =>
         show ? Visibility.Visible : Visibility.Collapsed;
 
     // ── Result collections ────────────────────────────────────────────────────
 
     public ObservableCollection<LargeFileViewModel>     LargeFiles      { get; } = new();
+
+    /// <summary>Actionable duplicate groups — safe to delete, shown in the main list.</summary>
     public ObservableCollection<DuplicateGroupViewModel> DuplicateGroups { get; } = new();
+
+    /// <summary>
+    /// Duplicate groups in protected locations. Surfaced in a separate
+    /// "review manually" section so the main list only holds cases that need
+    /// (and can take) action.
+    /// </summary>
+    public ObservableCollection<DuplicateGroupViewModel> ProtectedDuplicateGroups { get; } = new();
+
     public ObservableCollection<CategoryRowViewModel>    Categories      { get; } = new();
     public ObservableCollection<LargeFileViewModel>      OldDownloads    { get; } = new();
 
@@ -180,6 +227,7 @@ public sealed partial class StorageViewModel : ObservableObject
         StatusText  = string.Empty;
         LargeFiles.Clear();
         DuplicateGroups.Clear();
+        ProtectedDuplicateGroups.Clear();
         Categories.Clear();
         OldDownloads.Clear();
 
@@ -300,6 +348,34 @@ public sealed partial class StorageViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Opens the containing folder for a protected group's kept file in
+    /// Explorer (with the file selected) so the user can review or remove it
+    /// manually. Non-destructive — Lucid never touches protected locations
+    /// itself.
+    /// </summary>
+    [RelayCommand]
+    private void OpenGroupLocation(DuplicateGroupViewModel? group)
+    {
+        if (group is null) return;
+
+        var target = group.Group.KeepCandidate.FullPath;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName        = "explorer.exe",
+                Arguments       = $"/select,\"{target}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Couldn't open location: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[StorageVM] OpenGroupLocation failed: {ex}");
+        }
+    }
+
     // ── Event handlers ────────────────────────────────────────────────────────
 
     private void OnProgress(object? sender, StorageScanProgress p)
@@ -324,10 +400,19 @@ public sealed partial class StorageViewModel : ObservableObject
         foreach (var f in result.LargeFiles)
             LargeFiles.Add(new LargeFileViewModel(f));
 
-        // Populate duplicates
+        // Populate duplicates — actionable groups go in the main list; groups
+        // in protected locations go to the "review manually" section so the
+        // main list only holds cases that need (and can take) action.
         DuplicateGroups.Clear();
+        ProtectedDuplicateGroups.Clear();
         foreach (var g in result.DuplicateGroups)
-            DuplicateGroups.Add(new DuplicateGroupViewModel(g));
+        {
+            var vm = new DuplicateGroupViewModel(g);
+            if (vm.IsProtected) ProtectedDuplicateGroups.Add(vm);
+            else                DuplicateGroups.Add(vm);
+        }
+        HasActionableDuplicates = DuplicateGroups.Count > 0;
+        HasProtectedDuplicates  = ProtectedDuplicateGroups.Count > 0;
 
         // Populate categories
         Categories.Clear();

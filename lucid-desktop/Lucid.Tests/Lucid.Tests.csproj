@@ -132,6 +132,8 @@
              Link="App\Services\Distributed\SyncEnvelopeCrypto.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Validation\ExecutionPathGuard.cs"
              Link="App\Services\Execution\Validation\ExecutionPathGuard.cs" />
+    <Compile Include="..\Lucid.App\Services\Execution\Validation\DuplicateProtectionPolicy.cs"
+             Link="App\Services\Execution\Validation\DuplicateProtectionPolicy.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Validation\ProcessExecutionFingerprint.cs"
              Link="App\Services\Execution\Validation\ProcessExecutionFingerprint.cs" />
     <Compile Include="..\Lucid.App\Services\Execution\Validation\ProcessIdentityValidator.cs"

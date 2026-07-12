@@ -54,7 +54,7 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
         ctx.Log.Info($"  Keep:   {keepPath ?? "(not specified)"}");
         ctx.Log.Info($"  Delete: {toDelete.Length} file(s)");
 
-        if (FindBlockedPath(toDelete, keepPath) is { } dryRunBlockReason)
+        if (DuplicateProtectionPolicy.FindBlockedReason(keepPath, toDelete) is { } dryRunBlockReason)
         {
             ctx.Log.Error(dryRunBlockReason);
             sw.Stop();
@@ -107,7 +107,7 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
         // in a "duplicate" group means the grouping cannot be trusted. The
         // keep candidate counts: a protected keep path taints the group even
         // though it is never touched.
-        if (FindBlockedPath(toDelete, keepPath) is { } blockReason)
+        if (DuplicateProtectionPolicy.FindBlockedReason(keepPath, toDelete) is { } blockReason)
         {
             ctx.Log.Error(blockReason);
             sw.Stop();
@@ -175,28 +175,4 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
             "action.storage.delete-duplicate-group",
             rollbackToken, context, cancellationToken),
             cancellationToken);
-
-    /// <summary>
-    /// Returns the block reason for the first protected path in the group,
-    /// or null when every path is safe to operate on.
-    ///
-    /// The keep path participates when supplied: it is never mutated, but a
-    /// protected keep candidate means the duplicate grouping itself cannot be
-    /// trusted, so the whole group is refused. An absent keep path is not an
-    /// error — only the delete list is mandatory.
-    /// </summary>
-    private static string? FindBlockedPath(IEnumerable<string> deletePaths, string? keepPath)
-    {
-        if (!string.IsNullOrWhiteSpace(keepPath) &&
-            ExecutionPathGuard.CheckDestructiveTarget(keepPath) is { } keepReason)
-            return keepReason;
-
-        foreach (var path in deletePaths)
-        {
-            if (ExecutionPathGuard.CheckDestructiveTarget(path) is { } reason)
-                return reason;
-        }
-
-        return null;
-    }
 }
