@@ -25,6 +25,8 @@ public sealed class StartupEnabledFilterTests
             GpuPercent: 0, GpuAvailable: false,
             StartupEntries: entries);
 
+    /// <summary>Disabled entries are excluded from the enabled subset; only the
+    /// one enabled app survives.</summary>
     [Fact]
     public void EnabledStartupEntries_ExcludesDisabled()
     {
@@ -39,6 +41,7 @@ public sealed class StartupEnabledFilterTests
             .Which.Name.Should().Be("Chrome");
     }
 
+    /// <summary>A fully switched-off startup list yields zero enabled entries.</summary>
     [Fact]
     public void EnabledStartupEntries_AllDisabled_IsEmpty()
     {
@@ -50,6 +53,8 @@ public sealed class StartupEnabledFilterTests
             "a fully switched-off startup list must read as zero load");
     }
 
+    /// <summary>The raw list keeps disabled entries (for the Repairs UI) while
+    /// the enabled view filters them out.</summary>
     [Fact]
     public void StartupEntries_RetainsDisabled_SoRepairsUiCanReEnable()
     {
