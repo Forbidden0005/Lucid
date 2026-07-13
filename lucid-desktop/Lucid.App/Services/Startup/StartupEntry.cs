@@ -56,8 +56,10 @@ public enum StartupImpact
 /// <param name="Location">Registry key or folder where the entry is registered.</param>
 /// <param name="Impact">Estimated resource cost when this app runs at startup.</param>
 /// <param name="IsEnabled">
-///     True for entries found in the normal Run keys / Startup folder.
-///     (Disabled entries stored under RunOnce-disabled keys are excluded for now.)
+///     Whether the entry actually runs at sign-in. Defaults to true as produced
+///     by <see cref="StartupSampler"/>; the real state is resolved by
+///     <see cref="StartupManagementService.GetAllEntries"/> from the Windows
+///     StartupApproved records (Task Manager / Settings toggle the same flag).
 /// </param>
 public sealed record StartupEntry(
     string         Name,

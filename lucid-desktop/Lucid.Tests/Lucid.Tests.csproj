@@ -166,6 +166,8 @@
              Link="App\Services\Process\ProcessRecord.cs" />
     <Compile Include="..\Lucid.App\Helpers\ProcessSample.cs"
              Link="App\Helpers\ProcessSample.cs" />
+    <Compile Include="..\Lucid.App\Helpers\TelemetrySnapshot.cs"
+             Link="App\Helpers\TelemetrySnapshot.cs" />
     <Compile Include="..\Lucid.App\Services\Startup\IStartupManagementService.cs"
              Link="App\Services\Startup\IStartupManagementService.cs" />
     <Compile Include="..\Lucid.App\Services\Startup\StartupBackupSnapshot.cs"

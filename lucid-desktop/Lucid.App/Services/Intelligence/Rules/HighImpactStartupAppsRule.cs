@@ -52,7 +52,9 @@ public sealed class HighImpactStartupAppsRule : IInsightRule
         if (current.StartupEntries.Count == 0)
             return null;
 
-        var highImpact = current.StartupEntries
+        // Only enabled entries actually run at sign-in — disabled heavy apps
+        // (e.g. Steam/Discord turned off in Task Manager) must not be counted.
+        var highImpact = current.EnabledStartupEntries
             .Where(static e => e.Impact == StartupImpact.High)
             .ToList();
 

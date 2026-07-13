@@ -70,11 +70,13 @@ public sealed class StartupDegradationForecastRule : IInsightRule
         if (current.StartupEntries.Count == 0)
             return null;
 
-        // Classify startup entries by impact level.
+        // Classify only ENABLED entries by impact — disabled apps don't run at
+        // sign-in and so contribute nothing to startup settling time.
+        var enabled = current.EnabledStartupEntries;
         int highImpact     = 0;
         int moderateImpact = 0;
 
-        foreach (var entry in current.StartupEntries)
+        foreach (var entry in enabled)
         {
             if (entry.Impact == StartupImpact.High)
                 highImpact++;
@@ -82,7 +84,7 @@ public sealed class StartupDegradationForecastRule : IInsightRule
                 moderateImpact++;
         }
 
-        int total = current.StartupEntries.Count;
+        int total = enabled.Count;
 
         double estimatedMinutes = ForecastHelper.EstimateStartupSettlingMinutes(
             highImpact, moderateImpact, total);

@@ -23,7 +23,10 @@ namespace Lucid.Helpers;
 ///   First two ticks after startup always return an empty list (delta warm-up).
 ///
 /// Startup fields (Phase 5) — populated every 40 ticks (~60 s) by StartupSampler.
-///   StartupEntries — all enabled startup apps from Run registry keys and Startup folder.
+///   StartupEntries — every startup app from Run registry keys and the Startup
+///   folder, BOTH enabled and disabled (each entry carries its own IsEnabled
+///   flag, resolved from the Windows StartupApproved state). Insight rules that
+///   reason about startup load must use EnabledStartupEntries, not this raw list.
 ///   Refreshed infrequently because the startup list changes rarely at runtime.
 ///   Null until the first refresh cycle completes; rules must guard against null.
 /// </summary>
@@ -74,9 +77,20 @@ public sealed record TelemetrySnapshot(
     public IReadOnlyList<ProcessSample> TopProcesses { get; } = TopProcesses ?? [];
 
     /// <summary>
-    /// All enabled startup applications visible to the current user.
-    /// Always non-null — returns an empty list until the first StartupSampler
-    /// refresh cycle completes (approximately 60 s after app start).
+    /// Every startup entry visible to the current user — enabled AND disabled.
+    /// Disabled entries are retained so the Repairs UI can show and re-enable
+    /// them. Always non-null — returns an empty list until the first
+    /// StartupSampler refresh cycle completes (approximately 60 s after start).
     /// </summary>
     public IReadOnlyList<StartupEntry> StartupEntries { get; } = StartupEntries ?? [];
+
+    /// <summary>
+    /// The startup entries the user actually has ENABLED — the subset that
+    /// really launches at sign-in. Insight rules reasoning about startup load
+    /// must use this, never <see cref="StartupEntries"/> (which also carries
+    /// disabled entries), so a machine whose heavy apps are all switched off is
+    /// never flagged as congested.
+    /// </summary>
+    public IReadOnlyList<StartupEntry> EnabledStartupEntries =>
+        StartupEntries.Where(static e => e.IsEnabled).ToList();
 }
