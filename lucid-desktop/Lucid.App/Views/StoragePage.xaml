@@ -383,6 +383,66 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
+
+                    <!-- Possible near-duplicates — review manually. Heuristic
+                         matches (similar names, copy patterns, format variants),
+                         not byte-identical, so no delete action is offered. -->
+                    <StackPanel Visibility="{x:Bind ViewModel.NearDuplicatesVisibility, Mode=OneWay}"
+                                Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Text="Possible near-duplicates — review manually"
+                                   Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="These file pairs look related — copy or version naming, the same name in different formats, or very similar names and sizes — but their contents are not identical, so Lucid won't offer to delete them. Each pair shows why it was flagged and a confidence level; review them yourself if the redundancy looks real."
+                                   Style="{StaticResource CaptionTextStyle}"
+                                   TextWrapping="Wrap" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.NearDuplicates, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:NearDuplicateViewModel">
+                                    <Border Style="{StaticResource CardSurface}" Padding="16,14">
+                                        <StackPanel Spacing="8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Text="{x:Bind NameA}"
+                                                               Style="{StaticResource CardTitleStyle}" />
+                                                    <TextBlock Text="{x:Bind PathA}"
+                                                               Style="{StaticResource CaptionTextStyle}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind NameB}"
+                                                               Style="{StaticResource CardTitleStyle}"
+                                                               Margin="0,6,0,0" />
+                                                    <TextBlock Text="{x:Bind PathB}"
+                                                               Style="{StaticResource CaptionTextStyle}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Spacing="2"
+                                                            Margin="12,0,0,0" VerticalAlignment="Center"
+                                                            HorizontalAlignment="Right">
+                                                    <TextBlock Text="{x:Bind Confidence}"
+                                                               FontSize="11"
+                                                               TextAlignment="Right"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind Redundant}"
+                                                               Style="{StaticResource CardTitleStyle}"
+                                                               TextAlignment="Right"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Text="{x:Bind Reason}"
+                                                       Style="{StaticResource CaptionTextStyle}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- ── Old Downloads tab ─────────────────────────── -->

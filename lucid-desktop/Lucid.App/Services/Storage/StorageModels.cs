@@ -51,6 +51,24 @@ public sealed record DuplicateFileGroup(
     public IReadOnlyList<LargeFileRecord>  DeleteCandidates => Files.Skip(1).ToList();
 }
 
+/// <summary>
+/// A pair of files that are *likely* redundant based on naming heuristics
+/// (copy patterns, format variants, name similarity) — not byte-identical.
+/// Surfaced for manual review only; never eligible for automated deletion.
+/// </summary>
+public sealed record NearDuplicateMatch(
+    LargeFileRecord FileA,
+    LargeFileRecord FileB,
+    double          Similarity,
+    string          MatchReason)
+{
+    /// <summary>Upper-bound estimate of redundant bytes if the pair really is
+    /// duplicated content — the size of the smaller file.</summary>
+    public long   RedundantEstimateBytes => Math.Min(FileA.SizeBytes, FileB.SizeBytes);
+    public string RedundantFormatted     => StorageFormatHelper.FormatBytes(RedundantEstimateBytes);
+    public string ConfidenceFormatted    => $"{Similarity:P0} confidence";
+}
+
 /// <summary>Broad storage categories for heatmap classification.</summary>
 public enum StorageCategory
 {
@@ -87,6 +105,7 @@ public sealed record StorageAnalysisResult(
     IReadOnlyList<LargeFileRecord>         LargeFiles,
     IReadOnlyList<DuplicateFileGroup>      DuplicateGroups,
     IReadOnlyList<StorageCategorySnapshot> CategoryBreakdown,
+    IReadOnlyList<NearDuplicateMatch>      NearDuplicates,
     bool                                   WasCancelled)
 {
     public long   TotalWasteBytes     => DuplicateGroups.Sum(g => g.WasteSizeBytes);

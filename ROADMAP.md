@@ -294,6 +294,11 @@ Do not add items here that have not been verified.
 - `scripts/validate-release-operations.ps1` enforces that contract during local and CI verification
 - `installer/Export-LucidSupportBundle.ps1` exports support bundle; `scripts/verify-support-bundle-export.ps1` verifies it
 
+### Storage Intelligence — asset migration (2026-07-13)
+- Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.
+- `StorageCategoryAnalyzer` enriched with cache/junk location rules ported from the archived Drive Management project (INetCache, Prefetch, SoftwareDistribution\Download, CrashDumps, Chromium/VS Code cache dirs, pip/npm/yarn caches) plus `.crash`/`.swp` extensions. Classification only. Specific cache rules are ordered before the general `\Windows\` rule; the source project's overbroad "Firefox Profiles = cache" rule was narrowed to `cache2` only (profiles hold bookmarks/credentials), with a regression test pinning that.
+- 29 new tests in `Lucid.Tests/Storage/`. Verified 2026-07-13: `dotnet build` (Debug x64) 0 warnings 0 errors; `dotnet test` 351 passed, 0 failed.
+
 ### Safety and Executor Tests
 - Execution engine safety gate tests (pre-flight elevation, confirmation gates, dry-run, rollback gating, exception containment)
 - `DeleteLargeFileExecutor` rollback tests (missing-path failure, staging, restore, safe rollback failure)
