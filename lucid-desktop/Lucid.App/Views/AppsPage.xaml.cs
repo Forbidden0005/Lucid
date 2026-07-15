@@ -8,7 +8,10 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class AppsPage : Page
 {
-    public AppsViewModel ViewModel { get; } = new AppsViewModel(AppServices.StartupManagement);
+    // Migrated off the AppServices static locator (ROADMAP C4 template):
+    // dependencies are resolved from the service registry via App.GetService.
+    public AppsViewModel ViewModel { get; } =
+        new AppsViewModel(App.GetService<Services.Startup.IStartupManagementService>());
 
     public AppsPage()
     {

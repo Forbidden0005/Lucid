@@ -18,6 +18,19 @@ public partial class App : Application
 {
     private MainWindow? _mainWindow;
 
+    /// <summary>
+    /// Resolves an application singleton from the service registry.
+    ///
+    /// This is the composition entry point for pages and ViewModels
+    /// (ROADMAP C4): WinUI's Frame.Navigate constructs pages through their
+    /// parameterless constructor, so pages resolve their ViewModel
+    /// dependencies here instead of reading AppServices.* statics. App and
+    /// AppServices are the only types that may touch the static locator —
+    /// a source-audit test freezes everything else.
+    /// </summary>
+    public static T GetService<T>() where T : class =>
+        AppServices.Registry.Get<T>();
+
     public App()
     {
         // Crash visibility hooks — registered BEFORE InitializeComponent so a

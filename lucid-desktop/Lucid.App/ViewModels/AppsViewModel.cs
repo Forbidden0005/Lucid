@@ -12,7 +12,7 @@ namespace Lucid.ViewModels;
 ///
 /// Scans installed applications from the Windows Uninstall registry keys on a
 /// background thread and joins them with the live startup entry list from
-/// <see cref="AppServices.StartupManagement"/>.
+/// the injected <see cref="Services.Startup.IStartupManagementService"/>.
 ///
 /// Two observable collections are populated after the scan:
 ///   <see cref="StartupApps"/> — apps that launch at sign-in, sorted by impact (High first)

@@ -182,10 +182,18 @@ Meanwhile page-level ViewModels use constructor injection. Two competing DI idio
 
 **Fix:** Incremental strangler migration — not a big-bang rewrite. See Architecture Review.
 
-- [ ] Introduce `IServiceRegistry` shim behind `AppServices` statics (zero consumer changes)
-- [ ] Freeze the locator: ban new `AppServices.*` references via analyzer (grandfather existing 32 files)
-- [ ] Migrate one page end-to-end as the template
-- [ ] Continue one page per session
+- [x] Introduce `IServiceRegistry` shim behind `AppServices` statics — done 2026-07-15:
+      `Services/Infrastructure/IServiceRegistry.cs` + `ServiceRegistry.cs`; populated by
+      reflection at the end of `AppServices.Initialize()`; exposed as `App.GetService<T>()`
+- [x] Freeze the locator — done 2026-07-15 via `AppServicesFreezeSourceAuditTests` (source-audit
+      test, matching the language-policy guard idiom, rather than a compiler analyzer): new
+      `AppServices.*` references fail tests; a second ratchet test forces grandfather entries to
+      be deleted as files migrate. Finding: only 26 files actually *read* the locator
+      (4 ViewModels/Services + 22 Views) — the rest of the old 52-file count was doc comments
+- [x] Migrate one page end-to-end as the template — done 2026-07-15: `AppsPage` now resolves
+      `IStartupManagementService` via `App.GetService<T>()`. Verified: 321/321 tests, app
+      launches and logs "Service registry populated from AppServices"
+- [ ] Continue one page per session (22 Views + 4 ViewModel/Service files remain grandfathered)
 
 ### C5 — 633-line manual compile whitelist in `Lucid.App.csproj` (P1)
 481 explicit `<Compile Include>` entries. Only 9 files remain excluded. The original reason

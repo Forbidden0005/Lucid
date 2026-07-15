@@ -1,4 +1,5 @@
 ﻿using Lucid.Core.Infrastructure;
+using Lucid.Services.Infrastructure;
 using Lucid.Services.Infrastructure.Events;
 using Lucid.Services.Infrastructure.Lifecycle;
 using Lucid.Services.Infrastructure.OperationalState;
@@ -1905,6 +1906,53 @@ public static class AppServices
             try { await _healthTrajectory!.ComputeReportAsync().ConfigureAwait(false); }
             catch { /* best-effort pre-warm — analytics failure is non-critical */ }
         });
+
+        // ── Service registry (strangler seam, ROADMAP C4) ─────────────────────
+        // Snapshot every initialized service into the instance registry so
+        // migrated consumers resolve dependencies via App.GetService<T>()
+        // instead of AppServices.* statics. Reflection over the public static
+        // properties keeps the registry in lockstep with the locator with zero
+        // per-service wiring to drift.
+        BuildRegistry();
+    }
+
+    // ── Service registry ──────────────────────────────────────────────────────
+
+    private static readonly ServiceRegistry _registry = new();
+
+    /// <summary>
+    /// Instance-based registry over the same singletons the static properties
+    /// expose. Migration target for retiring this static locator (ROADMAP C4):
+    /// new and migrated consumers resolve via <c>App.GetService&lt;T&gt;()</c>,
+    /// which reads from here. Populated at the end of Initialize().
+    /// </summary>
+    public static IServiceRegistry Registry => _registry;
+
+    private static void BuildRegistry()
+    {
+        foreach (var property in typeof(AppServices).GetProperties(
+                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+        {
+            if (property.Name == nameof(Registry))
+                continue;
+
+            try
+            {
+                var instance = property.GetValue(null);
+                if (instance is not null)
+                    _registry.Register(property.PropertyType, instance);
+            }
+            catch (Exception ex)
+            {
+                // A getter that throws here means the service was never
+                // initialized — log it rather than fail startup for a service
+                // no migrated consumer may ever request.
+                _logger?.Warning("Startup",
+                    $"Service registry skipped {property.Name} — property read failed.", ex);
+            }
+        }
+
+        _logger?.Info("Startup", "Service registry populated from AppServices");
     }
 
     /// <summary>
