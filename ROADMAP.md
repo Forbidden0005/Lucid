@@ -92,8 +92,9 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 296 passing C# tests (verified 2026-07-02 via `dotnet test`)
-- 19 Rust tests passing (verified 2026-07-02 via `cargo test`)
+- 319 passing C# tests (verified 2026-07-15 via `dotnet test` on a scratch clone of `main`)
+- 19 Rust tests passing (verified 2026-07-02 via `cargo test`; not re-runnable 2026-07-15 —
+  MSVC linker missing after the machine's Visual Studio uninstall, see C1)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
   the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
   production set in `AppServices` is 27)
@@ -130,7 +131,20 @@ checkout follows the documented path end-to-end and that CI is green from that s
       done 2026-06-11 (`107a6fb`): `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`,
       14 additional `scripts/*.ps1`, `installer/`, `Directory.Build.props`, `release/*.json`,
       and `AUDIT_ROADMAP.md`
-- [ ] Confirm CI green from clean checkout
+- [x] Fresh-clone proof (C# lane) — done 2026-07-15: scratch clone of `main` (`695fc49`) ran
+      `scripts/verify-dev.ps1` end-to-end green — restore, x64 Debug build (0 warnings, 0 errors),
+      source-inclusion check, and 319/319 C# tests. Findings recorded during the proof:
+      - The repo requires .NET SDK ≥ 9.0.2xx to parse `Lucid.slnx` (MSB4068 on 8.0.x). CI pins
+        `DOTNET_VERSION: 8.0.x` but passes only because GitHub runners keep newer SDKs preinstalled
+        and no `global.json` pins one — the workflow should declare the real requirement
+      - Machine regression (not repo): the local toolchain (Program Files SDK 10.0.301, all Visual
+        Studio installs, `build_vs.bat`) disappeared between 2026-07-13 and 2026-07-15. A user-scope
+        SDK 10.0.302 + .NET 8 runtimes were installed at `~\.dotnet` to complete this proof
+- [ ] Fresh-clone proof (Rust lane) — blocked 2026-07-15: `cargo test` fails with
+      ``linker `link.exe` not found`` because MSVC Build Tools left with the Visual Studio
+      uninstall above. Owner decision required: reinstall VS Build Tools (C++ workload)
+- [ ] Confirm CI green from clean checkout — not verifiable locally (no `gh`/API access this
+      session); check the Actions run for `main@695fc49`
 
 ### C2 — Line-ending renormalization still pending (P0)
 613 modified files showing ~113k insertions / ~112k deletions — almost entirely CRLF↔LF.
