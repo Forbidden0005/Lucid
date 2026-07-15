@@ -25,7 +25,7 @@ Retired 2026-07-15 (ROADMAP C8; content preserved in git history): `CURRENT_STAT
 - `lucid-native/`: Rust native workspace.
 - `docs/`: active design, architecture, and project documentation.
 - `.github/`: CI workflow definitions.
-- `_archive/`: historical code and scaffolds retained for reference.
+- Historical code that used to live in `_archive/` was removed from the working tree on 2026-07-15 (ROADMAP C9); it remains reachable at the `archive/intelligence-v1` tag.
 
 ## Historical Reports
 

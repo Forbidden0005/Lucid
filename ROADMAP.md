@@ -276,9 +276,10 @@ and confuse search. 36 of the 613 line-ending-churned files are in `_archive/`.
 
 **Fix:** Tag current state (e.g. `archive/intelligence-v1`), then `git rm -r _archive/`.
 
-- [ ] Tag current commit before deletion
-- [ ] `git rm -r _archive/`
-- [ ] Confirm no live code referenced anything in it
+- [x] Tag current commit before deletion — done 2026-07-15: `archive/intelligence-v1`
+- [x] `git rm -r _archive/` — done 2026-07-15 (39 tracked files removed)
+- [x] Confirm no live code referenced anything in it — verified: zero references from
+      .cs/.csproj/.xaml/.ps1/.yml/.slnx outside `_archive/` itself. **C9 closed.**
 
 
 ---
@@ -520,7 +521,7 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
       `Directory.Build.props`, `release/*.json`, and `AUDIT_ROADMAP.md`; remaining C1 work is
       clean-checkout / CI proof
 - [x] Add `release/` to `.gitignore` (C3) — done 2026-06-10, verified via `git check-ignore`
-- [ ] Delete `_archive/` after tagging (C9)
+- [x] Delete `_archive/` after tagging (C9) — done 2026-07-15
 - [x] Consolidate triplicated agent instruction docs (C8) — done 2026-07-15
 - [x] Retire stale `CURRENT_STATE.md` and `REMAINING_WORK.md` (C8) — done 2026-07-15
 
