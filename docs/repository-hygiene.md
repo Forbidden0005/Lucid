@@ -10,13 +10,14 @@ These files are active project control or operational context and are expected t
 - `ONBOARDING.md`
 - `PROJECT_INTEGRITY.md`
 - `ROADMAP.md`
-- `CODEX.md`
-- `AGENTS.md`
-- `CLAUDE.md`
-- `CURRENT_STATE.md`
-- `REMAINING_WORK.md`
+- `CLAUDE.md` — single source of truth for agent instructions
+- `CODEX.md`, `AGENTS.md` — one-paragraph pointers to `CLAUDE.md` (reduced 2026-07-15, ROADMAP C8)
 - `setup.ps1`
 - `setup.bat`
+
+Retired 2026-07-15 (ROADMAP C8; content preserved in git history): `CURRENT_STATE.md`
+(counts rot within days — `ROADMAP.md` plus CI are the live state) and `REMAINING_WORK.md`
+(folded into `ROADMAP.md`).
 
 ## Active Folders
 
@@ -28,14 +29,16 @@ These files are active project control or operational context and are expected t
 
 ## Historical Reports
 
-Historical audits, reviews, and one-off cleanup reports belong under `docs/reports/`, not at the repository root.
+Historical audits, reviews, and one-off cleanup reports belong under `docs/history/` with
+date-prefixed filenames (moved from `docs/reports/` on 2026-07-15, ROADMAP C8), not at the
+repository root.
 
 Current report files:
 
-- `docs/reports/CLAUDE_REVIEW.md`
-- `docs/reports/CLAUDE_REVIEW_REPORT.md`
-- `docs/reports/NEW_ROADMAP.md`
-- `docs/reports/TIDYING_REPORT.md`
+- `docs/history/2026-06-07-CLAUDE_REVIEW.md`
+- `docs/history/2026-06-07-CLAUDE_REVIEW_REPORT.md`
+- `docs/history/2026-06-07-NEW_ROADMAP.md` (superseded by `ROADMAP.md`)
+- `docs/history/2026-06-07-TIDYING_REPORT.md`
 
 ## Generated Files
 

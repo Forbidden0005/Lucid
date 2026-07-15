@@ -262,11 +262,13 @@ Enforce via `BannedApiAnalyzers`.
 
 **Fix:** Single-source agent instructions. Retire stale docs. See Documentation State.
 
-- [ ] Reduce `AGENTS.md` and `CODEX.md` to one-paragraph pointers to `CLAUDE.md`
-- [ ] Delete `CURRENT_STATE.md` (this file + CI are the live state)
-- [ ] Retire `REMAINING_WORK.md` (folded into this roadmap)
-- [ ] Move `docs/reports/` → `docs/history/` with dated filenames
-- [ ] Delete `docs/Structure.txt` and `docs/active-file-inventory.md`
+- [x] Reduce `AGENTS.md` and `CODEX.md` to one-paragraph pointers to `CLAUDE.md` — done 2026-07-15
+- [x] Delete `CURRENT_STATE.md` — done 2026-07-15 (note: it had been refreshed in PR #21 on
+      2026-07-02; deleted per this roadmap's standing rationale — counts rot within days)
+- [x] Retire `REMAINING_WORK.md` — done 2026-07-15
+- [x] Move `docs/reports/` → `docs/history/` with dated filenames — done 2026-07-15
+- [x] Delete `docs/Structure.txt` and `docs/active-file-inventory.md` — done 2026-07-15;
+      `docs/repository-hygiene.md` updated to match. **C8 closed.**
 
 ### C9 — `_archive/` committed to main (39 tracked files) (P2)
 Git history already preserves deleted code. Tracked archives rot, participate in repo-wide operations,
@@ -519,8 +521,8 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
       clean-checkout / CI proof
 - [x] Add `release/` to `.gitignore` (C3) — done 2026-06-10, verified via `git check-ignore`
 - [ ] Delete `_archive/` after tagging (C9)
-- [ ] Consolidate triplicated agent instruction docs (C8)
-- [ ] Retire stale `CURRENT_STATE.md` and `REMAINING_WORK.md` (C8)
+- [x] Consolidate triplicated agent instruction docs (C8) — done 2026-07-15
+- [x] Retire stale `CURRENT_STATE.md` and `REMAINING_WORK.md` (C8) — done 2026-07-15
 
 **Exit criteria:**
 - No tracked generated IDE/build artifacts
