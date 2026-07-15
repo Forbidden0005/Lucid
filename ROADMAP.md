@@ -598,8 +598,14 @@ Goal: protect the parts of Lucid that can harm trust.
 - [x] Persistence durability tests: queue-overflow back-pressure, corrupt-DB backup/recreate,
       poison-write batch isolation, lifecycle write gating — done 2026-06-10
       (flush-on-shutdown was already covered by existing dispose final-flush tests)
-- [ ] Build-inclusion tests for explicitly included C# files (retire after C5)
-- [ ] Coverage visibility: surface summary in CI job; set ratcheting floor
+- [x] Build-inclusion tests for explicitly included C# files — closed 2026-07-15 as moot:
+      no such tests were ever written, C5 landed via default globbing, and
+      `check-app-source-includes.ps1` guards the exclusion contract
+- [x] Coverage visibility — done 2026-07-15: CI test jobs now write a line-coverage summary to
+      the job summary and enforce a 30% floor **when instrumentation produces data**
+- [ ] Fix coverlet instrumentation: local + CI coverage reports are EMPTY (`lines-valid="0"`) —
+      discovered 2026-07-15; the uploaded Cobertura XML has always been vacuous. Once fixed,
+      the CI floor activates automatically
 
 **Exit criteria:**
 - Every destructive executor has tests for consent, dry-run, failure, and audit behavior
@@ -805,9 +811,9 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 - Add `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` to CI
 - Publish DLL as CI artifact consumed by publish job
 
-**P2: Coverage visibility**
-- Publish coverage summary to CI job summary
-- Set a soft floor (e.g. fail under 30%, ratchet upward)
+**P2: Coverage visibility** — CI summary + data-aware 30% floor added 2026-07-15.
+Blocking follow-up: coverlet produces empty reports (lines-valid=0) locally and in CI —
+instrumentation must be fixed before the floor has teeth.
 
 **P3: Smoke automation**
 - Script the manual smoke checklist steps that are scriptable

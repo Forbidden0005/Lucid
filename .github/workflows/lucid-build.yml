@@ -102,6 +102,23 @@ jobs:
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
 
+      - name: Coverage summary and floor
+        shell: pwsh
+        run: |
+          $report = Get-ChildItem lucid-desktop/Lucid.Tests/TestResults -Recurse -Filter coverage.cobertura.xml | Select-Object -First 1
+          if (-not $report) { Write-Error "No coverage report found"; exit 1 }
+          [xml]$xml = Get-Content $report.FullName
+          $rate = [double]$xml.coverage.'line-rate'
+          $valid = [long]$xml.coverage.'lines-valid'
+          $pct = [math]::Round($rate * 100, 1)
+          if ($valid -eq 0) {
+            "### Line coverage: NO DATA — coverlet instrumentation produced an empty report (known issue, see ROADMAP Testing Plan)" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+            Write-Warning "Coverage report has lines-valid=0 — instrumentation is broken; floor not enforced."
+            exit 0
+          }
+          "### Line coverage: $pct% ($($xml.coverage.'lines-covered')/$valid lines)" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          if ($rate -lt 0.30) { Write-Error "Line coverage $pct% is below the 30% floor (ratchet upward, never down)"; exit 1 }
+
       - name: Upload test results
         uses: actions/upload-artifact@v7
         if: always()
@@ -189,6 +206,23 @@ jobs:
           -p:Platform=x64
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
+
+      - name: Coverage summary and floor
+        shell: pwsh
+        run: |
+          $report = Get-ChildItem lucid-desktop/Lucid.Tests/TestResults -Recurse -Filter coverage.cobertura.xml | Select-Object -First 1
+          if (-not $report) { Write-Error "No coverage report found"; exit 1 }
+          [xml]$xml = Get-Content $report.FullName
+          $rate = [double]$xml.coverage.'line-rate'
+          $valid = [long]$xml.coverage.'lines-valid'
+          $pct = [math]::Round($rate * 100, 1)
+          if ($valid -eq 0) {
+            "### Line coverage: NO DATA — coverlet instrumentation produced an empty report (known issue, see ROADMAP Testing Plan)" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+            Write-Warning "Coverage report has lines-valid=0 — instrumentation is broken; floor not enforced."
+            exit 0
+          }
+          "### Line coverage: $pct% ($($xml.coverage.'lines-covered')/$valid lines)" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          if ($rate -lt 0.30) { Write-Error "Line coverage $pct% is below the 30% floor (ratchet upward, never down)"; exit 1 }
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
