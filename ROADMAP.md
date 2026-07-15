@@ -156,9 +156,11 @@ functional change.
 
 - [x] Add `.gitattributes` and `.editorconfig` — committed 2026-06-10 (`f7e38ea`); newly staged
       files now land normalized
-- [ ] Run `git add --renormalize .` — deferred: keep this isolated from functional changes as a
-      dedicated normalization commit now that the load-bearing source is tracked
-- [ ] Commit as `chore: normalize line endings` with no functional changes mixed in
+- [x] Run `git add --renormalize .` — verified no-op 2026-07-15: every tracked text file is
+      already `i/lf` in the index (716 files checked via `git ls-files --eol`); the churn resolved
+      organically as files were re-committed after `.gitattributes` landed
+- [x] Commit as `chore: normalize line endings` — not needed; renormalize stages zero changes.
+      **C2 closed.**
 
 ### C3 — `release/` (740 MB) not in `.gitignore` (P0)
 One careless `git add .` permanently bloats history. Also makes `git status` noise normal —
@@ -486,8 +488,8 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Add `docs/repository-hygiene.md`
 - [x] Normalize Git-tracked casing of `README.md` and `ROADMAP.md`
 - [x] Complete stale-name audit for `ExplainMyPC` references
-- [ ] Add `.gitattributes` and normalize line endings (C2) — attributes committed 2026-06-10;
-      renormalize pending
+- [x] Add `.gitattributes` and normalize line endings (C2) — attributes committed 2026-06-10;
+      renormalize verified no-op 2026-07-15 (index already fully LF); C2 closed
 - [x] Commit all untracked source (C1) — test files, docs, source fixes committed 2026-06-10;
       completed 2026-06-11 (`107a6fb`) for CI/release scripts, `installer/`,
       `Directory.Build.props`, `release/*.json`, and `AUDIT_ROADMAP.md`; remaining C1 work is
