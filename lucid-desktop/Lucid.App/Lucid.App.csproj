@@ -67,13 +67,19 @@
   <!--
     Copy lucid_scanner.dll from the Rust release build into the app output directory.
     The DLL is only available after a release build of lucid-native/ (cargo build, release profile).
-    If the file does not exist the copy is skipped (ContinueOnError) so the C# build
-    succeeds without Rust — NativeScannerService.IsAvailable will return false at runtime.
+    Debug: if the file does not exist the copy is skipped so day-to-day C# work
+    succeeds without a Rust toolchain — NativeScannerService.IsAvailable returns
+    false at runtime.
+    Release: a missing DLL is a HARD ERROR (ROADMAP C6). A shippable build must
+    never silently drop the native scanner; that failure was previously
+    undetectable until runtime.
   -->
   <Target Name="CopyLucidNativeDll" AfterTargets="Build">
     <PropertyGroup>
       <LucidNativeDll>$(MSBuildThisFileDirectory)..\..\lucid-native\target\release\lucid_scanner.dll</LucidNativeDll>
     </PropertyGroup>
+    <Error Text="lucid_scanner.dll not found at $(LucidNativeDll) — Release builds require the native scanner. Run 'cargo build --release' in lucid-native/ first."
+           Condition="'$(Configuration)' == 'Release' And !Exists('$(LucidNativeDll)')" />
     <Copy SourceFiles="$(LucidNativeDll)"
           DestinationFolder="$(OutputPath)"
           SkipUnchangedFiles="true"
@@ -82,7 +88,7 @@
     <Message Text="Copied lucid_scanner.dll to $(OutputPath)" Importance="normal"
              Condition="Exists('$(LucidNativeDll)')" />
     <Message Text="lucid_scanner.dll not found — skipping native copy (run cargo build --release in lucid-native/)" Importance="low"
-             Condition="!Exists('$(LucidNativeDll)')" />
+             Condition="'$(Configuration)' != 'Release' And !Exists('$(LucidNativeDll)')" />
   </Target>
 
 </Project>

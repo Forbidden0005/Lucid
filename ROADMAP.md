@@ -226,11 +226,14 @@ artifact reliability: Rust still has no CI job, and the build silently skips cop
       seams, hostile rollback-token safety)
 - [x] Rust unit tests — done 2026-06-10: 19 tests covering FFI argument/UTF-8 validation,
       long-path `\\?\` traversal, junction-cycle termination, path-form handling
-- [ ] `cargo test/clippy/fmt` CI job — blocked on human review (CI changes are an
-      autonomous hard stop)
-      - Local precondition now clean as of 2026-06-11: `cargo fmt --check`,
-        `cargo clippy -- -D warnings`, and `cargo test` all pass
-- [ ] Make missing DLL a hard build error for Release configuration
+- [x] `cargo test/clippy/fmt` CI job — added 2026-07-15 (owner-directed roadmap execution;
+      lands via PR review): new `rust` job runs fmt/clippy/test, builds the release DLL, and
+      publishes it as the `lucid-scanner-dll` artifact consumed by all three Release jobs.
+      Not yet proven green in CI — this machine currently lacks the MSVC linker (see C1)
+- [x] Make missing DLL a hard build error for Release configuration — done 2026-07-15:
+      `<Error>` in `CopyLucidNativeDll` when `Configuration == Release` and the DLL is absent.
+      Verified locally: Debug builds clean without the DLL; Release fails with the explicit
+      message. Note: local Release builds now require `cargo build --release` first by design
 
 ### C7 — 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls (P1)
 Silent failure directly contradicts the explainability doctrine. A platform that explains the system
@@ -574,8 +577,8 @@ Goal: protect the parts of Lucid that can harm trust.
 - [x] Rust scanner tests (19 tests)
 - [x] Executor safety contract suite across all 27 registered executors (dry-run purity, rollback metadata, hostile-path inputs) (C6) — done 2026-06-10, see session notes
 - [x] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6) — done 2026-06-10, all 19 passing
-- [ ] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6)
-- [ ] Make missing `lucid_scanner.dll` a hard build error for Release (C6)
+- [x] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6) — added 2026-07-15, pending first green CI run
+- [x] Make missing `lucid_scanner.dll` a hard build error for Release (C6) — done 2026-07-15, verified both ways locally
 - [x] Persistence durability tests: queue-overflow back-pressure, corrupt-DB backup/recreate,
       poison-write batch isolation, lifecycle write gating — done 2026-06-10
       (flush-on-shutdown was already covered by existing dispose final-flush tests)

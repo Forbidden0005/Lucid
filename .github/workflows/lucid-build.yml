@@ -10,6 +10,37 @@ env:
   DOTNET_VERSION: "8.0.x"
 
 jobs:
+  rust:
+    name: Rust Scanner (fmt, clippy, test, release build)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check formatting
+        working-directory: lucid-native
+        run: cargo fmt --check
+
+      - name: Lint (clippy, warnings are errors)
+        working-directory: lucid-native
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        working-directory: lucid-native
+        run: cargo test
+
+      - name: Build release DLL
+        working-directory: lucid-native
+        run: cargo build --release
+
+      - name: Upload native scanner DLL
+        uses: actions/upload-artifact@v7
+        with:
+          name: lucid-scanner-dll
+          path: lucid-native/target/release/lucid_scanner.dll
+          if-no-files-found: error
+
   build-debug:
     name: Build Debug (x64)
     runs-on: windows-latest
@@ -88,10 +119,17 @@ jobs:
   build-release:
     name: Build Release (x64)
     runs-on: windows-latest
+    needs: rust
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Download native scanner DLL
+        uses: actions/download-artifact@v7
+        with:
+          name: lucid-scanner-dll
+          path: lucid-native/target/release/
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -127,6 +165,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Download native scanner DLL
+        uses: actions/download-artifact@v7
+        with:
+          name: lucid-scanner-dll
+          path: lucid-native/target/release/
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -168,6 +212,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Download native scanner DLL
+        uses: actions/download-artifact@v7
+        with:
+          name: lucid-scanner-dll
+          path: lucid-native/target/release/
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
