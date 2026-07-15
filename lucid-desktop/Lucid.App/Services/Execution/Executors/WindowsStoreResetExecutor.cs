@@ -201,7 +201,7 @@ internal sealed class WindowsStoreResetExecutor : IActionExecutor
             {
                 if (ct.IsCancellationRequested)
                 {
-                    try { process.Kill(entireProcessTree: true); } catch { }
+                    try { process.Kill(entireProcessTree: true); } catch { /* best-effort: process may have already exited — kill is a cleanup guard */ }
                     return new WindowsStoreResetRunResult(
                         Exited: false,
                         WasCancelled: true,

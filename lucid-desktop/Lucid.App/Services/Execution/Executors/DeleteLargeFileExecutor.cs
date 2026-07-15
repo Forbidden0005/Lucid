@@ -122,7 +122,7 @@ internal sealed class DeleteLargeFileExecutor : IActionExecutor
         }
 
         long size = 0;
-        try { size = new FileInfo(path).Length; } catch { }
+        try { size = new FileInfo(path).Length; } catch { /* best-effort: size probe only — file may be locked or gone */ }
 
         var stagingRoot = CleanupScanner.NewStagingRoot("LargeFileDelete");
         string? rollbackToken = null;

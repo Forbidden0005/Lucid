@@ -44,7 +44,7 @@ public sealed partial class ReasoningPage : Page
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ReasoningPage] OnNavigatedTo failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("ReasoningPage", "OnNavigatedTo failed", ex);
         }
     }
 

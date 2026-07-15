@@ -179,7 +179,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             // Startup LLM status probe failed (Ollama not running, network error, etc.).
             // LlmStatus stays at its default Unknown value — the companion chat panel
             // shows the "not connected" banner. Not an unobserved exception.
-            System.Diagnostics.Debug.WriteLine($"[Companion] Initial LLM status check failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("Companion", "Initial LLM status check failed", ex);
         }
     }
 
@@ -197,7 +197,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             // Treat any connection error as "Ollama not available" so the banner
             // transitions away from the infinite spinner state.
             LlmStatus = LlmStatus.OllamaNotAvailable;
-            System.Diagnostics.Debug.WriteLine($"[Companion] RetryLlmCheckAsync failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("Companion", "RetryLlmCheckAsync failed", ex);
         }
     }
 

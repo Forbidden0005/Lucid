@@ -82,11 +82,11 @@ internal sealed class ExplorerContextProvider : IDisposable
 
             // LocationURL is "file:///C:/Users/..."
             string? locationUrl = null;
-            try { locationUrl = (string?)window.LocationURL; } catch { }
+            try { locationUrl = (string?)window.LocationURL; } catch { /* best-effort: Explorer window/COM object may close mid-read — context omitted */ }
             if (string.IsNullOrEmpty(locationUrl)) continue;
 
             string? path = null;
-            try { path = new Uri(locationUrl).LocalPath; } catch { }
+            try { path = new Uri(locationUrl).LocalPath; } catch { /* best-effort: malformed location URL — path context omitted */ }
             if (string.IsNullOrEmpty(path)) continue;
 
             // Selected items

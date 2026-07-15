@@ -32,7 +32,7 @@ public sealed partial class MachineBehaviorPage : Page
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[MachineBehaviorPage] OnNavigatedTo failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("MachineBehaviorPage", "OnNavigatedTo failed", ex);
         }
     }
 

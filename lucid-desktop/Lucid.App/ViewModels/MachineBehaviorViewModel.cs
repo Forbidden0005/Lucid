@@ -197,7 +197,7 @@ public sealed partial class MachineBehaviorViewModel : ObservableObject
         {
             // Behavioral context read failed — leave whatever state was previously
             // rendered rather than crashing through async void OnNavigatedTo.
-            System.Diagnostics.Debug.WriteLine($"[MachineBehaviorVM] RefreshAsync failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("MachineBehaviorVM", "RefreshAsync failed", ex);
         }
     }
 

@@ -191,7 +191,7 @@ public sealed partial class DeviceIntelligenceViewModel : ObservableObject
         {
             // WMI probe or registry read failed. Leave placeholder text in place
             // and let the page render with whatever data was already populated.
-            System.Diagnostics.Debug.WriteLine($"[DeviceIntelVM] InitializeAsync failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("DeviceIntelVM", "InitializeAsync failed", ex);
         }
         finally
         {
@@ -300,7 +300,7 @@ public sealed partial class DeviceIntelligenceViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DeviceIntelVM] RefreshAsync failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("DeviceIntelVM", "RefreshAsync failed", ex);
         }
         finally
         {

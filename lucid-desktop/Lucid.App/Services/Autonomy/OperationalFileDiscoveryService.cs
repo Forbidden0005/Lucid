@@ -95,7 +95,7 @@ public sealed class OperationalFileDiscoveryService
                     RelevanceReason = $"{FormatBytes(info.Length)} — large file",
                 });
             }
-            catch { }
+            catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
         }
 
         return (files.OrderByDescending(f => f.SizeBytes).Take(50).ToList(), []);
@@ -125,7 +125,7 @@ public sealed class OperationalFileDiscoveryService
                     RelevanceReason = $"Modified {info.LastWriteTime:g}",
                 });
             }
-            catch { }
+            catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
         }
 
         return (files.OrderByDescending(f => f.LastModified).Take(30).ToList(), []);
@@ -152,7 +152,7 @@ public sealed class OperationalFileDiscoveryService
                     TotalBytes      = size,
                 });
             }
-            catch { }
+            catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
         }
 
         return ([], folders.OrderByDescending(f => f.TotalBytes).Take(20).ToList());
@@ -190,7 +190,7 @@ public sealed class OperationalFileDiscoveryService
                     });
                     break;
                 }
-                catch { }
+                catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
             }
         }
 
@@ -214,7 +214,7 @@ public sealed class OperationalFileDiscoveryService
                     bySize[info.Length] = list = [];
                 list.Add(filePath);
             }
-            catch { }
+            catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
         }
 
         foreach (var (size, paths) in bySize)
@@ -262,7 +262,7 @@ public sealed class OperationalFileDiscoveryService
                     RelevanceReason = info.LastWriteTime.ToString("MMMM yyyy"),
                 });
             }
-            catch { }
+            catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
         }
 
         return (files.OrderByDescending(f => f.LastModified).ToList(), []);
@@ -299,7 +299,7 @@ public sealed class OperationalFileDiscoveryService
                     Category     = GetCategory(ext),
                 });
             }
-            catch { }
+            catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
         }
 
         return (files.Take(200).ToList(), []);
@@ -326,7 +326,7 @@ public sealed class OperationalFileDiscoveryService
                     Category     = GetCategory(Path.GetExtension(filePath)),
                 });
             }
-            catch { }
+            catch { /* best-effort: inaccessible entry during discovery scan — skip and continue */ }
         }
 
         return (files.Take(500).ToList(), []);
@@ -364,7 +364,7 @@ public sealed class OperationalFileDiscoveryService
         long total = 0; int count = 0;
         foreach (var f in SafeEnumerateFiles(path, SearchOption.AllDirectories))
         {
-            try { total += new FileInfo(f).Length; count++; } catch { }
+            try { total += new FileInfo(f).Length; count++; } catch { /* best-effort: file may vanish mid-aggregation — skip its size */ }
         }
         return (total, count);
     }

@@ -131,7 +131,7 @@ internal sealed class DeleteDuplicateGroupExecutor : IActionExecutor
             try
             {
                 long sz = 0;
-                try { sz = new FileInfo(path).Length; } catch { }
+                try { sz = new FileInfo(path).Length; } catch { /* best-effort: size probe only — file may be locked or gone */ }
                 var stagingName = $"{Guid.NewGuid():N}{Path.GetExtension(path)}";
                 File.Move(path, Path.Combine(stagingRoot, stagingName));
                 manifest.Add($"{stagingName}|{path}");

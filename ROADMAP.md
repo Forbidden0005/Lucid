@@ -243,9 +243,17 @@ to users must not hide its own failures.
 comment, or removal. Route all `Debug/Console.WriteLine` through the operational logger.
 Enforce via `BannedApiAnalyzers`.
 
-- [ ] Audit and sweep all 48 empty catches
-- [ ] Replace all 33 debug/console prints with `IOperationalLogger`
-- [ ] Add banned-API analyzer rule to prevent recurrence
+- [x] Audit and sweep all empty catches — done 2026-07-15: all 49 sites (count had drifted from
+      48) audited; every one is genuinely best-effort (file probes mid-scan, semaphore releases
+      at shutdown, COM reads on closing windows, telemetry counter degradation, cosmetic window
+      placement, cancellation) and now carries a `/* best-effort: <why> */` justification
+- [x] Replace all 33 debug/console prints — done 2026-07-15: routed through new
+      `OperationalDiagnostics.ReportFailure()` funnel (registry-backed → `IOperationalLogger`,
+      Debug fallback before startup/in tests), attached from `AppServices.Initialize()`
+- [x] Prevent recurrence — done 2026-07-15 via `SilentFailureSourceAuditTests` (source-audit
+      test, matching the freeze/language-policy guard idiom, instead of `BannedApiAnalyzers`):
+      bans new Debug/Console prints and unjustified empty catches. **C7 closed.**
+      Verified: 323/323 tests, real app launch clean
 
 ### C8 — Doc sprawl: triplicated agent instructions; stale state snapshots (P2)
 `CLAUDE.md` / `AGENTS.md` / `CODEX.md` are near-identical ~14 KB copies — drift is inevitable.

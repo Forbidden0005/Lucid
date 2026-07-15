@@ -405,7 +405,7 @@ public sealed partial class CompanionOverlayWindow : Window
                 // Saved position is off-screen — fall through to default.
             }
         }
-        catch { }
+        catch { /* best-effort: restoring saved position is cosmetic — fall back to default placement */ }
 
         PositionNearTaskbar();
     }
@@ -425,7 +425,7 @@ public sealed partial class CompanionOverlayWindow : Window
 
             _appWindow.Move(new PointInt32(x, y));
         }
-        catch { }
+        catch { /* best-effort: window positioning is cosmetic — leave at system default */ }
     }
 
     // ── Header button handlers ────────────────────────────────────────────────

@@ -229,7 +229,7 @@ public sealed partial class SecurityViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Could not open VirusTotal: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[SecurityVM] OpenVirusTotalAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("SecurityVM", "OpenVirusTotalAsync failed", ex);
         }
     }
 
@@ -257,7 +257,7 @@ public sealed partial class SecurityViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Could not open file location: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[SecurityVM] OpenFileLocationAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("SecurityVM", "OpenFileLocationAsync failed", ex);
         }
     }
 
@@ -274,7 +274,7 @@ public sealed partial class SecurityViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SecurityVM] OpenWindowsSecurityAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("SecurityVM", "OpenWindowsSecurityAsync failed", ex);
         }
     }
 

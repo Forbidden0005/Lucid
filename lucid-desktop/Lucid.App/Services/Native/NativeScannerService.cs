@@ -179,16 +179,17 @@ public sealed class NativeScannerService
             NativeVersion = LucidNativeInterop.lucid_scanner_version();
             return !string.IsNullOrEmpty(NativeVersion);
         }
-        catch (DllNotFoundException)
+        catch (DllNotFoundException ex)
         {
-            System.Diagnostics.Debug.WriteLine(
-                "[NativeScannerService] lucid_scanner.dll not found — falling back to managed scanner.");
+            Diagnostics.Logging.OperationalDiagnostics.ReportFailure(
+                "NativeScannerService",
+                "lucid_scanner.dll not found — falling back to managed scanner", ex);
             return false;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"[NativeScannerService] probe failed: {ex.Message}");
+            Diagnostics.Logging.OperationalDiagnostics.ReportFailure(
+                "NativeScannerService", "availability probe failed", ex);
             return false;
         }
     }

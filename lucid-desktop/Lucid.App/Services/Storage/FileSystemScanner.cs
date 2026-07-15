@@ -97,7 +97,7 @@ internal static class FileSystemScanner
                 sinceCallback++;
 
                 try { bytesEmitted += file.Length; }
-                catch { }
+                catch { /* best-effort: file may vanish mid-scan — its size is omitted from progress totals */ }
 
                 if (sinceCallback >= 500 && progressCallback is not null)
                 {
@@ -114,7 +114,7 @@ internal static class FileSystemScanner
                         queue.Enqueue(sub);
                 }
             }
-            catch { }
+            catch { /* best-effort: inaccessible subdirectory — skip and continue scan */ }
         }
 
         Thread.CurrentThread.Priority = ThreadPriority.Normal;

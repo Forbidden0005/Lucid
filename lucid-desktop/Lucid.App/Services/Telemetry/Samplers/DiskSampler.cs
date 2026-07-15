@@ -116,7 +116,7 @@ public sealed class DiskSampler : IDiskSampler
                 freeBytes  += drive.TotalFreeSpace;
             }
         }
-        catch { }
+        catch { /* best-effort: drive enumeration failed — keep previous cached totals */ }
 
         _cachedTotalGb = totalBytes >> 30;   // bytes → GiB
         _cachedUsedGb  = (totalBytes - freeBytes) >> 30;

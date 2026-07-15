@@ -182,7 +182,7 @@ public sealed class GpuSampler : IGpuSampler
                     _vramCounters.Add(new PerformanceCounter(
                         MemoryCategory, DedicatedCounter, inst, readOnly: true));
                 }
-                catch { }
+                catch { /* best-effort: counter instance vanished — VRAM reading omitted */ }
             }
         }
         catch
@@ -240,7 +240,7 @@ public sealed class GpuSampler : IGpuSampler
                     return bytes / (1024.0 * 1024.0 * 1024.0);
             }
         }
-        catch { }
+        catch { /* best-effort: counter read failed — report 0 this tick */ }
         return 0;
     }
 

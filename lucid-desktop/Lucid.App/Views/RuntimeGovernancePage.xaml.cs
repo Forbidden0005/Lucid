@@ -28,7 +28,7 @@ public sealed partial class RuntimeGovernancePage : Page
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[RuntimeGovernancePage] OnNavigatedTo failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("RuntimeGovernancePage", "OnNavigatedTo failed", ex);
         }
     }
 

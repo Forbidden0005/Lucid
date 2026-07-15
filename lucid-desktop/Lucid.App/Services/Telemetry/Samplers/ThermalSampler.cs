@@ -70,10 +70,10 @@ public sealed class ThermalSampler : IThermalSampler
                 {
                     _counters.Add(new PerformanceCounter(Category, CounterName, inst, readOnly: true));
                 }
-                catch { }
+                catch { /* best-effort: counter instance vanished — sampler degrades to unavailable */ }
             }
         }
-        catch { }
+        catch { /* best-effort: thermal counters unavailable on this machine */ }
 
         if (_counters.Count == 0) return;
 

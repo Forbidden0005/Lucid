@@ -283,7 +283,7 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         {
             // Diagnostics read failure — leave whatever state was previously
             // rendered rather than crashing. SnapshotTimeText signals staleness.
-            System.Diagnostics.Debug.WriteLine($"[DiagnosticsVM] RefreshAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("DiagnosticsVM", "RefreshAsync failed", ex);
             SnapshotTimeText = "Update failed";
         }
     }
@@ -342,7 +342,7 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         {
             RecoveryResultText = $"✗ Recovery action failed: {ex.Message}";
             HasRecoveryResult  = true;
-            System.Diagnostics.Debug.WriteLine($"[DiagnosticsVM] ExecuteRecoveryActionAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("DiagnosticsVM", "ExecuteRecoveryActionAsync failed", ex);
         }
     }
 

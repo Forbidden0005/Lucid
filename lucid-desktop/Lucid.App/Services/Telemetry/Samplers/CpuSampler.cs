@@ -126,7 +126,7 @@ public sealed class CpuSampler : ICpuSampler
             if (key?.GetValue("~MHz") is int mhz && mhz > 0)
                 return mhz / 1000.0;
         }
-        catch { }
+        catch { /* best-effort: registry read failed — fall back to nominal 3.0 GHz */ }
         return 3.0;
     }
 

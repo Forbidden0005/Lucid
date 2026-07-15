@@ -299,7 +299,7 @@ public sealed partial class StorageViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Delete failed: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[StorageVM] DeleteLargeFileAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("StorageVM", "DeleteLargeFileAsync failed", ex);
         }
     }
 
@@ -344,7 +344,7 @@ public sealed partial class StorageViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Delete failed: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[StorageVM] DeleteDuplicatesAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("StorageVM", "DeleteDuplicatesAsync failed", ex);
         }
     }
 
@@ -372,7 +372,7 @@ public sealed partial class StorageViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Couldn't open location: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[StorageVM] OpenGroupLocation failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("StorageVM", "OpenGroupLocation failed", ex);
         }
     }
 
@@ -487,7 +487,7 @@ public sealed partial class StorageViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[StorageVM] RecordHistoryAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("StorageVM", "RecordHistoryAsync failed", ex);
         }
     }
 

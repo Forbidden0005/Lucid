@@ -422,7 +422,7 @@ public sealed partial class RepairCardViewModel : ObservableObject
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[RepairHistory] RecordAsync failed: {ex}");
+                Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("RepairHistory", "RecordAsync failed", ex);
             }
 
             // ── Notify narrative engine ───────────────────────────────────────

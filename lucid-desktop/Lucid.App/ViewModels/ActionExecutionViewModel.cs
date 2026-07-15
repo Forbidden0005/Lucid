@@ -371,7 +371,7 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
             // so the UI doesn't stay stuck in the RollingBack spinner.
             StatusMessage = $"Rollback failed: {ex.Message}";
             State         = ActionExecutionState.Failed;
-            System.Diagnostics.Debug.WriteLine($"[ActionExecution] RollbackAsync threw: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("ActionExecution", "RollbackAsync threw", ex);
             return;
         }
 
@@ -440,7 +440,7 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
             // Surface a Failed state with a readable message so the spinner clears.
             StatusMessage = $"Unexpected error: {ex.Message}";
             State         = ActionExecutionState.Failed;
-            System.Diagnostics.Debug.WriteLine($"[ActionExecution] ExecuteCoreAsync threw: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("ActionExecution", "ExecuteCoreAsync threw", ex);
             return;
         }
         finally
@@ -584,7 +584,7 @@ public sealed partial class ActionExecutionViewModel : ObservableObject
             // History write failed (e.g. SQLite locked, disk full).
             // The operation itself completed successfully — this only affects
             // the audit trail and replay view, not the user-visible outcome.
-            System.Diagnostics.Debug.WriteLine($"[ActionHistory] Persist failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("ActionHistory", "Persist failed", ex);
         }
     }
 }

@@ -30,7 +30,7 @@ public sealed partial class DiagnosticsPage : Page
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DiagnosticsPage] OnNavigatedTo failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("DiagnosticsPage", "OnNavigatedTo failed", ex);
         }
     }
 

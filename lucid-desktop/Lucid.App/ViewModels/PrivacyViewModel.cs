@@ -244,7 +244,7 @@ public sealed partial class PrivacyViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PrivacyVM] LoadAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("PrivacyVM", "LoadAsync failed", ex);
             StatsText = "Could not read privacy permission data.";
         }
         finally

@@ -1952,6 +1952,10 @@ public static class AppServices
             }
         }
 
+        // Route ViewModel/page failure reports into the operational log now
+        // that IOperationalLogger is resolvable (ROADMAP C7).
+        OperationalDiagnostics.Attach(_registry);
+
         _logger?.Info("Startup", "Service registry populated from AppServices");
     }
 

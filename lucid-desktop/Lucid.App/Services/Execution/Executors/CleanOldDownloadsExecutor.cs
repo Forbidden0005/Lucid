@@ -56,7 +56,7 @@ internal sealed class CleanOldDownloadsExecutor : IActionExecutor
                 ctx.Log.Info($"  {file.Name} — {CleanupScanner.FormatBytes(file.Length)} " +
                              $"— last modified {file.LastWriteTimeUtc:yyyy-MM-dd}");
             }
-            catch { }
+            catch { /* best-effort: file may vanish or deny access mid-scan — skip it in the dry-run listing */ }
         }
 
         sw.Stop();
@@ -92,7 +92,7 @@ internal sealed class CleanOldDownloadsExecutor : IActionExecutor
             try
             {
                 long sz = 0;
-                try { sz = file.Length; } catch { }
+                try { sz = file.Length; } catch { /* best-effort: size probe only — file may be locked or gone */ }
 
                 var stagingName = $"{Guid.NewGuid():N}{file.Extension}";
                 File.Move(file.FullName, Path.Combine(stagingRoot, stagingName));

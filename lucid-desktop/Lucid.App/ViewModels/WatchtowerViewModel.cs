@@ -219,7 +219,7 @@ public sealed partial class WatchtowerViewModel : ObservableObject
         {
             // Coordinator refresh failed — reset state so the page is not stuck
             // in a permanent loading spinner, and log the cause for diagnostics.
-            System.Diagnostics.Debug.WriteLine($"[WatchtowerVM] RefreshAsync failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("WatchtowerVM", "RefreshAsync failed", ex);
             IsLoading = false;
             HasData   = false;
         }

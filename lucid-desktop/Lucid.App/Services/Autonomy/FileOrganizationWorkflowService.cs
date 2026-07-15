@@ -226,7 +226,7 @@ public sealed class FileOrganizationWorkflowService
                     IsRecycleDeletion = true,
                 });
             }
-            catch { }
+            catch { /* best-effort: file may vanish or deny access mid-scan — skip this candidate */ }
         }
 
         return proposals;
@@ -250,7 +250,7 @@ public sealed class FileOrganizationWorkflowService
                     groups[key] = list = [];
                 list.Add(filePath);
             }
-            catch { }
+            catch { /* best-effort: file may vanish or deny access mid-scan — skip this candidate */ }
         }
 
         foreach (var (_, paths) in groups)
@@ -350,7 +350,7 @@ public sealed class FileOrganizationWorkflowService
         catch
         {
             // Fall back to permanent delete if Recycle Bin operation fails
-            try { File.Delete(path); } catch { }
+            try { File.Delete(path); } catch { /* best-effort: cleanup of our own staging artifact; leftovers are reclaimed by the staging sweeper */ }
         }
     }
 

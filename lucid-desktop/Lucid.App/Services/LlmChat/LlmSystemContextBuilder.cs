@@ -37,7 +37,7 @@ public static class LlmSystemContextBuilder
 
         // ── Session context — read early so it can annotate multiple sections ──
         SessionContext? ctx = null;
-        try { ctx = AppServices.Session.Current; } catch { }
+        try { ctx = AppServices.Session.Current; } catch { /* best-effort: no session context yet — chat proceeds without it */ }
 
         // ── Live telemetry ─────────────────────────────────────────────────────
         var snap = AppServices.Telemetry.LastReading;
@@ -123,7 +123,7 @@ public static class LlmSystemContextBuilder
                     sb.AppendLine($"Workload      : {WorkloadLabel(workload.PrimaryWorkload)} ({confLabel})");
                 }
             }
-            catch { }
+            catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
             // Foreground app category — process name only (no window title — privacy-safe)
             try
@@ -136,7 +136,7 @@ public static class LlmSystemContextBuilder
                     sb.AppendLine($"Foreground app: {win.ProcessName} ({win.AppCategory})");
                 }
             }
-            catch { }
+            catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
             // Startup apps — helps contextualise slow boots and persistent background load
             try
@@ -153,7 +153,7 @@ public static class LlmSystemContextBuilder
                     sb.AppendLine($"Startup apps  : {label}");
                 }
             }
-            catch { }
+            catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
             // Runtime governance mode — if non-normal, the system is actively throttled
             try
@@ -172,7 +172,7 @@ public static class LlmSystemContextBuilder
                     sb.AppendLine($"System mode   : {govLabel}");
                 }
             }
-            catch { }
+            catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
             sb.AppendLine();
         }
@@ -197,7 +197,7 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine();
             }
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         // ── Long-term metric drift (7d vs 30d trends) ────────────────────────
         // Drift tells the LLM whether performance has been gradually worsening
@@ -217,7 +217,7 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine();
             }
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         // ── Active anomalies (z-score short-term deviations) ──────────────────
         // These are separate from the rule-based insights — they fire when a
@@ -238,7 +238,7 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine();
             }
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         // ── Early warnings (synthesized from anomalies + findings) ───────────────
         // These are higher-level synthesized alerts, distinct from raw anomalies.
@@ -259,7 +259,7 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine();
             }
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         // ── Active intelligence findings ───────────────────────────────────────
         try
@@ -303,7 +303,7 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine();
             }
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         // ── Top processes by current CPU usage ────────────────────────────────
         // Use ProcessIntelligenceService snapshot so the LLM sees actual real-time
@@ -322,7 +322,7 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine();
             }
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         // ── Recent timeline events (last hour) ─────────────────────────────────
         try
@@ -345,7 +345,7 @@ public static class LlmSystemContextBuilder
                 sb.AppendLine();
             }
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         // ── Session context ────────────────────────────────────────────────────
         try
@@ -389,7 +389,7 @@ public static class LlmSystemContextBuilder
 
             sb.AppendLine();
         }
-        catch { }
+        catch { /* best-effort: context section omitted on failure — chat degrades gracefully */ }
 
         sb.AppendLine("=== END OF SYSTEM CONTEXT ===");
         sb.AppendLine("Use the data above to answer the user's question. Be specific and reference real numbers.");

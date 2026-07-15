@@ -94,7 +94,7 @@ public sealed class ProcessIntelligenceService
             startTime = proc.StartTime;
             hasWindow = proc.MainWindowHandle != IntPtr.Zero;
 
-            try { execPath = proc.MainModule?.FileName ?? string.Empty; } catch { }
+            try { execPath = proc.MainModule?.FileName ?? string.Empty; } catch { /* best-effort: access denied for protected processes — path stays unknown */ }
 
             if (!string.IsNullOrEmpty(execPath))
             {
@@ -103,7 +103,7 @@ public sealed class ProcessIntelligenceService
                     var vi = FileVersionInfo.GetVersionInfo(execPath);
                     companyName = vi.CompanyName ?? string.Empty;
                 }
-                catch { }
+                catch { /* best-effort: version info unreadable — company name stays unknown */ }
             }
         }
         catch

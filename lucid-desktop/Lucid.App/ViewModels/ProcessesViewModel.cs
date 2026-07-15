@@ -184,7 +184,7 @@ public sealed partial class ProcessesViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Terminate failed: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[ProcessesVM] TerminateProcessAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("ProcessesVM", "TerminateProcessAsync failed", ex);
         }
     }
 
@@ -216,7 +216,7 @@ public sealed partial class ProcessesViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ProcessesVM] OpenLocationAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("ProcessesVM", "OpenLocationAsync failed", ex);
         }
     }
 
@@ -311,7 +311,7 @@ public sealed partial class ProcessesViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ProcessesVM] RecordHistoryAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("ProcessesVM", "RecordHistoryAsync failed", ex);
         }
     }
 }

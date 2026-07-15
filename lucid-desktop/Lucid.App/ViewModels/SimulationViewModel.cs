@@ -592,7 +592,7 @@ public sealed partial class SimulationViewModel : ObservableObject
 
             HasComparison = true;
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) { /* cancellation is the expected stop signal */ }
         catch { /* non-critical — comparison errors are swallowed */ }
         finally
         {

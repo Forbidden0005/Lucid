@@ -36,7 +36,7 @@ public sealed partial class DeviceIntelligencePage : Page
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DeviceIntelligencePage] OnNavigatedTo failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("DeviceIntelligencePage", "OnNavigatedTo failed", ex);
         }
     }
 

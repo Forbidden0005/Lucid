@@ -104,7 +104,7 @@ public sealed partial class AppsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[AppsVM] LoadAsync failed: {ex}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("AppsVM", "LoadAsync failed", ex);
             StatsText = "Could not read installed apps.";
         }
         finally

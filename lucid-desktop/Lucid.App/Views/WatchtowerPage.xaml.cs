@@ -38,7 +38,7 @@ public sealed partial class WatchtowerPage : Page
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[WatchtowerPage] OnNavigatedTo failed: {ex.Message}");
+            Lucid.Services.Diagnostics.Logging.OperationalDiagnostics.ReportFailure("WatchtowerPage", "OnNavigatedTo failed", ex);
         }
     }
 

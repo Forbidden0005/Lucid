@@ -64,12 +64,12 @@ public sealed class HumanReviewGate
             Approve         = () =>
             {
                 approved = true;
-                try { gate.Release(); } catch { }
+                try { gate.Release(); } catch { /* best-effort: gate may already be released or disposed during shutdown */ }
             },
             Deny            = () =>
             {
                 approved = false;
-                try { gate.Release(); } catch { }
+                try { gate.Release(); } catch { /* best-effort: gate may already be released or disposed during shutdown */ }
             },
         };
 
