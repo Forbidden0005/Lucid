@@ -1,6 +1,6 @@
 # Lucid Roadmap
 
-> Last audited: 2026-06-11. This is the single source of truth for project state, priorities,
+> Last audited: 2026-07-15. This is the single source of truth for project state, priorities,
 > completed work, and engineering direction. All other roadmap and state documents are retired
 > into `docs/history/`. Update this file after every completed task.
 
@@ -41,11 +41,11 @@
 | Project name | Lucid |
 | Project type | Windows desktop application — local-first operational intelligence platform |
 | Languages | C# (~90,700 LOC), Rust (539 LOC native module), PowerShell (17 ops scripts), XAML |
-| Frameworks | WinUI 3 / Windows App SDK 1.5, .NET 8 (`net8.0-windows10.0.19041.0`), CommunityToolkit.Mvvm 8.2.2 |
+| Frameworks | WinUI 3 / Windows App SDK 1.8, .NET 8 (`net8.0-windows10.0.19041.0`), CommunityToolkit.Mvvm 8.2.2 |
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
-| Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 296 passing C# tests |
+| Build system | `dotnet build Lucid.slnx -p:Platform=x64` (needs .NET SDK ≥ 9.0.2xx for `.slnx`); the old VS-MSBuild `XamlPreCompile` workaround is obsolete since WinAppSDK 1.8 — fresh clones build with dotnet alone |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 323 passing C# tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -92,7 +92,7 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 319 passing C# tests (verified 2026-07-15 via `dotnet test` on a scratch clone of `main`)
+- 323 passing C# tests (319 verified 2026-07-15 on a scratch clone of `main`; +4 source-audit guard tests added the same day)
 - 19 Rust tests passing (verified 2026-07-02 via `cargo test`; not re-runnable 2026-07-15 —
   MSVC linker missing after the machine's Visual Studio uninstall, see C1)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
@@ -100,16 +100,16 @@ cargo test
   production set in `AppServices` is 27)
 
 **Known active issues (not yet fixed):**
-- Fresh-clone / CI proof is still incomplete: the previously untracked CI, release, installer, and
-  support infrastructure was committed on 2026-06-11 (`107a6fb`), and the current worktree is
-  clean, but a scratch-clone verification / CI-green confirmation is still not recorded here.
-- CRLF/LF churn — `.gitattributes` committed 2026-06-10; repo-wide renormalize still pending (C2)
-- ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
-- `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
-- `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
-- 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
-- Rust scanner now has 19 tests but is still absent from CI entirely
+- Rust test lane blocked on this machine: MSVC linker gone with the 2026-07-14 Visual Studio
+  uninstall (C1) — owner decision to reinstall VS Build Tools
+- CI-green confirmation from a clean checkout not yet recorded (no API access locally)
+- Coverlet coverage instrumentation produces empty reports (lines-valid=0) — CI floor inert
+  until fixed
+- `AppServices.cs` static locator: frozen and shrinking (26 real consumers grandfathered);
+  page-by-page migration ongoing (C4)
 - `NETSDK1206` warning during build — expected, non-critical, from Windows App SDK NuGet
+- Resolved this audit: C2 renormalize (no-op), C5 globbing (PR #9), C7 silent failures,
+  C8 doc sprawl, C9 `_archive/`, migration-state evidence loss
 
 ---
 
@@ -509,7 +509,7 @@ Goal: make the current repo safe to work in.
 ---
 
 ### Phase 1 — Repository Hygiene and Canonical Structure
-**Status: In progress**
+**Status: Complete except CI-green proof (2026-07-15)**
 
 Goal: make the project understandable to a new engineer in under 30 minutes.
 
@@ -576,7 +576,7 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 ---
 
 ### Phase 3 — Test Expansion and Safety Nets
-**Status: In progress**
+**Status: In progress (remaining: coverlet instrumentation fix; CI runs to prove the new Rust job)**
 
 Goal: protect the parts of Lucid that can harm trust.
 
@@ -615,20 +615,20 @@ Goal: protect the parts of Lucid that can harm trust.
 ---
 
 ### Phase 4 — Architecture Hardening
-**Status: Not started**
+**Status: In progress (C4 shim/freeze/template and C7 sweep landed 2026-07-15)**
 
 Goal: reduce long-term fragility without destabilizing the app.
 
-- [ ] AppServices strangler: introduce `IServiceRegistry` shim behind statics (C4)
-- [ ] Freeze `AppServices.*` references with analyzer ban + grandfather list (C4)
-- [ ] Migrate one page end-to-end as the template (C4)
+- [x] AppServices strangler: introduce `IServiceRegistry` shim behind statics (C4) — done 2026-07-15
+- [x] Freeze `AppServices.*` references with source-audit test + grandfather list (C4) — done 2026-07-15
+- [x] Migrate one page end-to-end as the template (C4) — AppsPage, done 2026-07-15
 - [ ] Continue page-by-page migration (one per session)
 - [ ] Extract `Lucid.Core` class library; replace 57 file-linked tests with project reference
 - [ ] Module boundary docs for each of the 33 service domains
 - [ ] ADRs for: static registry, linked test source strategy, native scanner boundary, local LLM boundary
-- [ ] Replace silent `catch { }` blocks with structured diagnostics (C7)
-- [ ] Route all `Debug/Console.WriteLine` to `IOperationalLogger` (C7)
-- [ ] Add banned-API analyzer rule for debug prints and (post-migration) `AppServices` (C7)
+- [x] Replace silent `catch { }` blocks with structured diagnostics or justifications (C7) — done 2026-07-15
+- [x] Route all `Debug/Console.WriteLine` to `IOperationalLogger` via OperationalDiagnostics (C7) — done 2026-07-15
+- [x] Ban debug prints and new `AppServices` references — done 2026-07-15 via source-audit tests (house idiom) instead of a compiler analyzer (C7)
 - [ ] Enable `.NET analyzers` + `TreatWarningsAsErrors` + `dotnet format` CI check
 - [ ] Audit 12 `async void` occurrences — acceptable only for UI event handlers
 - [ ] Fix 9 `.Result`/`.Wait()` sync-over-async patterns
