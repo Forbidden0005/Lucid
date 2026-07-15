@@ -496,7 +496,10 @@ Goal: make the current repo safe to work in.
 - [x] Record completed work explicitly in this roadmap
 - [x] Fix setup script path drift
 - [x] Add `scripts/verify-dev.ps1`
-- [ ] Remove tracked IDE state from source control after owner approval
+- [x] Remove tracked IDE state from source control — resolved 2026-07-15 by inspection: the
+      only remaining candidate is `lucid-desktop/Lucid.App/Properties/launchSettings.json`,
+      which is load-bearing for unpackaged WinUI debug launch, not IDE noise — kept deliberately
+      (the `_archive/` copy left with C9)
 
 **Exit criteria:**
 - Root docs agree with the codebase
@@ -552,8 +555,10 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Installer-managed data migration with canonical-path normalization and backup
 - [x] Repo-side update-feed generation and discovery verification
 - [x] Repo-tracked release-operations policy and validation
-- [ ] Preserve malformed migration-state evidence instead of silently discarding it during
-      installer data migration (`installer/Migrate-LucidData.ps1`)
+- [x] Preserve malformed migration-state evidence instead of silently discarding it during
+      installer data migration — done 2026-07-15: unparseable `migration-state.json` is copied to
+      a dated `.corrupt-<timestamp>` evidence file with a warning before a fresh state is written
+      (parse-checked; evidence path verified by isolated repro)
 - [x] Remove csproj compile whitelist (C5) — landed in PR #9, verified 2026-07-15
 - [ ] Real certificate-backed signing inputs — flip release metadata to `authenticode-required`
 - [ ] Expand launch smoke gate into deeper navigation and telemetry assertions
@@ -757,7 +762,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 | `async void` | 12 occurrences | Audit — acceptable only for UI event handlers; wrap bodies in try/catch | P1 |
 | Sync-over-async | 9 `.Result`/`.Wait()` | Replace with await or document why safe | P1 |
 | Dead code | 9 excluded files incl. `MockTelemetryService.cs`, `ShellViewModel.cs`, 3 controls, 3 models | Delete (git preserves them) | P1 |
-| Migration-state recovery loses evidence | `installer/Migrate-LucidData.ps1` swallows JSON parse failure and rewrites migration state | Preserve the bad state file or emit explicit recovery evidence before replacement | P1 |
+| ~~Migration-state recovery loses evidence~~ | resolved 2026-07-15 — malformed state preserved as dated `.corrupt-*` evidence file with warning | — | done |
 | Loose service files | 5 telemetry files at `Services/` root | Relocate to `Services/Telemetry/` | P2 |
 | TFM mismatch | App targets `19041.0`, Tests target `22621.0` | Align or document why tests target newer SDK | P2 |
 

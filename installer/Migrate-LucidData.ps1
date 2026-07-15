@@ -122,6 +122,17 @@ if (Test-Path -LiteralPath $migrationStatePath -PathType Leaf) {
         $currentState = Get-Content -Raw -LiteralPath $migrationStatePath | ConvertFrom-Json
     }
     catch {
+        # ROADMAP C-backlog: never silently discard malformed migration state.
+        # Preserve the unparseable file as dated evidence next to the live state,
+        # then continue with a fresh state (prior history is in the preserved copy).
+        $evidencePath = "$migrationStatePath.corrupt-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))"
+        try {
+            Copy-Item -LiteralPath $migrationStatePath -Destination $evidencePath -Force
+            Write-Warning "Migration state at '$migrationStatePath' could not be parsed: $($_.Exception.Message). Preserved evidence copy at '$evidencePath'; starting fresh migration history."
+        }
+        catch {
+            Write-Warning "Migration state at '$migrationStatePath' could not be parsed AND the evidence copy failed: $($_.Exception.Message). Proceeding with fresh migration history; the malformed file will be overwritten."
+        }
         $currentState = $null
     }
 }
