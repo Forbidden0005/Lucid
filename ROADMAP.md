@@ -204,9 +204,13 @@ Services, and Core, but the 6 excluded Controls/Models files are still outside t
 **Fix:** Delete or archive the 9 orphans, remove the Remove/Include machinery, return to default globbing,
 retire `check-app-source-includes.ps1`.
 
-- [ ] Identify the 9 excluded orphan files — determine: delete vs. keep vs. move to branch
-- [ ] Remove `<Compile Remove>` globs and all 481 `<Compile Include>` entries
-- [ ] Confirm build output identical; retire guard script from CI
+- [x] **C5 closed** (landed in PR #9 with the WinAppSDK 1.8 upgrade; verified 2026-07-15):
+      default globbing restored; the 483-entry `<Compile Include>` allow-list is gone. Five
+      documented `<Compile Remove>` carve-outs remain (Controls\**, Models\**,
+      MockTelemetryService, ShellViewModel, SystemIssueViewModel)
+- [x] Guard script deliberately kept (supersedes "retire" plan):
+      `check-app-source-includes.ps1` now validates that exclusions stay documented and
+      intentional rather than policing a whitelist — it passes in verify-dev and CI
 
 ### C6 — Rust absent from CI; Release native DLL remains optional (P1)
 Test depth improved materially during Phase 3: 249 C# tests, 19 Rust tests, and executor safety
@@ -536,7 +540,7 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Repo-tracked release-operations policy and validation
 - [ ] Preserve malformed migration-state evidence instead of silently discarding it during
       installer data migration (`installer/Migrate-LucidData.ps1`)
-- [ ] Remove csproj compile whitelist (C5)
+- [x] Remove csproj compile whitelist (C5) — landed in PR #9, verified 2026-07-15
 - [ ] Real certificate-backed signing inputs — flip release metadata to `authenticode-required`
 - [ ] Expand launch smoke gate into deeper navigation and telemetry assertions
 - [ ] Decide non-interactive CI smoke policy: current pending script can record `skipped`, and
