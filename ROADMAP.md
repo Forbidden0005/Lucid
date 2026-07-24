@@ -99,7 +99,6 @@ cargo test
   production set in `AppServices` is 27)
 
 **Known active issues (not yet fixed):**
-- CRLF/LF churn — `.gitattributes` committed 2026-06-10; repo-wide renormalize still pending (C2)
 - ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
 - `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
@@ -137,9 +136,9 @@ is now committed and verified from a clean checkout and GitHub Actions.
       tests. GitHub Actions run `30129408800` on PR #28 / commit `7f5affc` passed: Debug build,
       Release build, Debug tests, Release tests, and publish release artifact.
 
-### C2 — Line-ending renormalization still pending (P0)
-613 modified files showing ~113k insertions / ~112k deletions — almost entirely CRLF↔LF.
-Real changes are invisible inside whole-file diffs. `git blame` is destroyed on every touched file.
+### C2 — Line-ending renormalization (P0) — done 2026-07-24
+Earlier repository state showed 613 modified files with ~113k insertions / ~112k deletions —
+almost entirely CRLF↔LF. Real changes were invisible inside whole-file diffs.
 
 **Fix:** Add `.gitattributes` (`* text=auto`, explicit `eol=crlf` for `.ps1/.bat/.slnx` if desired),
 add `.editorconfig`, then run a one-time `git add --renormalize .` commit — isolated from any
@@ -147,9 +146,12 @@ functional change.
 
 - [x] Add `.gitattributes` and `.editorconfig` — committed 2026-06-10 (`f7e38ea`); newly staged
       files now land normalized
-- [ ] Run `git add --renormalize .` — deferred: keep this isolated from functional changes as a
-      dedicated normalization commit now that the load-bearing source is tracked
-- [ ] Commit as `chore: normalize line endings` with no functional changes mixed in
+- [x] Run `git add --renormalize .` — done 2026-07-24; it produced no staged file changes because
+      tracked text blobs already matched the `.gitattributes` policy on this branch
+- [x] Confirm repository EOL state — done 2026-07-24: `git ls-files --eol` reported no
+      `i/crlf` or `i/mixed` entries; binary assets remained `i/-text` as intended
+- [x] Commit as isolated roadmap proof — no normalization content commit was needed because
+      renormalization was a verified no-op
 
 ### C3 — `release/` (740 MB) not in `.gitignore` (P0)
 One careless `git add .` permanently bloats history. Also makes `git status` noise normal —
