@@ -26,7 +26,7 @@ namespace Lucid.Controls;
 public sealed partial class TelemetryGraph : UserControl
 {
     // ── Visual children ──────────────────────────────────────────────────────
-    private readonly Path     _fillPath;
+    private readonly Microsoft.UI.Xaml.Shapes.Path _fillPath;
     private readonly Polyline _graphLine;
 
     // ── Dependency Properties ─────────────────────────────────────────────────
@@ -78,7 +78,7 @@ public sealed partial class TelemetryGraph : UserControl
         InitializeComponent();
 
         // Fill polygon — drawn first so the line renders on top.
-        _fillPath = new Path { Opacity = 0.18 };
+        _fillPath = new Microsoft.UI.Xaml.Shapes.Path { Opacity = 0.18 };
         RootCanvas.Children.Add(_fillPath);
 
         // Stroke line.
@@ -158,7 +158,7 @@ public sealed partial class TelemetryGraph : UserControl
             EndPoint   = new Point(0, 1),
         };
         grad.GradientStops.Add(new GradientStop { Color = color,         Offset = 0.0 });
-        grad.GradientStops.Add(new GradientStop { Color = Colors.Transparent, Offset = 1.0 });
+        grad.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0, 0, 0, 0), Offset = 1.0 });
         _fillPath.Fill = grad;
     }
 

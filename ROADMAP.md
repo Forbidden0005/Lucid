@@ -92,8 +92,8 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 296 passing C# tests (verified 2026-07-02 via `dotnet test`)
-- 19 Rust tests passing (verified 2026-07-02 via `cargo test`)
+- 351 passing C# tests (verified 2026-07-24 via `dotnet test`)
+- 19 Rust tests passing (verified 2026-07-24 via `cargo test`)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
   the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
   production set in `AppServices` is 27)
@@ -101,9 +101,7 @@ cargo test
 **Known active issues (not yet fixed):**
 - ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
-- `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
 - 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
-- Rust scanner now has 19 tests but is still absent from CI entirely
 - Local workstation prerequisites now include Visual Studio Build Tools with the C++ workload,
   Windows SDK import libraries, Rustup/Cargo, and Inno Setup for the optional setup-exe gate.
   `scripts/verify-dev.ps1` initializes the Visual Studio developer environment for Rust tests
@@ -178,18 +176,21 @@ Meanwhile page-level ViewModels use constructor injection. Two competing DI idio
 - [ ] Migrate one page end-to-end as the template
 - [ ] Continue one page per session
 
-### C5 — 633-line manual compile whitelist in `Lucid.App.csproj` (P1)
-481 explicit `<Compile Include>` entries. Only 9 files remain excluded. The original reason
-(excluding future scaffolding) no longer applies. Every new file requires a csproj edit.
-Current guard coverage is partial: `scripts/check-app-source-includes.ps1` verifies ViewModels,
-Services, and Core, but the 6 excluded Controls/Models files are still outside that guard.
+### C5 — Lucid.App project source exclusions (P1) — done 2026-07-24
+The former explicit `<Compile Include>` allow-list had already been removed before this slice,
+but `Lucid.App.csproj` still excluded Controls, Models, `MockTelemetryService`, and legacy shell
+ViewModel source from SDK default globbing. That kept real project files outside normal build
+coverage.
 
-**Fix:** Delete or archive the 9 orphans, remove the Remove/Include machinery, return to default globbing,
-retire `check-app-source-includes.ps1`.
+**Fix:** Removed the remaining `<Compile Remove>` and `<Page Remove>` exclusions, made retained
+source compile cleanly without wiring new runtime behavior, and removed the source-inclusion guard
+from CI/local verification. The guard script remains as an optional no-regression check that fails
+if explicit include/remove rules return.
 
-- [ ] Identify the 9 excluded orphan files — determine: delete vs. keep vs. move to branch
-- [ ] Remove `<Compile Remove>` globs and all 481 `<Compile Include>` entries
-- [ ] Confirm build output identical; retire guard script from CI
+- [x] Identified formerly excluded orphan files — retained non-destructively and made compile-safe
+- [x] Removed remaining `<Compile Remove>` and `<Page Remove>` project exclusions
+- [x] Removed the source-inclusion guard from CI and `scripts/verify-dev.ps1`
+- [x] Verified Debug build, 351 C# tests, 19 Rust tests, Release build, and source-inclusion guard
 
 ### C6 — Rust CI and Release native DLL enforcement (P1) — done 2026-07-24
 Test depth improved materially during Phase 3: 249 C# tests, 19 Rust tests, and executor safety
@@ -279,7 +280,7 @@ Do not add items here that have not been verified.
 - CI unit test workflow corrected — test job no longer assumes compiled artifacts from another runner
 - `setup.ps1` resolves solution and launch paths from repo location instead of stale `ExplainMyPC` path
 - `scripts/verify-dev.ps1` added as one-command local verification entrypoint
-- `scripts/check-app-source-includes.ps1` verifies ViewModels, Services, and Core C# files are either compiled or documented as intentional exclusions
+- `scripts/check-app-source-includes.ps1` verifies `Lucid.App.csproj` remains on SDK default globbing without explicit source/XAML include or remove lists
 - `docs/active-file-inventory.md` records active file counts and current intentional non-compiled files
 
 ### Build, CI, and Release Pipeline
@@ -326,6 +327,11 @@ Do not add items here that have not been verified.
   in a dedicated Rust job; the produced `lucid_scanner.dll` is uploaded and consumed by Release
   build/publish jobs. Release MSBuild now fails if the native DLL is missing, and release package
   verification requires `app/lucid_scanner.dll`.
+- C5 app source exclusion cleanup completed 2026-07-24: `Lucid.App.csproj` now relies on SDK
+  default globbing with no explicit source or XAML exclusions; formerly excluded files were made
+  compile-safe without registering new runtime behavior. Verified locally with
+  `scripts\check-app-source-includes.ps1`, Debug build, 351 C# tests, 19 Rust tests via
+  `scripts\verify-dev.ps1`, and Release build.
 
 ### Storage Intelligence — asset migration (2026-07-13)
 - Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.
@@ -550,7 +556,7 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Repo-tracked release-operations policy and validation
 - [ ] Preserve malformed migration-state evidence instead of silently discarding it during
       installer data migration (`installer/Migrate-LucidData.ps1`)
-- [ ] Remove csproj compile whitelist (C5)
+- [x] Remove csproj compile whitelist/exclusions (C5) — done 2026-07-24
 - [ ] Real certificate-backed signing inputs — flip release metadata to `authenticode-required`
 - [ ] Expand launch smoke gate into deeper navigation and telemetry assertions
 - [ ] Decide non-interactive CI smoke policy: current pending script can record `skipped`, and
@@ -589,7 +595,8 @@ Goal: protect the parts of Lucid that can harm trust.
 - [x] Persistence durability tests: queue-overflow back-pressure, corrupt-DB backup/recreate,
       poison-write batch isolation, lifecycle write gating — done 2026-06-10
       (flush-on-shutdown was already covered by existing dispose final-flush tests)
-- [ ] Build-inclusion tests for explicitly included C# files (retire after C5)
+- [x] Build-inclusion guard retired from mandatory CI/local verification after C5; optional
+      no-regression script now checks that explicit source/XAML include/remove rules do not return
 - [ ] Coverage visibility: surface summary in CI job; set ratcheting floor
 
 **Exit criteria:**
@@ -753,7 +760,7 @@ into the Release build and publish jobs.
 | Constructor bloat | `DashboardViewModel` 15 params | Group into 2–3 cohesive facades after DI migration | P2 |
 | `async void` | 12 occurrences | Audit — acceptable only for UI event handlers; wrap bodies in try/catch | P1 |
 | Sync-over-async | 9 `.Result`/`.Wait()` | Replace with await or document why safe | P1 |
-| Dead code | 9 excluded files incl. `MockTelemetryService.cs`, `ShellViewModel.cs`, 3 controls, 3 models | Delete (git preserves them) | P1 |
+| Formerly excluded source | 9 files formerly outside the build now compile under SDK default globbing | No runtime registration added; revisit only if product scope needs these types | Closed 2026-07-24 |
 | Migration-state recovery loses evidence | `installer/Migrate-LucidData.ps1` swallows JSON parse failure and rewrites migration state | Preserve the bad state file or emit explicit recovery evidence before replacement | P1 |
 | Loose service files | 5 telemetry files at `Services/` root | Relocate to `Services/Telemetry/` | P2 |
 | TFM mismatch | App targets `19041.0`, Tests target `22621.0` | Align or document why tests target newer SDK | P2 |

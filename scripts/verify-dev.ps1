@@ -97,7 +97,6 @@ $cargoPath = Resolve-ToolPath -CommandName "cargo" -FallbackPaths @((Join-Path $
 $solutionPath = Join-Path $desktopDir "Lucid.slnx"
 $appProjectPath = Join-Path $desktopDir "Lucid.App\Lucid.App.csproj"
 $testProjectPath = Join-Path $desktopDir "Lucid.Tests\Lucid.Tests.csproj"
-$includeCheckPath = Join-Path $PSScriptRoot "check-app-source-includes.ps1"
 $releaseMetadataCheckPath = Join-Path $PSScriptRoot "validate-release-metadata.ps1"
 $releaseOperationsCheckPath = Join-Path $PSScriptRoot "validate-release-operations.ps1"
 $releaseArtifactSignPath = Join-Path $PSScriptRoot "sign-release-artifact.ps1"
@@ -126,9 +125,6 @@ try {
 
     Write-Step "Build solution"
     Invoke-CheckedCommand -FilePath dotnet -Arguments @("build", $solutionPath, "-c", $Configuration, "-p:Platform=x64", "--no-restore")
-
-    Write-Step "Check Lucid.App source inclusion policy"
-    Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $includeCheckPath)
 
     Write-Step "Run C# tests"
     Invoke-CheckedCommand -FilePath dotnet -Arguments @("test", $testProjectPath, "-c", $Configuration, "-p:Platform=x64", "--no-restore")

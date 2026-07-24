@@ -43,31 +43,6 @@
   </ItemGroup>
 
   <!--
-    Source compilation uses default SDK globbing: every .cs under the project is
-    compiled automatically, so new files need no per-file <Compile Include>.
-    The removes below carve out the only files that must NOT compile:
-      • Controls\ and Models\ — placeholder/future code; the paired Controls XAML
-        is excluded by the <Page Remove="Controls\**"/> group below.
-      • Services\MockTelemetryService.cs — depends on the excluded Models\ types.
-      • ViewModels\ShellViewModel.cs / SystemIssueViewModel.cs — stubs referencing
-        Core.MVVM / Core.Navigation / Models namespaces that don't exist yet.
-    (Replaces the former 483-entry hand-maintained <Compile Include> allow-list,
-    which silently dropped any new file that wasn't added to it by hand.)
-  -->
-  <ItemGroup>
-    <Compile Remove="Controls\**\*.cs" />
-    <Compile Remove="Models\**\*.cs" />
-    <Compile Remove="Services\MockTelemetryService.cs" />
-    <Compile Remove="ViewModels\ShellViewModel.cs" />
-    <Compile Remove="ViewModels\SystemIssueViewModel.cs" />
-  </ItemGroup>
-
-  <!-- Exclude custom controls XAML (they reference excluded code) -->
-  <ItemGroup>
-    <Page Remove="Controls\**" />
-  </ItemGroup>
-
-  <!--
     Copy lucid_scanner.dll from the Rust release build into the app output and publish directories.
     The DLL is only available after a release build of lucid-native/ (cargo build, release profile).
     Release builds fail when the DLL is missing so broken native artifacts are caught before runtime.

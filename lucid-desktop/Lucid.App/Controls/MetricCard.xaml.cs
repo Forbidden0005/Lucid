@@ -47,7 +47,7 @@ public sealed partial class MetricCard : UserControl
     public static readonly DependencyProperty DetailTextProperty =
         DependencyProperty.Register(nameof(DetailText), typeof(string), typeof(MetricCard),
             new PropertyMetadata(string.Empty, (d, e) =>
-                ((MetricCard)d).DetailText.Text = (string)e.NewValue));
+                ((MetricCard)d).DetailTextBlock.Text = (string)e.NewValue));
 
     public static readonly DependencyProperty DataPointsProperty =
         DependencyProperty.Register(nameof(DataPoints), typeof(IReadOnlyList<double>), typeof(MetricCard),
@@ -151,7 +151,7 @@ public sealed partial class MetricCard : UserControl
     private void UpdateStatusDot(double percent)
     {
         Color dotColor = percent >= CriticalThreshold
-            ? Color.FromArgb(255, 255, 107, 107)    // #FF6B6B — Danger
+            ? Color.FromArgb(255, 255, 107, 107)    // #FF6B6B - high severity
             : percent >= WarningThreshold
                 ? Color.FromArgb(255, 255, 179, 71)  // #FFB347 — Warning
                 : Color.FromArgb(255, 87, 214, 141); // #57D68D — Success
