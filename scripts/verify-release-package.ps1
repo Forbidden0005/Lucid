@@ -57,6 +57,7 @@ try {
     $requiredEntries = @(
         "app/Lucid.App.exe",
         "app/Lucid.App.dll",
+        "app/lucid_scanner.dll",
         "app/RELEASE-SHA256.txt",
         "app/release-artifact-manifest.json",
         "app/release-smoke-result.json",

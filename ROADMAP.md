@@ -191,11 +191,11 @@ retire `check-app-source-includes.ps1`.
 - [ ] Remove `<Compile Remove>` globs and all 481 `<Compile Include>` entries
 - [ ] Confirm build output identical; retire guard script from CI
 
-### C6 — Rust absent from CI; Release native DLL remains optional (P1)
+### C6 — Rust CI and Release native DLL enforcement (P1) — done 2026-07-24
 Test depth improved materially during Phase 3: 249 C# tests, 19 Rust tests, and executor safety
-coverage across the 27 registered production executors. Remaining risk is CI enforcement and native
-artifact reliability: Rust still has no CI job, and the build silently skips copying
-`lucid_scanner.dll` when missing — a broken native build is undetectable until runtime.
+coverage across the 27 registered production executors. This item closed the remaining native
+reliability gap: Rust is enforced in CI, and Release builds no longer silently skip
+`lucid_scanner.dll` when missing.
 
 **Fix:** See Testing Plan. Make Release copy step a hard error when DLL is missing.
 
@@ -205,11 +205,17 @@ artifact reliability: Rust still has no CI job, and the build silently skips cop
       seams, hostile rollback-token safety)
 - [x] Rust unit tests — done 2026-06-10: 19 tests covering FFI argument/UTF-8 validation,
       long-path `\\?\` traversal, junction-cycle termination, path-form handling
-- [ ] `cargo test/clippy/fmt` CI job — blocked on human review (CI changes are an
-      autonomous hard stop)
-      - Local precondition now clean as of 2026-06-11: `cargo fmt --check`,
-        `cargo clippy -- -D warnings`, and `cargo test` all pass
-- [ ] Make missing DLL a hard build error for Release configuration
+- [x] `cargo test/clippy/fmt` CI job — done 2026-07-24: `native-rust` runs
+      `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, and
+      `cargo build --release`, then uploads `lucid_scanner.dll` as a CI artifact consumed by
+      the Release build and publish jobs
+- [x] Make missing DLL a hard build error for Release configuration — done 2026-07-24:
+      `Lucid.App.csproj` fails Release build/publish when `lucid_scanner.dll` is absent; Debug
+      remains optional. Local proof: MSBuild failed with the expected Release error when
+      `LucidNativeDll` was pointed at a missing file; normal Release build passed with the real DLL.
+- [x] Require native DLL in release package verification — done 2026-07-24:
+      `prepare-release-artifact.ps1` requires `lucid_scanner.dll`, and
+      `verify-release-package.ps1` requires `app/lucid_scanner.dll` in the zip.
 
 ### C7 — 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls (P1)
 Silent failure directly contradicts the explainability doctrine. A platform that explains the system
@@ -315,6 +321,11 @@ Do not add items here that have not been verified.
   `C:\Users\tyler\AppData\Local\Temp\lucid-clean-checkout-20260724-165334` passed
   `scripts\verify-release.ps1` end-to-end; GitHub Actions run `30129408800` passed all Debug,
   Release, test, and publish artifact jobs for PR #28 at `7f5affc`.
+- C6 native CI and Release artifact enforcement completed 2026-07-24: GitHub Actions now runs
+  `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, and `cargo build --release`
+  in a dedicated Rust job; the produced `lucid_scanner.dll` is uploaded and consumed by Release
+  build/publish jobs. Release MSBuild now fails if the native DLL is missing, and release package
+  verification requires `app/lucid_scanner.dll`.
 
 ### Storage Intelligence — asset migration (2026-07-13)
 - Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.
@@ -573,8 +584,8 @@ Goal: protect the parts of Lucid that can harm trust.
 - [x] Rust scanner tests (19 tests)
 - [x] Executor safety contract suite across all 27 registered executors (dry-run purity, rollback metadata, hostile-path inputs) (C6) — done 2026-06-10, see session notes
 - [x] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6) — done 2026-06-10, all 19 passing
-- [ ] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6)
-- [ ] Make missing `lucid_scanner.dll` a hard build error for Release (C6)
+- [x] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6) — done 2026-07-24
+- [x] Make missing `lucid_scanner.dll` a hard build error for Release (C6) — done 2026-07-24
 - [x] Persistence durability tests: queue-overflow back-pressure, corrupt-DB backup/recreate,
       poison-write batch isolation, lifecycle write gating — done 2026-06-10
       (flush-on-shutdown was already covered by existing dispose final-flush tests)
@@ -724,8 +735,9 @@ a formal Execution Priority Queue (Foreground/Background/Idle-only classes). Unt
 concurrent heavy operations are prevented only by convention. Belongs in Phase 5.
 
 ### Concern 4: Native Boundary Is Silently Optional
-The csproj copies `lucid_scanner.dll` if present and logs "skipping" if not. Release builds must
-fail loudly — make the copy step `Error` severity for Release/publish. Add Rust build+test to CI.
+Closed 2026-07-24: Release builds and publish output now fail when `lucid_scanner.dll` is missing.
+CI builds the Rust scanner, runs fmt/clippy/tests, uploads the native DLL, and feeds that artifact
+into the Release build and publish jobs.
 
 ---
 
@@ -754,7 +766,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 - 296 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
 - Test files are committed; remaining C1 blocker is fresh-clone / CI proof on the now-tracked infrastructure
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
-- Rust: 19 tests; no CI job
+- Rust: 19 tests; CI job now runs fmt, clippy, tests, and release DLL build
 - SQLite durability tests cover real file behavior; broader app-level persistence integration coverage is still absent
 
 ### Improvement Plan (ordered)
@@ -782,8 +794,8 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 **P1: Rust tests + CI job**
 - Path handling, long-path `\\?\` behavior, junction/symlink cycles — done 2026-06-10 (19 tests total)
 - FFI surface: null/invalid inputs must not panic across the boundary (panic across FFI is UB) — done 2026-06-10
-- Add `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` to CI
-- Publish DLL as CI artifact consumed by publish job
+- Add `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` to CI — done 2026-07-24
+- Publish DLL as CI artifact consumed by publish job — done 2026-07-24
 
 **P2: Coverage visibility**
 - Publish coverage summary to CI job summary
@@ -805,7 +817,7 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 | Analyzers | Default only | Enable `AnalysisLevel=latest`, `EnforceCodeStyleInBuild=true`, `BannedApiAnalyzers` |
 | Warnings | 0 today | `TreatWarningsAsErrors=true` in `Directory.Build.props` — cheapest moment is now |
 | Package versions | Inline in csproj ×2 | `Directory.Packages.props` central package management |
-| Rust tooling | Local `fmt`, `clippy -D warnings`, and tests pass; no CI job | Add `cargo fmt --check` + `cargo clippy -D warnings` + `cargo test` CI job |
+| Rust tooling | CI runs `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, and `cargo build --release` | Keep Rust gates release-blocking and feed `lucid_scanner.dll` into Release publish |
 | Commit hooks | None | Optional lightweight pre-commit running `dotnet format` on staged files — skip if it adds friction |
 | CI duplication | 4 jobs repeat restore/validate verbatim | Composite action or `workflow_call`; `concurrency:` group with cancel-in-progress; NuGet caching |
 
