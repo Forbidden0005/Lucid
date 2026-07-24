@@ -108,6 +108,10 @@ cargo test
 - `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
 - 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
 - Rust scanner now has 19 tests but is still absent from CI entirely
+- Local release verification on this workstation currently reaches the Rust gate and then fails
+  because `link.exe` and Windows SDK import libraries such as `kernel32.lib` are not installed
+  or discoverable. Install Visual C++ Build Tools / Windows SDK or confirm CI green before
+  treating release verification as complete.
 - `NETSDK1206` warning during build — expected, non-critical, from Windows App SDK NuGet
 
 ---
@@ -293,6 +297,14 @@ Do not add items here that have not been verified.
 - `release/release-operations.json` defines repo-tracked channel ownership, rollout posture, symbol handling, and support-intake policy
 - `scripts/validate-release-operations.ps1` enforces that contract during local and CI verification
 - `installer/Export-LucidSupportBundle.ps1` exports support bundle; `scripts/verify-support-bundle-export.ps1` verifies it
+- `scripts/verify-release.ps1` keeps setup-exe generation as an explicit `-BuildSetupExe` gate
+  so the normal release verification path does not depend on Inno Setup being installed.
+  `scripts/build-setup-exe.ps1` derives the exact package zip from `release/release-metadata.json`
+  instead of selecting the newest zip by timestamp, and `scripts/verify-dev.ps1` resolves Cargo
+  from PATH or the standard Rustup user install path. Verified 2026-07-24: PowerShell parse checks
+  passed, `git diff --check` passed, and `scripts/verify-release.ps1` reached Rust after Release
+  build, 351 C# tests, publish, smoke, package, update feed, installer round-trip, and support
+  bundle gates. Rust remained blocked by missing MSVC linker / Windows SDK import libraries.
 
 ### Storage Intelligence — asset migration (2026-07-13)
 - Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.

@@ -25,10 +25,32 @@ function Invoke-CheckedCommand {
         throw ("Command failed with exit code {0}: {1} {2}" -f $LASTEXITCODE, $FilePath, ($Arguments -join " "))
     }
 }
+function Resolve-ToolPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName,
+
+        [string[]]$FallbackPaths = @()
+    )
+
+    $command = Get-Command $CommandName -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    foreach ($path in $FallbackPaths) {
+        if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+            return $path
+        }
+    }
+
+    throw "Required tool not found: $CommandName"
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $desktopDir = Join-Path $repoRoot "lucid-desktop"
 $nativeDir = Join-Path $repoRoot "lucid-native"
+$cargoPath = Resolve-ToolPath -CommandName "cargo" -FallbackPaths @((Join-Path $env:USERPROFILE ".cargo\bin\cargo.exe"))
 $solutionPath = Join-Path $desktopDir "Lucid.slnx"
 $appProjectPath = Join-Path $desktopDir "Lucid.App\Lucid.App.csproj"
 $testProjectPath = Join-Path $desktopDir "Lucid.Tests\Lucid.Tests.csproj"
@@ -116,7 +138,7 @@ finally {
 Write-Step "Run Rust tests"
 Push-Location $nativeDir
 try {
-    Invoke-CheckedCommand -FilePath cargo -Arguments @("test")
+    Invoke-CheckedCommand -FilePath $cargoPath -Arguments @("test")
 }
 finally {
     Pop-Location
