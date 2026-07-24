@@ -46,6 +46,49 @@ function Resolve-ToolPath {
 
     throw "Required tool not found: $CommandName"
 }
+function Resolve-VsDevCmdPath {
+    $vswhereCandidates = @(
+        (Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"),
+        (Join-Path $env:ProgramFiles "Microsoft Visual Studio\Installer\vswhere.exe")
+    )
+
+    foreach ($vswherePath in $vswhereCandidates) {
+        if (Test-Path -LiteralPath $vswherePath -PathType Leaf) {
+            $installPath = & $vswherePath -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if (-not [string]::IsNullOrWhiteSpace($installPath)) {
+                $candidate = Join-Path $installPath "Common7\Tools\VsDevCmd.bat"
+                if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                    return $candidate
+                }
+            }
+        }
+    }
+
+    $defaultCandidate = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat"
+    if (Test-Path -LiteralPath $defaultCandidate -PathType Leaf) {
+        return $defaultCandidate
+    }
+
+    throw "Visual Studio Developer Command Prompt not found. Install Visual Studio Build Tools with the C++ workload."
+}
+function Invoke-RustTests {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CargoPath
+    )
+
+    if (Get-Command "link.exe" -ErrorAction SilentlyContinue) {
+        Invoke-CheckedCommand -FilePath $CargoPath -Arguments @("test")
+        return
+    }
+
+    $vsDevCmdPath = Resolve-VsDevCmdPath
+    $cmdLine = "`"$vsDevCmdPath`" -arch=x64 -host_arch=x64 && `"$CargoPath`" test"
+    & cmd.exe /s /c $cmdLine
+    if ($LASTEXITCODE -ne 0) {
+        throw ("Command failed with exit code {0}: {1}" -f $LASTEXITCODE, $cmdLine)
+    }
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $desktopDir = Join-Path $repoRoot "lucid-desktop"
@@ -138,7 +181,7 @@ finally {
 Write-Step "Run Rust tests"
 Push-Location $nativeDir
 try {
-    Invoke-CheckedCommand -FilePath $cargoPath -Arguments @("test")
+    Invoke-RustTests -CargoPath $cargoPath
 }
 finally {
     Pop-Location

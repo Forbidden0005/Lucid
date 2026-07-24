@@ -108,10 +108,10 @@ cargo test
 - `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
 - 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
 - Rust scanner now has 19 tests but is still absent from CI entirely
-- Local release verification on this workstation currently reaches the Rust gate and then fails
-  because `link.exe` and Windows SDK import libraries such as `kernel32.lib` are not installed
-  or discoverable. Install Visual C++ Build Tools / Windows SDK or confirm CI green before
-  treating release verification as complete.
+- Local workstation prerequisites now include Visual Studio Build Tools with the C++ workload,
+  Windows SDK import libraries, Rustup/Cargo, and Inno Setup for the optional setup-exe gate.
+  `scripts/verify-dev.ps1` initializes the Visual Studio developer environment for Rust tests
+  when `link.exe` is not already on PATH.
 - `NETSDK1206` warning during build — expected, non-critical, from Windows App SDK NuGet
 
 ---
@@ -304,7 +304,10 @@ Do not add items here that have not been verified.
   from PATH or the standard Rustup user install path. Verified 2026-07-24: PowerShell parse checks
   passed, `git diff --check` passed, and `scripts/verify-release.ps1` reached Rust after Release
   build, 351 C# tests, publish, smoke, package, update feed, installer round-trip, and support
-  bundle gates. Rust remained blocked by missing MSVC linker / Windows SDK import libraries.
+  bundle gates. Follow-up on 2026-07-24 installed Visual Studio Build Tools / Windows SDK and
+  updated `scripts/verify-dev.ps1` to initialize `VsDevCmd.bat` for Rust when needed. Full
+  `scripts/verify-release.ps1` then passed locally end-to-end, including 351 C# tests and 19 Rust
+  tests. `scripts/build-setup-exe.ps1` also produced `Lucid-Setup-0.1.0-preview.exe` with checksum.
 
 ### Storage Intelligence — asset migration (2026-07-13)
 - Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.
