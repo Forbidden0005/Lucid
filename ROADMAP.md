@@ -99,9 +99,6 @@ cargo test
   production set in `AppServices` is 27)
 
 **Known active issues (not yet fixed):**
-- Fresh-clone / CI proof is still incomplete: the previously untracked CI, release, installer, and
-  support infrastructure was committed on 2026-06-11 (`107a6fb`), and the current worktree is
-  clean, but a scratch-clone verification / CI-green confirmation is still not recorded here.
 - CRLF/LF churn — `.gitattributes` committed 2026-06-10; repo-wide renormalize still pending (C2)
 - ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
@@ -120,10 +117,9 @@ cargo test
 
 These block professional quality and must be resolved before any new feature work.
 
-### C1 — Clean-checkout / CI proof still pending (P0)
+### C1 — Clean-checkout / CI proof (P0) — done 2026-07-24
 The load-bearing CI, release, installer, and support infrastructure that was previously local-only
-is now committed on `main`, and `git status` is clean. What remains is proving that a fresh
-checkout follows the documented path end-to-end and that CI is green from that state.
+is now committed and verified from a clean checkout and GitHub Actions.
 
 **Fix:** Verify with a scratch clone + CI run, then keep the roadmap aligned with that evidence.
 
@@ -134,7 +130,12 @@ checkout follows the documented path end-to-end and that CI is green from that s
       done 2026-06-11 (`107a6fb`): `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`,
       14 additional `scripts/*.ps1`, `installer/`, `Directory.Build.props`, `release/*.json`,
       and `AUDIT_ROADMAP.md`
-- [ ] Confirm CI green from clean checkout
+- [x] Confirm CI green from clean checkout — done 2026-07-24:
+      scratch clone `C:\Users\tyler\AppData\Local\Temp\lucid-clean-checkout-20260724-165334`
+      passed `scripts\verify-release.ps1` end-to-end: Release build, 351 C# tests, publish,
+      smoke, package/update-feed checks, installer round-trip, support bundle export, and 19 Rust
+      tests. GitHub Actions run `30129408800` on PR #28 / commit `7f5affc` passed: Debug build,
+      Release build, Debug tests, Release tests, and publish release artifact.
 
 ### C2 — Line-ending renormalization still pending (P0)
 613 modified files showing ~113k insertions / ~112k deletions — almost entirely CRLF↔LF.
@@ -308,6 +309,10 @@ Do not add items here that have not been verified.
   updated `scripts/verify-dev.ps1` to initialize `VsDevCmd.bat` for Rust when needed. Full
   `scripts/verify-release.ps1` then passed locally end-to-end, including 351 C# tests and 19 Rust
   tests. `scripts/build-setup-exe.ps1` also produced `Lucid-Setup-0.1.0-preview.exe` with checksum.
+- C1 clean-checkout and CI proof completed 2026-07-24: scratch clone
+  `C:\Users\tyler\AppData\Local\Temp\lucid-clean-checkout-20260724-165334` passed
+  `scripts\verify-release.ps1` end-to-end; GitHub Actions run `30129408800` passed all Debug,
+  Release, test, and publish artifact jobs for PR #28 at `7f5affc`.
 
 ### Storage Intelligence — asset migration (2026-07-13)
 - Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.
