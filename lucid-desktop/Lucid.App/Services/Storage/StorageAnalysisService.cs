@@ -1,4 +1,5 @@
-﻿using Lucid.Services.Timeline;
+﻿using Lucid.Services.Governance;
+using Lucid.Services.Timeline;
 
 namespace Lucid.Services.Storage;
 
@@ -32,13 +33,29 @@ public sealed record StorageScanProgress(
 /// Threading:
 ///   StartScanAsync offloads all I/O to the thread pool. Progress and completion
 ///   events are marshalled back to the UI thread via the injected DispatcherQueue.
+///
+/// Resource governance (adoption audit 2026-07-25, site #11):
+///   The full pipeline holds the <see cref="WorkloadCategory.StorageScan"/> and
+///   <see cref="WorkloadCategory.DuplicateHashing"/> slots (both limit-1), so
+///   scans serialize against each other and appear on the governance page.
+///   Both slots are acquired up front — nothing else uses DuplicateHashing, and
+///   splitting the acquisition mid-pipeline would only add failure modes.
+///   When the budget refuses admission, the scan waits on the deferred queue
+///   (progress shows the reason) instead of running ungoverned; CancelScan
+///   still works while waiting.
 /// </summary>
 public sealed class StorageAnalysisService : IStorageAnalysisService
 {
+    private const string ScanWorkloadName    = "Storage analysis scan";
+    private const string HashingWorkloadName = "Duplicate detection hashing";
+
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly TimelineAggregationService?              _timeline;
+    private readonly IRuntimeGovernanceService?               _governance;
 
     private CancellationTokenSource? _cts;
+    private bool _holdsScanSlot;
+    private bool _holdsHashingSlot;
 
     public StorageAnalysisResult? LastResult { get; private set; }
     public bool                   IsScanning { get; private set; }
@@ -52,12 +69,18 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
     private const long DuplicateSizeThreshold  = 100 * 1_024L;      // 100 KB
     private const int  MaxLargeFileResults     = 200;
 
+    /// <param name="governance">
+    /// Optional so pure/unit contexts can run ungoverned; the production call
+    /// site (StorageViewModel) always injects the runtime governance service.
+    /// </param>
     public StorageAnalysisService(
         Microsoft.UI.Dispatching.DispatcherQueue dispatcher,
-        TimelineAggregationService?              timeline = null)
+        TimelineAggregationService?              timeline   = null,
+        IRuntimeGovernanceService?               governance = null)
     {
         _dispatcher = dispatcher;
         _timeline   = timeline;
+        _governance = governance;
     }
 
     // ── IStorageAnalysisService ───────────────────────────────────────────────
@@ -69,17 +92,97 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
         _cts      = CancellationTokenSource.CreateLinkedTokenSource(ct);
         IsScanning = true;
 
+        try
+        {
+            if (!await AcquireGovernanceSlotsAsync(_cts.Token).ConfigureAwait(false))
+                return; // deferral expired or scan cancelled while waiting
+
+            await RunScanSessionAsync(_cts.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            ReleaseGovernanceSlots();
+            IsScanning = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
+    /// <summary>
+    /// Waits for the StorageScan + DuplicateHashing slots. Returns false when
+    /// the deferred wait expired; reports a WasCancelled result when the user
+    /// cancels while waiting so the UI unwinds normally.
+    /// </summary>
+    private async Task<bool> AcquireGovernanceSlotsAsync(CancellationToken ct)
+    {
+        if (_governance is null) return true;
+
+        try
+        {
+            _holdsScanSlot = await GovernedWorkRunner.WaitForSlotAsync(
+                _governance, WorkloadCategory.StorageScan, ScanWorkloadName, ct,
+                onDeferred: reason => ReportProgress(0, $"Waiting to start — {reason}", 0, 0))
+                .ConfigureAwait(false);
+
+            if (!_holdsScanSlot)
+            {
+                ReportProgress(0, "Scan not started — the system stayed busy. Try again later.", 0, 0);
+                return false;
+            }
+
+            _holdsHashingSlot = await GovernedWorkRunner.WaitForSlotAsync(
+                _governance, WorkloadCategory.DuplicateHashing, HashingWorkloadName, ct,
+                onDeferred: reason => ReportProgress(0, $"Waiting to start — {reason}", 0, 0))
+                .ConfigureAwait(false);
+
+            if (!_holdsHashingSlot)
+            {
+                ReportProgress(0, "Scan not started — the system stayed busy. Try again later.", 0, 0);
+                return false;
+            }
+
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            PublishResult(new StorageAnalysisResult(
+                ScanRoot(), DateTimeOffset.Now, TimeSpan.Zero,
+                0, 0, [], [], [], [], WasCancelled: true), announce: false);
+            return false;
+        }
+    }
+
+    private void ReleaseGovernanceSlots()
+    {
+        if (_governance is null) return;
+
+        if (_holdsHashingSlot)
+        {
+            _governance.ReleaseSlot(WorkloadCategory.DuplicateHashing, HashingWorkloadName);
+            _holdsHashingSlot = false;
+        }
+        if (_holdsScanSlot)
+        {
+            _governance.ReleaseSlot(WorkloadCategory.StorageScan, ScanWorkloadName);
+            _holdsScanSlot = false;
+        }
+    }
+
+    private static string ScanRoot() => Path.GetPathRoot(
+        Environment.GetFolderPath(Environment.SpecialFolder.System)) ?? @"C:\";
+
+    private async Task RunScanSessionAsync(CancellationToken ct)
+    {
         AddTimeline("Storage scan started",
             "Lucid is scanning for large files, duplicates, and category breakdown.",
             TimelineEventSeverity.Info, started: true);
 
-        var scanRoot = Path.GetPathRoot(
-            Environment.GetFolderPath(Environment.SpecialFolder.System)) ?? @"C:\";
+        var scanRoot = ScanRoot();
 
         StorageAnalysisResult result;
         try
         {
-            result = await Task.Run(() => RunScan(scanRoot, _cts.Token), _cts.Token)
+            result = await Task.Run(() => RunScan(scanRoot, ct), ct)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -88,14 +191,13 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
                 scanRoot, DateTimeOffset.Now, TimeSpan.Zero,
                 0, 0, [], [], [], [], WasCancelled: true);
         }
-        finally
-        {
-            IsScanning = false;
-            _cts?.Dispose();
-            _cts = null;
-        }
 
-        if (!result.WasCancelled)
+        PublishResult(result, announce: true);
+    }
+
+    private void PublishResult(StorageAnalysisResult result, bool announce)
+    {
+        if (announce && !result.WasCancelled)
         {
             string detail =
                 $"Scanned {result.TotalFilesScanned:N0} files " +
