@@ -69,6 +69,9 @@ jobs:
       - name: Validate release operations policy
         run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-operations.ps1
 
+      - name: Check code debt ratchet
+        run: powershell.exe -ExecutionPolicy Bypass -File scripts/check-debt-ratchet.ps1
+
       - name: Build solution
         working-directory: lucid-desktop
         run: >

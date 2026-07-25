@@ -8,4 +8,17 @@
     <FileVersion>0.1.0.0</FileVersion>
     <InformationalVersion>0.1.0+local</InformationalVersion>
   </PropertyGroup>
+
+  <!--
+    Warning ratchet (ROADMAP Phase 4 "Enable analyzers + TreatWarningsAsErrors").
+    Locked in while the warning count is zero, so it is pure prevention.
+    NETSDK1206 (Windows App SDK version-specific RIDs) is an MSBuild SDK warning,
+    not a compiler warning, and is unaffected by TreatWarningsAsErrors.
+    The lexical debt freeze (AppServices consumers, debug prints, empty catches)
+    lives in scripts/check-debt-ratchet.ps1 and runs in CI and verify-dev.ps1.
+  -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
 </Project>

@@ -111,12 +111,16 @@ $releaseUpdateManifestVerifyPath = Join-Path $PSScriptRoot "verify-release-updat
 $releaseUpdateFeedPath = Join-Path $PSScriptRoot "generate-release-update-feed.ps1"
 $releaseUpdateFeedVerifyPath = Join-Path $PSScriptRoot "verify-release-update-feed.ps1"
 $supportBundleVerifyPath = Join-Path $PSScriptRoot "verify-support-bundle-export.ps1"
+$debtRatchetCheckPath = Join-Path $PSScriptRoot "check-debt-ratchet.ps1"
 
 Write-Step "Validate release metadata"
 Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseMetadataCheckPath)
 
 Write-Step "Validate release operations policy"
 Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $releaseOperationsCheckPath)
+
+Write-Step "Check code debt ratchet"
+Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $debtRatchetCheckPath)
 
 Write-Step "Restore solution"
 Push-Location $desktopDir
