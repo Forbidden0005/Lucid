@@ -1,3 +1,5 @@
+> ARCHIVED SNAPSHOT (2026-06-06) — superseded by `ROADMAP.md`, do not act on this.
+
 # Lucid - Remaining Work
 
 Updated 2026-06-06 after production-readiness audit.

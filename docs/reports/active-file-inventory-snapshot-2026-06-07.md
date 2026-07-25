@@ -1,3 +1,5 @@
+> ARCHIVED SNAPSHOT (2026-06-07) — superseded by `ROADMAP.md`, do not act on this.
+
 # Active File Inventory
 
 This document records the active Lucid application surface that is expected to stay under direct maintenance.

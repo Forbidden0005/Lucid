@@ -35,7 +35,7 @@ direction can be chosen on purpose instead of by accumulation.
 | C# files (`Lucid.App`) | — | **~521** |
 | Pages | "13 pages" (CLAUDE.md, now corrected) | **23** |
 | Executors | "28" (CLAUDE.md, now corrected) | **27** registered |
-| Tests | "126" (AUDIT_ROADMAP.md, stale) | **249** passing |
+| Tests | "126" (`docs/reports/audit-roadmap-2026-06-10.md`, stale) | **249** passing |
 
 The headline: the roadmap names Phase 1 as the thing to finish first, but the code
 already contains large parts of Phase 2 (Replay, advanced forecasting), Phase 3

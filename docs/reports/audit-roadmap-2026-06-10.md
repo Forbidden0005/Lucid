@@ -1,3 +1,5 @@
+> ARCHIVED SNAPSHOT (2026-06-10 audit) — superseded by `ROADMAP.md`, do not act on this.
+
 # Lucid Professionalization Roadmap
 
 > **Scope note:** This document is the output of a full-repository quality audit performed 2026-06-10.

@@ -45,7 +45,7 @@
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
 | Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 296 passing C# tests |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 351 passing C# tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -230,18 +230,29 @@ Enforce via `BannedApiAnalyzers`.
 - [ ] Replace all 33 debug/console prints with `IOperationalLogger`
 - [ ] Add banned-API analyzer rule to prevent recurrence
 
-### C8 — Doc sprawl: triplicated agent instructions; stale state snapshots (P2)
-`CLAUDE.md` / `AGENTS.md` / `CODEX.md` are near-identical ~14 KB copies — drift is inevitable.
-`CURRENT_STATE.md` counts are stale. `docs/reports/` contains `NEW_ROADMAP.md` competing with this file.
-`docs/Structure.txt` and `docs/active-file-inventory.md` cannot describe a 500-file app.
+### C8 — Doc sprawl: triplicated agent instructions; stale state snapshots (P2) — done 2026-07-25
+`CLAUDE.md` / `AGENTS.md` / `CODEX.md` were near-identical ~14 KB copies — drift was inevitable.
+`CURRENT_STATE.md` counts were stale. `docs/Structure.txt` and `docs/active-file-inventory.md`
+cannot describe a 500-file app.
 
-**Fix:** Single-source agent instructions. Retire stale docs. See Documentation State.
+**Fix:** Single-source agent instructions. Retire stale docs (archived, per owner preference,
+rather than deleted). See Documentation State.
 
-- [ ] Reduce `AGENTS.md` and `CODEX.md` to one-paragraph pointers to `CLAUDE.md`
-- [ ] Delete `CURRENT_STATE.md` (this file + CI are the live state)
-- [ ] Retire `REMAINING_WORK.md` (folded into this roadmap)
-- [ ] Move `docs/reports/` → `docs/history/` with dated filenames
-- [ ] Delete `docs/Structure.txt` and `docs/active-file-inventory.md`
+- [x] Reduce `AGENTS.md` and `CODEX.md` to short pointers to `CLAUDE.md` (unique
+      autonomous-session rules retained in `AGENTS.md`) — done 2026-07-25
+- [x] Retire `CURRENT_STATE.md` (this file + CI are the live state) — archived 2026-07-25 as
+      `docs/reports/current-state-2026-07-02.md`
+- [x] Retire `REMAINING_WORK.md` (folded into this roadmap) — archived 2026-07-25 as
+      `docs/reports/remaining-work-2026-06-06.md`; root `AUDIT_ROADMAP.md` likewise archived as
+      `docs/reports/audit-roadmap-2026-06-10.md`
+- [x] Consolidate point-in-time snapshots under one archive home with dated filenames —
+      done 2026-07-25: `docs/reports/` is the established archive location (superseding the
+      earlier `docs/history/` idea); every archived snapshot carries a dated filename and an
+      "ARCHIVED SNAPSHOT — superseded by ROADMAP.md" banner
+- [x] Retire `docs/Structure.txt` and `docs/active-file-inventory.md` — archived 2026-07-25 as
+      `docs/reports/structure-snapshot-undated.txt` and
+      `docs/reports/active-file-inventory-snapshot-2026-06-07.md` (archived under `docs/reports/`
+      rather than deleted)
 
 ### C9 — `_archive/` committed to main (39 tracked files) (P2)
 Git history already preserves deleted code. Tracked archives rot, participate in repo-wide operations,
@@ -281,7 +292,8 @@ Do not add items here that have not been verified.
 - `setup.ps1` resolves solution and launch paths from repo location instead of stale `ExplainMyPC` path
 - `scripts/verify-dev.ps1` added as one-command local verification entrypoint
 - `scripts/check-app-source-includes.ps1` verifies `Lucid.App.csproj` remains on SDK default globbing without explicit source/XAML include or remove lists
-- `docs/active-file-inventory.md` records active file counts and current intentional non-compiled files
+- `docs/active-file-inventory.md` recorded active file counts and intentional non-compiled files
+  (snapshot archived 2026-07-25 as `docs/reports/active-file-inventory-snapshot-2026-06-07.md`)
 
 ### Build, CI, and Release Pipeline
 - Release verification via `scripts/verify-dev.ps1 -Configuration Release -PublishApp` and `scripts/verify-release.ps1`
@@ -469,7 +481,8 @@ Do not add items here that have not been verified.
 - Discovered and repaired truncation of this file: the tail (final rows of the Tooling table plus
   sections Documentation State, Dependency Review, Deferred Work, Definition of Professional
   Quality) was lost to a truncated write committed unnoticed in `e1f52fa` and carried through all
-  subsequent commits. Reconstructed from `AUDIT_ROADMAP.md` with an inline reconstruction note.
+  subsequent commits. Reconstructed from `AUDIT_ROADMAP.md` (now archived as
+  `docs/reports/audit-roadmap-2026-06-10.md`) with an inline reconstruction note.
   The stale ToC entry for a missing "Engineering Professionalization Roadmap" section was removed
   2026-06-11
 - Diagnosed and dismissed phantom repo corruption: the agent sandbox's filesystem mount served
@@ -524,8 +537,10 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
       clean-checkout / CI proof
 - [x] Add `release/` to `.gitignore` (C3) — done 2026-06-10, verified via `git check-ignore`
 - [ ] Delete `_archive/` after tagging (C9)
-- [ ] Consolidate triplicated agent instruction docs (C8)
-- [ ] Retire stale `CURRENT_STATE.md` and `REMAINING_WORK.md` (C8)
+- [x] Consolidate triplicated agent instruction docs (C8) — done 2026-07-25: `AGENTS.md` and
+      `CODEX.md` reduced to pointers to `CLAUDE.md`
+- [x] Retire stale `CURRENT_STATE.md` and `REMAINING_WORK.md` (C8) — archived 2026-07-25 under
+      `docs/reports/` with dated filenames
 
 **Exit criteria:**
 - No tracked generated IDE/build artifacts
@@ -770,7 +785,7 @@ into the Release build and publish jobs.
 ## Testing Plan
 
 ### Current Status
-- 296 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
+- 351 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
 - Test files are committed; remaining C1 blocker is fresh-clone / CI proof on the now-tracked infrastructure
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
 - Rust: 19 tests; CI job now runs fmt, clippy, tests, and release DLL build
@@ -832,7 +847,8 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 > through the end of this file was reconstructed after the original tail of this document was lost
 > to a truncated write — the truncation was committed unnoticed in `e1f52fa` and carried through
 > every subsequent commit. Sources for the reconstruction: `AUDIT_ROADMAP.md` (the 2026-06-10 audit
-> this file consolidates) and the surviving body of this document. The stale Table of Contents entry
+> this file consolidates, now archived as `docs/reports/audit-roadmap-2026-06-10.md`) and the
+> surviving body of this document. The stale Table of Contents entry
 > for a missing "Engineering Professionalization Roadmap" section was removed on 2026-06-11; the
 > professionalization phases live under Product Roadmap.
 
@@ -844,14 +860,20 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 `docs/security-model.md`, `docs/ui-guidelines.md`, `docs/release-packaging.md`, release checklists,
 `ONBOARDING.md`, `PROJECT_INTEGRITY.md`.
 
-**Problems (tracked as C8):**
-- `CLAUDE.md` / `AGENTS.md` / `CODEX.md` are near-identical ~14 KB copies — single-source them;
-  reduce the other two to one-paragraph pointers
-- `CURRENT_STATE.md` counts rot within days of writing — delete it; this file plus CI are the live state
-- `REMAINING_WORK.md` content was folded into this roadmap — retire the file
-- `docs/reports/` mixes living docs with dead audit artifacts — move to `docs/history/` with dated
-  filenames; `NEW_ROADMAP.md` must not coexist with this file unmarked
-- `docs/Structure.txt` and `docs/active-file-inventory.md` are stale by construction — delete
+**Problems (tracked as C8) — resolved 2026-07-25:**
+- `CLAUDE.md` / `AGENTS.md` / `CODEX.md` were near-identical ~14 KB copies — single-sourced:
+  `AGENTS.md` and `CODEX.md` are now short pointers to `CLAUDE.md`
+- `CURRENT_STATE.md` counts rotted within days of writing — archived as
+  `docs/reports/current-state-2026-07-02.md`; this file plus CI are the live state
+- `REMAINING_WORK.md` content was folded into this roadmap — archived as
+  `docs/reports/remaining-work-2026-06-06.md` (root `AUDIT_ROADMAP.md` archived alongside as
+  `docs/reports/audit-roadmap-2026-06-10.md`)
+- `docs/reports/` is now the single archive home for dated point-in-time snapshots (the earlier
+  `docs/history/` plan was superseded); archived snapshots carry "ARCHIVED SNAPSHOT" banners.
+  Remaining follow-up: `docs/reports/NEW_ROADMAP.md` predates this file and is not yet banner-marked
+- `docs/Structure.txt` and `docs/active-file-inventory.md` were stale by construction — archived as
+  `docs/reports/structure-snapshot-undated.txt` and
+  `docs/reports/active-file-inventory-snapshot-2026-06-07.md`
 
 **Missing:**
 - `LICENSE` — decide proprietary notice vs. OSS license; currently legally ambiguous

@@ -1,3 +1,5 @@
+ARCHIVED SNAPSHOT (undated) - superseded by ROADMAP.md, do not act on this.
+
 Lucid/
 |
 +-- AGENTS.md

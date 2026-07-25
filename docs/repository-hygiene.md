@@ -10,13 +10,14 @@ These files are active project control or operational context and are expected t
 - `ONBOARDING.md`
 - `PROJECT_INTEGRITY.md`
 - `ROADMAP.md`
-- `CODEX.md`
-- `AGENTS.md`
+- `CODEX.md` (pointer to `CLAUDE.md`)
+- `AGENTS.md` (pointer to `CLAUDE.md` plus autonomous-session rules)
 - `CLAUDE.md`
-- `CURRENT_STATE.md`
-- `REMAINING_WORK.md`
 - `setup.ps1`
 - `setup.bat`
+
+Former root state snapshots (`CURRENT_STATE.md`, `REMAINING_WORK.md`, `AUDIT_ROADMAP.md`) were
+archived under `docs/reports/` with dated filenames on 2026-07-25; `ROADMAP.md` is the live state.
 
 ## Active Folders
 
@@ -36,6 +37,11 @@ Current report files:
 - `docs/reports/CLAUDE_REVIEW_REPORT.md`
 - `docs/reports/NEW_ROADMAP.md`
 - `docs/reports/TIDYING_REPORT.md`
+- `docs/reports/current-state-2026-07-02.md` (formerly root `CURRENT_STATE.md`)
+- `docs/reports/remaining-work-2026-06-06.md` (formerly root `REMAINING_WORK.md`)
+- `docs/reports/audit-roadmap-2026-06-10.md` (formerly root `AUDIT_ROADMAP.md`)
+- `docs/reports/structure-snapshot-undated.txt` (formerly `docs/Structure.txt`)
+- `docs/reports/active-file-inventory-snapshot-2026-06-07.md` (formerly `docs/active-file-inventory.md`)
 
 ## Generated Files
 

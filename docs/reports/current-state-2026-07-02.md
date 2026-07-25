@@ -1,3 +1,5 @@
+> ARCHIVED SNAPSHOT (2026-07-02) — superseded by `ROADMAP.md`, do not act on this.
+
 # Lucid - Current State
 
 Generated from repo inspection on 2026-07-02. Code is the source of truth.

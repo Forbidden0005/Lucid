@@ -512,9 +512,11 @@ Full detail in `ROADMAP.md`. Quick reference:
 
 # What Is Already Built
 
-> Regenerated from the actual source tree (not session notes). Scale at last sync:
-> **~528 C# files** in `Lucid.App` across **42 service subdomains**, **23 pages**,
-> **27 executors**, **25 insight rules**, **296 passing tests**.
+> Regenerated from the actual source tree (not session notes). Scale at last sync
+> (verified 2026-07-25): **533 non-generated C# files** in `Lucid.App` across
+> **42 service subdomains**, **24 pages**, **42 XAML files**, **27 registered production
+> executors** (28 executor files including the abstract base), **25 insight rules**,
+> **351 passing C# tests**, **19 passing Rust tests**.
 >
 > ⚠️ Much of the list below is **beyond the roadmap's stated current phase**
 > (Phase 1 — Platform Stabilization). The implementation has run ahead of the
@@ -549,5 +551,5 @@ Full detail in `ROADMAP.md`. Quick reference:
 - **Learning / Behavior** — effectiveness profiles, personalization, workload profiling
 
 ### UI
-- **23 pages** — Dashboard, Insights, Processes, Repairs, Security, Storage, Timeline, Apps, Explain, Settings, Privacy, InsightDetail, Diagnostics, RuntimeGovernance, Replay, Historical, MachineBehavior, DeviceIntelligence, Watchtower, AutonomousRemediation, Simulation, Investigation, Reasoning
+- **24 pages** — Dashboard, Insights, Processes, Repairs, Security, Storage, Timeline, Apps, Explain, Settings, Privacy, InsightDetail, HealthBreakdown, Diagnostics, RuntimeGovernance, Replay, Historical, MachineBehavior, DeviceIntelligence, Watchtower, AutonomousRemediation, Simulation, Investigation, Reasoning
 - **Design system** — theme/style XAML resources, custom controls, Fluent-inspired dark theme
