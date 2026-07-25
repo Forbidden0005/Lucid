@@ -26,7 +26,7 @@ public sealed record StorageScanProgress(
 /// Orchestrates the storage intelligence scan pipeline:
 ///   1. FileSystemScanner    — low-priority BFS traversal of the system drive
 ///   2. StorageCategoryAnalyzer — classifies every file into a category bucket
-///   3. DuplicateDetectionService — size prefilter then MD5 hash grouping
+///   3. DuplicateDetectionService — size prefilter then SHA-256 hash grouping
 ///   4. Timeline events      — emitted for scan started and scan completed
 ///
 /// Threading:

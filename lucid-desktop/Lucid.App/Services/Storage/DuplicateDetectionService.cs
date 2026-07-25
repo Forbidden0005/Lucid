@@ -5,12 +5,13 @@ namespace Lucid.Services.Storage;
 /// <summary>
 /// Two-phase duplicate detection:
 ///   Phase 1 — group files by exact size (free, O(n)).
-///   Phase 2 — for each size group with 2+ files, compute MD5 hash and
+///   Phase 2 — for each size group with 2+ files, compute SHA-256 hash and
 ///              group by hash. Only files that share a size ever get hashed.
 ///
 /// Design:
-///   • MD5 is used for speed — collision resistance is not required since we
-///     always surface duplicates to the user before any deletion occurs.
+///   • SHA-256 is used so a hash-group match means byte-identical content —
+///     duplicate groups feed delete flows, so collision safety matters more
+///     than hash throughput (which is I/O-bound on the file read anyway).
 ///   • Hashing is streamed in 64 KB chunks to avoid loading large files into RAM.
 ///   • Cancellation is checked between files.
 ///   • Files that cannot be read (locked, access denied) are skipped silently.
@@ -95,17 +96,17 @@ internal static class DuplicateDetectionService
     {
         try
         {
-            using var md5    = MD5.Create();
+            using var sha256 = SHA256.Create();
             using var stream = File.Open(
                 path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
             var buffer = new byte[HashBufferSize];
             int read;
             while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-                md5.TransformBlock(buffer, 0, read, null, 0);
+                sha256.TransformBlock(buffer, 0, read, null, 0);
 
-            md5.TransformFinalBlock([], 0, 0);
-            return Convert.ToHexString(md5.Hash!).ToLowerInvariant();
+            sha256.TransformFinalBlock([], 0, 0);
+            return Convert.ToHexString(sha256.Hash!).ToLowerInvariant();
         }
         catch
         {
