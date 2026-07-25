@@ -33,6 +33,7 @@ internal static class WorkloadClassifier
         WorkloadCategory.HistoricalAnalytics => WorkloadPriority.IdleOnly,
         WorkloadCategory.LearningAnalysis    => WorkloadPriority.IdleOnly,
         WorkloadCategory.RollbackMaintenance => WorkloadPriority.IdleOnly,
+        WorkloadCategory.TelemetryRetention  => WorkloadPriority.IdleOnly,
 
         _ => WorkloadPriority.Background,
     };
@@ -55,6 +56,7 @@ internal static class WorkloadClassifier
         WorkloadCategory.HistoricalAnalytics => "Historical Analytics",
         WorkloadCategory.LearningAnalysis    => "Learning Analysis",
         WorkloadCategory.RollbackMaintenance => "Rollback Maintenance",
+        WorkloadCategory.TelemetryRetention  => "Telemetry Retention",
         _ => category.ToString(),
     };
 }

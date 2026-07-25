@@ -125,7 +125,7 @@ public static class AppServices
     private static RecommendationOutcomeRepository? _outcomeRepo;
     private static IHistoricalAnalyticsEngine?      _historicalAnalytics;
     private static HashSet<string>                  _lastInsightIds = [];
-    private static System.Threading.Timer?          _downsampleTimer;
+    private static TelemetryRetentionService?       _telemetryRetention;
 
     // ── Runtime governance layer ──────────────────────────────────────────────
     private static ConcurrencyBudget?          _concurrencyBudget;
@@ -1888,28 +1888,13 @@ public static class AppServices
             _timeline!,
             uiDispatcher);
 
-        // ── Hourly downsampling timer ─────────────────────────────────────────
-        // Aggregates raw telemetry into coarser buckets and evicts stale rows.
-        // Runs on a thread-pool thread — never touches the UI thread.
-        // Idle-only behavior: SQLite WAL means the main thread is never blocked.
-        // Failures are logged, never unobserved — a silently-dead retention
-        // sweep would let telemetry rows accumulate unbounded over long uptime.
-        _downsampleTimer = new System.Threading.Timer(
-            _ => _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _telHistoryRepo!.DownsampleAndPurgeAsync().ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger?.Warning("Persistence",
-                        "Hourly telemetry downsample/purge failed — retention will retry next hour.", ex);
-                }
-            }),
-            state:        null,
-            dueTime:      TimeSpan.FromHours(1),
-            period:       TimeSpan.FromHours(1));
+        // ── Hourly telemetry retention (governed) ─────────────────────────────
+        // Downsampling + stale-row eviction now runs through
+        // TelemetryRetentionService under the TelemetryRetention slot (IdleOnly)
+        // instead of an ungoverned anonymous timer (adoption audit site #4).
+        _telemetryRetention = new TelemetryRetentionService(
+            _telHistoryRepo!, _governance, _operationalLogger!);
+        _telemetryRetention.Start();
 
         // ── Health analytics pre-warm ─────────────────────────────────────────
         // Compute and cache the machine health report in the background at startup
@@ -2106,9 +2091,9 @@ public static class AppServices
         // Learning service is stateless after init — just null the reference.
         _learningService = null;
 
-        // Stop the hourly downsampling timer before disposing SQLite.
-        _downsampleTimer?.Dispose();
-        _downsampleTimer = null;
+        // Stop the telemetry retention loop before disposing SQLite.
+        _telemetryRetention?.Stop();
+        _telemetryRetention = null;
 
         // Replay service is stateless — just null the reference.
         _replayService = null;

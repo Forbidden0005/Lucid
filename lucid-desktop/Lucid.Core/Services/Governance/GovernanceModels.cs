@@ -44,6 +44,7 @@ public enum WorkloadCategory
     HistoricalAnalytics = 22,  // HistoricalAnalyticsEngine.ComputeAsync
     LearningAnalysis    = 23,  // RemediationLearningService.AnalyzePendingActionsAsync
     RollbackMaintenance = 24,  // RollbackStagingMaintenanceService expired-set sweep
+    TelemetryRetention  = 25,  // TelemetryRetentionService hourly downsample + purge
 }
 
 // ── Runtime mode ──────────────────────────────────────────────────────────────
