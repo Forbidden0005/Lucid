@@ -105,12 +105,18 @@ public sealed class OperationalWatchtowerService : IDisposable
 
     private void RunCycleAsync()
     {
-        // Skip under thermal protection or heavy gaming load
-        var mode = _governance.CurrentMode;
-        if (mode == RuntimeMode.ThermalProtection || mode == RuntimeMode.Gaming)
-            return;
-
-        _ = _coordinator.RefreshAsync();
+        // Governed cycle (adoption audit 2026-07-25, site #3): the analytics
+        // pass holds the HistoricalAnalytics slot (IdleOnly), so it only runs
+        // when the system is calm — replacing the old advisory check that
+        // still let it run under HighLoad/LowPower. When refused, the pass is
+        // deferred for retry on the next queue drain instead of dropped; the
+        // 30-minute timer and the deferred-entry dedupe keep the queue from
+        // stacking duplicate cycles.
+        _ = GovernedWorkRunner.RunOrDeferAsync(
+            _governance,
+            WorkloadCategory.HistoricalAnalytics,
+            "Watchtower analysis cycle",
+            () => _coordinator.RefreshAsync());
     }
 
     private void OnSnapshotUpdated(object? sender, WatchtowerSnapshot snapshot)

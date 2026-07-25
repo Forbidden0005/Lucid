@@ -70,8 +70,10 @@ public sealed class ProactiveRecommendationCoordinator
     /// Runs a full Watchtower analysis pass asynchronously.
     ///
     /// Re-entrant safe — if a refresh is already running this returns immediately.
-    /// Governance-aware — skips the pass if the system is under heavy load or
-    /// thermal stress (only runs in Normal or LowPower modes).
+    /// Governance: admission control lives in OperationalWatchtowerService,
+    /// which runs the scheduled cycle under the HistoricalAnalytics slot
+    /// (IdleOnly — only when the system is calm). Direct UI-triggered
+    /// refreshes call this method without a slot by design.
     ///
     /// Never throws — all exceptions are caught and the old snapshot is preserved.
     /// </summary>
