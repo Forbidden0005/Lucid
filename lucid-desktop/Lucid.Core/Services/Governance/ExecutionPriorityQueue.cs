@@ -27,8 +27,12 @@ public sealed class ExecutionPriorityQueue
 {
     // ── Configuration ─────────────────────────────────────────────────────────
 
-    /// <summary>Maximum age before a queued entry is discarded.</summary>
-    private static readonly TimeSpan MaxEntryAge = TimeSpan.FromMinutes(30);
+    /// <summary>
+    /// Maximum age before a queued entry is discarded. Public so callers that
+    /// wait for admission (<see cref="GovernedWorkRunner.WaitForSlotAsync"/>)
+    /// can bound their wait to the same lifetime.
+    /// </summary>
+    public static readonly TimeSpan MaxEntryAge = TimeSpan.FromMinutes(30);
 
     // ── Internal record ───────────────────────────────────────────────────────
 

@@ -66,6 +66,26 @@ public interface IRuntimeGovernanceService
     /// </summary>
     void ReleaseSlot(WorkloadCategory category, string workloadName);
 
+    /// <summary>
+    /// Registers refused work on the deferred-workload queue for retry.
+    ///
+    /// Call this after <see cref="TryAcquireSlot"/> returns <c>false</c> when
+    /// the work should run later instead of being dropped. The
+    /// <paramref name="retry"/> callback is invoked (at most once per call)
+    /// when the queue drains — on slot release or runtime-mode change — and is
+    /// responsible for re-attempting <see cref="TryAcquireSlot"/> itself.
+    /// Entries not drained within <see cref="ExecutionPriorityQueue.MaxEntryAge"/>
+    /// are silently discarded.
+    ///
+    /// Most call sites should use <see cref="GovernedWorkRunner"/> rather than
+    /// calling this directly.
+    /// </summary>
+    void DeferWorkload(
+        WorkloadCategory category,
+        string           workloadName,
+        string?          refusalReason,
+        Func<Task>       retry);
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     /// <summary>Starts the governance monitor loop.</summary>
