@@ -112,7 +112,7 @@ public sealed class AutonomousRemediationService : IDisposable
         _dispatcher = dispatcher;
 
         _coordinator = new WorkflowExecutionCoordinator(_engine, _governance);
-        _validator   = new RemediationOutcomeValidator(_learning);
+        _validator   = new RemediationOutcomeValidator(_learning, _governance);
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────

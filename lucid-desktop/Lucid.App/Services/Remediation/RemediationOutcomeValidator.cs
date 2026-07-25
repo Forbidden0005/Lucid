@@ -1,4 +1,5 @@
-﻿using Lucid.Services.Intelligence;
+﻿using Lucid.Services.Governance;
+using Lucid.Services.Intelligence;
 using Lucid.Services.Learning;
 
 namespace Lucid.Services.Remediation;
@@ -12,11 +13,24 @@ namespace Lucid.Services.Remediation;
 /// </summary>
 public sealed class RemediationOutcomeValidator
 {
-    private readonly IRemediationLearningService _learning;
+    private const string LearningWorkloadName = "Post-remediation learning pass";
 
-    public RemediationOutcomeValidator(IRemediationLearningService learning)
+    private readonly IRemediationLearningService _learning;
+    private readonly IRuntimeGovernanceService?  _governance;
+
+    /// <param name="governance">
+    /// Optional so pure/unit contexts can run ungoverned; production always
+    /// injects it (AutonomousRemediationService). When present, the learning
+    /// pass runs under the LearningAnalysis slot (IdleOnly) and is deferred
+    /// for retry — instead of racing the outcome telemetry the user is
+    /// watching right after a remediation (adoption audit site #13).
+    /// </param>
+    public RemediationOutcomeValidator(
+        IRemediationLearningService learning,
+        IRuntimeGovernanceService?  governance = null)
     {
-        _learning = learning;
+        _learning   = learning;
+        _governance = governance;
     }
 
     // ── Validation ────────────────────────────────────────────────────────────
@@ -72,8 +86,20 @@ public sealed class RemediationOutcomeValidator
                 before,
                 state.AfterSnapshot ?? after);
 
-            // Trigger learning pass in background (non-blocking)
-            _ = Task.Run(() => _learning.AnalyzePendingActionsAsync());
+            // Trigger learning pass in background (non-blocking). Governed:
+            // deferred for retry when the system is busy rather than dropped.
+            if (_governance is not null)
+            {
+                _ = GovernedWorkRunner.RunOrDeferAsync(
+                    _governance,
+                    WorkloadCategory.LearningAnalysis,
+                    LearningWorkloadName,
+                    () => _learning.AnalyzePendingActionsAsync());
+            }
+            else
+            {
+                _ = Task.Run(() => _learning.AnalyzePendingActionsAsync());
+            }
 
             return new RemediationOutcomeReport(
                 ExecutionId:         state.ExecutionId,
