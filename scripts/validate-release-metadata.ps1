@@ -67,16 +67,31 @@ if (-not (Test-Path $releaseNotes)) {
 }
 
 $project = $props.Project
-$propertyGroup = $project.PropertyGroup
 
-if (-not $propertyGroup) {
+if (-not $project.PropertyGroup) {
     throw "Directory.Build.props is missing a PropertyGroup."
 }
 
-$propVersion = [string]$propertyGroup.Version
-$propAssemblyVersion = [string]$propertyGroup.AssemblyVersion
-$propFileVersion = [string]$propertyGroup.FileVersion
-$propInformationalVersion = [string]$propertyGroup.InformationalVersion
+# Directory.Build.props carries several PropertyGroups (versioning, warning
+# ratchet, ...), so resolve each property by name across all of them rather
+# than indexing one group. Reading `.Version` off the collection would join
+# every group's value and silently produce a padded string.
+function Get-PropsValue([string]$name) {
+    $nodes = @($project.SelectNodes("PropertyGroup/$name"))
+
+    if ($nodes.Count -gt 1) {
+        throw "Directory.Build.props declares <$name> $($nodes.Count) times; it must be declared exactly once."
+    }
+
+    if ($nodes.Count -eq 0) { return "" }
+
+    return [string]$nodes[0].InnerText
+}
+
+$propVersion = Get-PropsValue "Version"
+$propAssemblyVersion = Get-PropsValue "AssemblyVersion"
+$propFileVersion = Get-PropsValue "FileVersion"
+$propInformationalVersion = Get-PropsValue "InformationalVersion"
 
 if ($propVersion -ne $version) {
     throw "Directory.Build.props Version '$propVersion' does not match release metadata version '$version'."
