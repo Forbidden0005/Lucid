@@ -516,7 +516,7 @@ Full detail in `ROADMAP.md`. Quick reference:
 > (verified 2026-07-25): **533 non-generated C# files** in `Lucid.App` across
 > **42 service subdomains**, **24 pages**, **42 XAML files**, **27 registered production
 > executors** (28 executor files including the abstract base), **25 insight rules**,
-> **351 passing C# tests**, **19 passing Rust tests**.
+> **446 passing C# tests**, **19 passing Rust tests**.
 >
 > ⚠️ Much of the list below is **beyond the roadmap's stated current phase**
 > (Phase 1 — Platform Stabilization). The implementation has run ahead of the

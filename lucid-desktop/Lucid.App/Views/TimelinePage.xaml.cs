@@ -18,7 +18,11 @@ namespace Lucid.Views;
 /// </summary>
 public sealed partial class TimelinePage : Page
 {
-    public TimelinePageViewModel ViewModel { get; } = new TimelinePageViewModel(AppServices.Timeline);
+    // Migrated off the AppServices static locator (ROADMAP C4 strangler
+    // template): the ViewModel factory is registered during AppServices
+    // initialization and resolved through the composition seam.
+    public TimelinePageViewModel ViewModel { get; } =
+        App.Registry.Resolve<TimelinePageViewModel>();
 
     public TimelinePage()
     {

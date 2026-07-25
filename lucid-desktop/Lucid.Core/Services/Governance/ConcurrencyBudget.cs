@@ -110,17 +110,23 @@ public sealed class ConcurrencyBudget
 
         lock (_lock)
         {
+            // Only decrement counters when a matching acquire is on record —
+            // an unmatched Release must be a true no-op. Decrementing without
+            // a match would free capacity belonging to another in-flight
+            // workload and allow over-admission past the background ceiling
+            // (governance audit 2026-07-25, finding 6).
+            int idx = _activeList.FindIndex(
+                e => e.Category == category && e.Name == workloadName);
+            if (idx < 0)
+                return;
+
+            _activeList.RemoveAt(idx);
+
             if (_active.TryGetValue(category, out int current) && current > 0)
                 _active[category] = current - 1;
 
             if (priority >= WorkloadPriority.Background && _usedBackground > 0)
                 _usedBackground--;
-
-            // Remove the first matching active entry
-            int idx = _activeList.FindIndex(
-                e => e.Category == category && e.Name == workloadName);
-            if (idx >= 0)
-                _activeList.RemoveAt(idx);
         }
     }
 

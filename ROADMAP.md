@@ -45,7 +45,7 @@
 | Native layer | `lucid-native/lucid-scanner` — Rust `cdylib` over `windows-sys`, consumed via P/Invoke |
 | Persistence | SQLite via `Microsoft.Data.Sqlite` 8.0.0 |
 | Build system | `dotnet build Lucid.slnx -p:Platform=x64`; VS MSBuild required once after clean for `XamlPreCompile` |
-| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 351 passing C# tests |
+| Test system | xUnit 2.9.2 + FluentAssertions 6.12.1 + Moq 4.20.72 + coverlet; 446 passing C# tests |
 | CI | GitHub Actions: Debug + Release build/test on windows-latest, plus publish job |
 | Deployment | Unpackaged self-contained win-x64 (`WindowsPackageType=None`), PowerShell installer in `installer/` |
 
@@ -92,7 +92,8 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 351 passing C# tests (verified 2026-07-24 via `dotnet test`)
+- 446 passing C# tests (verified 2026-07-25 via `dotnet test`; includes the governance
+  suite and composition-registry tests)
 - 19 Rust tests passing (verified 2026-07-24 via `cargo test`)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
   the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
@@ -171,10 +172,18 @@ Meanwhile page-level ViewModels use constructor injection. Two competing DI idio
 
 **Fix:** Incremental strangler migration — not a big-bang rewrite. See Architecture Review.
 
-- [ ] Introduce `IServiceRegistry` shim behind `AppServices` statics (zero consumer changes)
-- [ ] Freeze the locator: ban new `AppServices.*` references via analyzer (grandfather existing 32 files)
-- [ ] Migrate one page end-to-end as the template
-- [ ] Continue one page per session
+- [x] Introduce `IServiceRegistry` shim behind `AppServices` statics — done 2026-07-25:
+      `Lucid.Core/Services/Infrastructure/Composition/{IServiceRegistry,ServiceRegistry}.cs`
+      (explicit transient factories, no container; unit-tested), populated at the end of
+      `AppServices.Initialize`, exposed as `App.Registry`
+- [x] Freeze the locator — done 2026-07-25 via `scripts/check-debt-ratchet.ps1` (list-based
+      grandfather baseline in `scripts/debt-ratchet-baseline.json`, enforced in CI and
+      verify-dev): any NEW file referencing `AppServices` fails the build gate
+- [x] Migrate one page end-to-end as the template — done 2026-07-25: `TimelinePage`
+      resolves `TimelinePageViewModel` via `App.Registry.Resolve<T>()`; ratchet baseline
+      tightened 52 → 51 consumer files
+- [ ] Continue one page per session (next candidates by lowest coupling: DiagnosticsPage,
+      HealthBreakdownPage, AppsPage — each reads a single `AppServices` property)
 
 ### C5 — Lucid.App project source exclusions (P1) — done 2026-07-24
 The former explicit `<Compile Include>` allow-list had already been removed before this slice,
@@ -349,6 +358,15 @@ Do not add items here that have not been verified.
 - Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.
 - `StorageCategoryAnalyzer` enriched with cache/junk location rules ported from the archived Drive Management project (INetCache, Prefetch, SoftwareDistribution\Download, CrashDumps, Chromium/VS Code cache dirs, pip/npm/yarn caches) plus `.crash`/`.swp` extensions. Classification only. Specific cache rules are ordered before the general `\Windows\` rule; the source project's overbroad "Firefox Profiles = cache" rule was narrowed to `cache2` only (profiles hold bookmarks/credentials), with a regression test pinning that.
 - 29 new tests in `Lucid.Tests/Storage/`. Verified 2026-07-13: `dotnet build` (Debug x64) 0 warnings 0 errors; `dotnet test` 351 passed, 0 failed.
+
+### Resource Governance — first test suite (2026-07-25)
+- 91 tests in `Lucid.Tests/Governance/` (6 classes: `ConcurrencyBudgetTests`, `ExecutionPriorityQueueTests`, `AdaptiveSchedulingPolicyTests`, `RuntimePressureAnalyzerTests`, `WorkloadClassifierTests`, `PollingCoordinatorTests`) — the subsystem previously had zero coverage. Worklist: `docs/reports/governance-adoption-audit-2026-07-25.md`.
+- Proven: per-category slot limits and background-ceiling admission/refusal, foreground bypass, IdleOnly counting against the ceiling, mid-flight ceiling changes (no eviction), priority-ordered queue drain with FIFO-within-class, 30-min expiry, callback fault isolation, mode→interval/ceiling policy table, pressure thresholds and mode precedence, coordinator interval pushes.
+- Fixed (test-first): `ConcurrencyBudget.Release` unmatched-release bug — a release for a never-acquired workload decremented the shared background counter, creating phantom capacity past the ceiling; now a true no-op (audit finding 6).
+- Pinned, not changed: DiskPressure sets its reason flag but never affects the runtime mode (observability-only); the `IAdaptiveTelemetryTarget` "0 = pause" contract is unimplemented — the policy table is now test-guarded to never emit zero.
+- Eight pure files moved from `Lucid.App/Services/Governance/` to `Lucid.Core/Services/Governance/` (namespaces unchanged); `RuntimeGovernanceService` stays in Lucid.App (DispatcherQueue + PowerManager) and remains untested pending a seam.
+- Note: `ExecutionPriorityQueue.Enqueue` still has no production caller — the mechanism is proven, adoption is separate work. The Phase 5 "Enforce concurrency budgets" item stays open: only 2 of 13 workload categories acquire slots today.
+- Verified 2026-07-25: `dotnet build` (Debug x64) 0 warnings 0 errors; `dotnet test` 446 passed, 0 failed.
 
 ### Safety and Executor Tests
 - Execution engine safety gate tests (pre-flight elevation, confirmation gates, dry-run, rollback gating, exception containment)

@@ -1,4 +1,5 @@
 ﻿using Lucid.Core.Infrastructure;
+using Lucid.Services.Infrastructure.Composition;
 using Lucid.Services.Infrastructure.Events;
 using Lucid.Services.Infrastructure.Lifecycle;
 using Lucid.Services.Infrastructure.OperationalState;
@@ -108,6 +109,7 @@ public static class AppServices
     private static IActionExecutionEngine?      _executionEngine;
     private static IOperationHistoryService?    _operationHistory;
     private static ITimelineAggregationService? _timeline;
+    private static ServiceRegistry?             _registry;
     private static IStartupManagementService?   _startupManagement;
     private static IExplainMyPcEngine?           _explainEngine;
     private static ProcessIntelligenceService?   _processIntelligence;
@@ -598,6 +600,20 @@ public static class AppServices
     /// </summary>
     public static IOperationHistoryService HistoryService =>
         _operationHistory ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Composition seam for the strangler migration off this static locator
+    /// (ROADMAP C4). Pages migrated off <c>AppServices</c> resolve their
+    /// ViewModels from here via <c>App.Registry</c>; one factory is
+    /// registered per migrated ViewModel at the end of
+    /// <see cref="Initialize"/>. New code must use this seam — the debt
+    /// ratchet (scripts/check-debt-ratchet.ps1) fails CI on any new file
+    /// referencing <c>AppServices</c> directly.
+    /// </summary>
+    public static IServiceRegistry Registry =>
+        _registry ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
             "Call it from App.OnLaunched before creating the main window.");
 
@@ -1905,6 +1921,15 @@ public static class AppServices
             try { await _healthTrajectory!.ComputeReportAsync().ConfigureAwait(false); }
             catch { /* best-effort pre-warm — analytics failure is non-critical */ }
         });
+
+        // ── Composition registry (strangler seam, ROADMAP C4) ────────────────
+        // One explicit factory per ViewModel whose page has been migrated off
+        // the static locator. Factories close over the services built above,
+        // so construction order stays hand-ordered and visible. Migrate one
+        // page per session: add its factory here, switch the page to
+        // App.Registry.Resolve<T>(), then tighten the debt-ratchet baseline.
+        _registry = new ServiceRegistry();
+        _registry.Register(() => new ViewModels.TimelinePageViewModel(_timeline!));
     }
 
     /// <summary>
@@ -1915,6 +1940,10 @@ public static class AppServices
     {
         _logger?.Info("Startup", "AppServices.Shutdown() called — tearing down services");
         _settings = null;
+
+        // Composition registry holds only factories over services torn down
+        // below — clear it first so nothing resolves during shutdown.
+        _registry = null;
 
         // Simulation, history, verification, and trajectory services are stateless — null them.
         _simulationEngine    = null;

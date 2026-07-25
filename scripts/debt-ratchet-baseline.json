@@ -55,7 +55,6 @@
                                      "lucid-desktop/Lucid.App/Views/SettingsPage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/SimulationPage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/StoragePage.xaml.cs",
-                                     "lucid-desktop/Lucid.App/Views/TimelinePage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/WatchtowerPage.xaml.cs",
                                      "lucid-desktop/Lucid.Core/Services/Persistence/SQLitePersistenceService.cs",
                                      "lucid-desktop/Lucid.Core/Services/Timeline/ITimelineAggregationService.cs"

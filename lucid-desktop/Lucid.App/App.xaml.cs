@@ -18,6 +18,16 @@ public partial class App : Application
 {
     private MainWindow? _mainWindow;
 
+    /// <summary>
+    /// Composition seam for pages migrated off the AppServices static locator
+    /// (ROADMAP C4 strangler). Pages resolve their ViewModels here —
+    /// <c>App.Registry.Resolve&lt;T&gt;()</c> — instead of reading
+    /// <c>AppServices.*</c> directly; the debt ratchet blocks new
+    /// AppServices consumers.
+    /// </summary>
+    public static Services.Infrastructure.Composition.IServiceRegistry Registry =>
+        AppServices.Registry;
+
     public App()
     {
         // Crash visibility hooks — registered BEFORE InitializeComponent so a
