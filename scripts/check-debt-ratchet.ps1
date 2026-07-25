@@ -29,14 +29,19 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$appRoot = Join-Path $repoRoot "lucid-desktop\Lucid.App"
+$scanRoots = @(
+    (Join-Path $repoRoot "lucid-desktop\Lucid.App"),
+    (Join-Path $repoRoot "lucid-desktop\Lucid.Core")
+)
 $baselinePath = Join-Path $PSScriptRoot "debt-ratchet-baseline.json"
 
-if (-not (Test-Path -LiteralPath $appRoot -PathType Container)) {
-    throw "App root not found: $appRoot"
+foreach ($root in $scanRoots) {
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+        throw "Scan root not found: $root"
+    }
 }
 
-$sourceFiles = Get-ChildItem -Path $appRoot -Recurse -Filter *.cs |
+$sourceFiles = Get-ChildItem -Path $scanRoots -Recurse -Filter *.cs |
     Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' }
 
 $appServicesDefinition = "lucid-desktop/Lucid.App/AppServices.cs"

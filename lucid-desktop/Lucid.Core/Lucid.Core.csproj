@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Lucid.Core — WinUI-free class library for pure services (ROADMAP Phase 4
+    "Extract Lucid.Core"). Holds the production files that were previously
+    file-linked into Lucid.Tests; the boundary grows file-by-file as more
+    services are proven pure. RootNamespace stays "Lucid" so namespaces are
+    unchanged — moving a file here is a build-boundary change only.
+
+    Rule for adding files: nothing in this project may reference WinUI /
+    Windows App SDK types, AppServices, or anything under Views/ViewModels.
+    Some service domains are deliberately split across Lucid.Core and
+    Lucid.App during the migration; App-side files may depend on Core-side
+    files, never the reverse.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Lucid</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Platforms>x86;x64;arm64;AnyCPU</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lucid.App" />
+    <InternalsVisibleTo Include="Lucid.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -12,16 +12,19 @@ public sealed class ActionExecutionMetadataCatalogTests
     public void CatalogContainsMetadata_ForAllExecutorActionIdsInSource()
     {
         var repoRoot = FindRepoRoot();
-        var executorRoot = Path.Combine(
-            repoRoot,
-            "lucid-desktop",
-            "Lucid.App",
-            "Services",
-            "Execution",
-            "Executors");
 
-        var sourceActionIds = Directory
-            .EnumerateFiles(executorRoot, "*.cs", SearchOption.TopDirectoryOnly)
+        // Executors live in Lucid.Core since the library extraction; scan the
+        // App location too so an executor mistakenly added there is still
+        // held to the catalog contract.
+        var executorRoots = new[]
+        {
+            Path.Combine(repoRoot, "lucid-desktop", "Lucid.Core", "Services", "Execution", "Executors"),
+            Path.Combine(repoRoot, "lucid-desktop", "Lucid.App", "Services", "Execution", "Executors"),
+        };
+
+        var sourceActionIds = executorRoots
+            .Where(Directory.Exists)
+            .SelectMany(root => Directory.EnumerateFiles(root, "*.cs", SearchOption.TopDirectoryOnly))
             .SelectMany(file => ExtractActionIds(File.ReadAllText(file)))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 

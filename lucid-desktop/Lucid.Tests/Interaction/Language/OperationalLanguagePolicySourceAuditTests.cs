@@ -37,10 +37,9 @@ public sealed class OperationalLanguagePolicySourceAuditTests
     public void ActiveUserFacingCopy_DoesNotContainForbiddenFearOrCertaintyPhrases()
     {
         var repoRoot = FindRepoRoot();
-        var appRoot = Path.Combine(repoRoot, "lucid-desktop", "Lucid.App");
         var failures = new List<string>();
 
-        foreach (var file in EnumerateAuditedFiles(appRoot))
+        foreach (var file in EnumerateAuditedFiles(repoRoot))
         {
             foreach (var literal in ExtractUserFacingLiterals(file))
             {
@@ -59,13 +58,20 @@ public sealed class OperationalLanguagePolicySourceAuditTests
         failures.Should().BeEmpty(string.Join(Environment.NewLine, failures));
     }
 
-    private static IEnumerable<string> EnumerateAuditedFiles(string appRoot)
+    private static IEnumerable<string> EnumerateAuditedFiles(string repoRoot)
     {
+        // Production copy is split across Lucid.App (UI + app-side services)
+        // and Lucid.Core (pure services) since the library extraction — audit
+        // both so moving a file never removes it from the language policy.
+        var appRoot = Path.Combine(repoRoot, "lucid-desktop", "Lucid.App");
+        var coreRoot = Path.Combine(repoRoot, "lucid-desktop", "Lucid.Core");
+
         foreach (var root in new[]
                  {
                      Path.Combine(appRoot, "Services"),
                      Path.Combine(appRoot, "ViewModels"),
                      Path.Combine(appRoot, "Views"),
+                     Path.Combine(coreRoot, "Services"),
                  })
         {
             if (!Directory.Exists(root))

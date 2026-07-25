@@ -42,6 +42,10 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Lucid.Core\Lucid.Core.csproj" />
+  </ItemGroup>
+
   <!--
     Copy lucid_scanner.dll from the Rust release build into the app output and publish directories.
     The DLL is only available after a release build of lucid-native/ (cargo build, release profile).

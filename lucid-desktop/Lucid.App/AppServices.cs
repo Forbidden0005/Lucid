@@ -1767,7 +1767,7 @@ public static class AppServices
             _automationAudit,
             _consentExplanation,
             _automationTransparency,
-            uiDispatcher);
+            new DispatcherQueueUiDispatcher(uiDispatcher));
 
         // Trust manager subscribes to consent events to adapt the posture.
         // Created last so the audit ledger is populated before it begins listening.

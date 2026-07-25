@@ -121,9 +121,14 @@ When adding C# files under active app folders:
 
 ### Tests
 
-`Lucid.Tests` links pure production service files directly instead of referencing `Lucid.App`.
+`Lucid.Tests` references the `Lucid.Core` class library, which holds the pure (WinUI-free)
+production services. To put a new production file under test, move it into `Lucid.Core`
+(it must not depend on WinUI, `AppServices`, or Views/ViewModels) — do not file-link it
+into the test project; the old per-file `<Compile Include>` links are gone.
 
-Reason: a direct project reference pulls WinUI and Windows App SDK packaging/resource targets into unit tests. Keep tests focused on pure service seams unless the build system is deliberately changed.
+Reason: a direct project reference to `Lucid.App` pulls WinUI and Windows App SDK
+packaging/resource targets into unit tests. `Lucid.Core` is the library boundary that
+avoids that while keeping tests on real production code.
 
 ### Native Boundary
 

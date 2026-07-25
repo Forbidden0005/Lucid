@@ -630,7 +630,15 @@ Goal: reduce long-term fragility without destabilizing the app.
 - [ ] Freeze `AppServices.*` references with analyzer ban + grandfather list (C4)
 - [ ] Migrate one page end-to-end as the template (C4)
 - [ ] Continue page-by-page migration (one per session)
-- [ ] Extract `Lucid.Core` class library; replace 57 file-linked tests with project reference
+- [x] Extract `Lucid.Core` class library; replace file-linked tests with project reference —
+      done 2026-07-25: the 92 linked files (the proven-pure set) moved via `git mv` into
+      `lucid-desktop/Lucid.Core` (net8.0-windows10.0.19041.0, RootNamespace `Lucid`, so
+      namespaces unchanged); App and Tests reference it; the only WinUI coupling found
+      (AutomationConsentService's DispatcherQueue adapter) moved to
+      `Lucid.App/Services/Trust/DispatcherQueueUiDispatcher.cs` behind the existing internal
+      `IUiDispatcher` seam; test DispatcherQueue stub deleted; source-audit tests now scan both
+      projects; debt-ratchet scan scope covers both. Some service domains are deliberately
+      split across Core/App during migration — App may depend on Core, never the reverse.
 - [ ] Module boundary docs for each of the 33 service domains
 - [ ] ADRs for: static registry, linked test source strategy, native scanner boundary, local LLM boundary
 - [ ] Replace silent `catch { }` blocks with structured diagnostics (C7)
@@ -745,11 +753,12 @@ constructor injection. Two competing idioms. The strangler plan:
    which is its legitimate remaining job.
 
 ### Concern 2: No Library Boundary (Test Linking Is the Symptom)
-`Lucid.Tests` links 57 production files by path because referencing the WinUI exe drags in
-packaging targets. The fix is `Lucid.Core`: a plain `net8.0-windows` class library holding pure
-services (Cleanup, Automation models, Persistence, Trust, Intelligence rules). App and Tests both
-reference it; file-linking disappears; the csproj whitelist problem also shrinks. Do this after C5
-— moving files is cheap once globbing is default.
+Closed 2026-07-25: `Lucid.Core` exists (`lucid-desktop/Lucid.Core`, net8.0-windows10.0.19041.0,
+RootNamespace `Lucid`). The 92 previously file-linked files moved into it; `Lucid.App` and
+`Lucid.Tests` both reference it and the per-file links are gone. The boundary grows
+file-by-file: to put a production file under test, move it into `Lucid.Core` (it must be
+WinUI-free and must not touch `AppServices` or Views/ViewModels). Domains split across
+Core/App during migration are transitional; App may depend on Core, never the reverse.
 
 ### Concern 3: Execution Priority Queue Missing
 27 registered production executors follow `IActionExecutor` with dry-run/rollback — good. Missing:

@@ -34,28 +34,17 @@ namespace Lucid.Services.Trust;
 /// </summary>
 public sealed class AutomationConsentService
 {
+    /// <summary>
+    /// UI-thread dispatch seam. Lucid.Core is WinUI-free, so the WinUI
+    /// DispatcherQueue adapter lives in Lucid.App
+    /// (Services/Trust/DispatcherQueueUiDispatcher.cs); tests supply an
+    /// immediate dispatcher. Internal — App and Tests see it via
+    /// InternalsVisibleTo.
+    /// </summary>
     internal interface IUiDispatcher
     {
         bool HasThreadAccess { get; }
         void TryEnqueue(Action action);
-    }
-
-    private sealed class DispatcherQueueAdapter : IUiDispatcher
-    {
-        private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
-
-        public DispatcherQueueAdapter(Microsoft.UI.Dispatching.DispatcherQueue dispatcher)
-        {
-            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        }
-
-        public bool HasThreadAccess => _dispatcher.HasThreadAccess;
-
-        public void TryEnqueue(Action action)
-        {
-            ArgumentNullException.ThrowIfNull(action);
-            _dispatcher.TryEnqueue(() => action());
-        }
     }
 
     // â”€â”€ Dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -71,21 +60,6 @@ public sealed class AutomationConsentService
     private TrustConsentMode _mode = TrustConsentMode.AskForMediumAndHighRisk;
 
     // â”€â”€ Constructor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    public AutomationConsentService(
-        ITimelineAggregationService  timeline,
-        AutomationAuditService       audit,
-        ConsentExplanationService    explanations,
-        AutomationTransparencyEngine transparency,
-        Microsoft.UI.Dispatching.DispatcherQueue uiDispatcher)
-        : this(
-            timeline,
-            audit,
-            explanations,
-            transparency,
-            new DispatcherQueueAdapter(uiDispatcher))
-    {
-    }
 
     internal AutomationConsentService(
         ITimelineAggregationService  timeline,
