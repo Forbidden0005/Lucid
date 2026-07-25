@@ -30,6 +30,7 @@ public enum WorkloadCategory
     ActionExecution     = 0,   // repair/remediation executor
     ExplainReasoning    = 1,   // Lucid flagship reasoning pass
     ReplayAnalysis      = 2,   // operational replay reconstruction
+    SecurityScan        = 3,   // SecurityIntelligenceService scan (user-initiated)
 
     // ── Background-class: yield to foreground, pause under stress ─────────
     TelemetrySampling   = 10,  // WindowsTelemetryService poll cycle

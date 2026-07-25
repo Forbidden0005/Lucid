@@ -1,4 +1,5 @@
-﻿using Lucid.Services.ProcessIntel;
+﻿using Lucid.Services.Governance;
+using Lucid.Services.ProcessIntel;
 using Lucid.Services.Startup;
 using Lucid.Services.Timeline;
 using Microsoft.UI.Dispatching;
@@ -34,9 +35,12 @@ public interface ISecurityIntelligenceService
 /// </summary>
 public sealed class SecurityIntelligenceService : ISecurityIntelligenceService
 {
+    private const string WorkloadName = "Security intelligence scan";
+
     private readonly DispatcherQueue              _dispatcher;
     private readonly IStartupManagementService    _startup;
     private readonly TimelineAggregationService?  _timeline;
+    private readonly IRuntimeGovernanceService?   _governance;
     private readonly SignatureVerificationService _signer = new();
 
     private CancellationTokenSource? _cts;
@@ -47,14 +51,23 @@ public sealed class SecurityIntelligenceService : ISecurityIntelligenceService
     public event EventHandler<SecurityAnalysisResult>? ScanCompleted;
     public event EventHandler<int>?                    ScanProgressChanged;
 
+    /// <param name="governance">
+    /// Optional so pure/unit contexts can run ungoverned; the production call
+    /// site (SecurityViewModel) always injects the runtime governance service.
+    /// The scan holds the SecurityScan slot (Foreground, limit 1 — adoption
+    /// audit site #12): admitted in any mode because it is user-initiated, but
+    /// serialized against a concurrent scan and visible on the governance page.
+    /// </param>
     public SecurityIntelligenceService(
         DispatcherQueue             dispatcher,
         IStartupManagementService   startup,
-        TimelineAggregationService? timeline = null)
+        TimelineAggregationService? timeline   = null,
+        IRuntimeGovernanceService?  governance = null)
     {
         _dispatcher = dispatcher;
         _startup    = startup;
         _timeline   = timeline;
+        _governance = governance;
     }
 
     public async Task StartScanAsync(CancellationToken ct = default)
@@ -64,6 +77,39 @@ public sealed class SecurityIntelligenceService : ISecurityIntelligenceService
         _cts      = CancellationTokenSource.CreateLinkedTokenSource(ct);
         IsScanning = true;
 
+        bool holdsSlot = false;
+        try
+        {
+            if (_governance is not null)
+            {
+                // Foreground class — never mode-refused; waits only if another
+                // security scan already holds the slot.
+                holdsSlot = await GovernedWorkRunner.WaitForSlotAsync(
+                    _governance, WorkloadCategory.SecurityScan, WorkloadName, _cts.Token)
+                    .ConfigureAwait(false);
+
+                if (!holdsSlot)
+                    return; // wait expired — another scan ran the whole time
+            }
+
+            await RunScanSessionAsync(_cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled while waiting for the slot — unwind quietly.
+        }
+        finally
+        {
+            if (holdsSlot)
+                _governance!.ReleaseSlot(WorkloadCategory.SecurityScan, WorkloadName);
+            IsScanning = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
+    private async Task RunScanSessionAsync(CancellationToken ct)
+    {
         EmitTimeline("Security scan started",
             "Lucid is analyzing startup trust, Windows security features, and persistence.",
             TimelineEventSeverity.Info, isStart: true);
@@ -71,7 +117,7 @@ public sealed class SecurityIntelligenceService : ISecurityIntelligenceService
         SecurityAnalysisResult result;
         try
         {
-            result = await Task.Run(() => RunScan(_cts.Token), _cts.Token)
+            result = await Task.Run(() => RunScan(ct), ct)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -85,12 +131,6 @@ public sealed class SecurityIntelligenceService : ISecurityIntelligenceService
                 CompletedAt:    DateTimeOffset.Now,
                 Duration:       TimeSpan.Zero,
                 WasCancelled:   true);
-        }
-        finally
-        {
-            IsScanning = false;
-            _cts?.Dispose();
-            _cts = null;
         }
 
         if (!result.WasCancelled)

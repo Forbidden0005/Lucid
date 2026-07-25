@@ -9,7 +9,8 @@ public sealed partial class SecurityPage : Page
     public SecurityViewModel ViewModel { get; } = new SecurityViewModel(
         AppServices.Timeline,
         AppServices.ExecutionEngine,
-        AppServices.StartupManagement);
+        AppServices.StartupManagement,
+        AppServices.Governance);
 
     public SecurityPage()
     {

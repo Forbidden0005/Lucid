@@ -19,6 +19,7 @@ internal static class WorkloadClassifier
         WorkloadCategory.ActionExecution  => WorkloadPriority.Foreground,
         WorkloadCategory.ExplainReasoning => WorkloadPriority.Foreground,
         WorkloadCategory.ReplayAnalysis   => WorkloadPriority.Foreground,
+        WorkloadCategory.SecurityScan     => WorkloadPriority.Foreground,
 
         // Background — scheduled/passive, paused under stress
         WorkloadCategory.TelemetrySampling   => WorkloadPriority.Background,
@@ -46,6 +47,7 @@ internal static class WorkloadClassifier
         WorkloadCategory.ActionExecution     => "Action Execution",
         WorkloadCategory.ExplainReasoning    => "Explain Analysis",
         WorkloadCategory.ReplayAnalysis      => "Replay Reconstruction",
+        WorkloadCategory.SecurityScan        => "Security Scan",
         WorkloadCategory.TelemetrySampling   => "Telemetry Sampling",
         WorkloadCategory.ProcessIntelligence => "Process Intelligence",
         WorkloadCategory.NarrativeGeneration => "Narrative Generation",
