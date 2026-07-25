@@ -47,7 +47,8 @@ $requiredFiles = @(
     "Lucid.App.dll",
     "Lucid.App.deps.json",
     "Lucid.App.runtimeconfig.json",
-    "Lucid.App.pri"
+    "Lucid.App.pri",
+    "lucid_scanner.dll"
 )
 
 foreach ($requiredFile in $requiredFiles) {

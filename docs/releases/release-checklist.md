@@ -10,6 +10,11 @@ Use this checklist before treating a Lucid release as publishable.
 4. review `release/packages/feeds/<channel>.json`
 5. review `release/packages/*.update.json`
 
+## Optional setup-exe gate
+
+Run `scripts/verify-release.ps1 -BuildSetupExe` only on machines with Inno Setup 6 available as `ISCC.exe`, or pass `-IsccPath`.
+The setup wrapper is built from the metadata-derived package zip, not from the newest file in `release/packages`.
+
 ## Required manual checks
 
 1. Confirm the intended release channel is correct.

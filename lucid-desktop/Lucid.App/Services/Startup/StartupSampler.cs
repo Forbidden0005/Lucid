@@ -128,8 +128,12 @@ public sealed class StartupSampler
     // ── Sampling ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Enumerates all enabled startup entries visible to the current user.
-    /// Returns an empty list on error rather than throwing.
+    /// Enumerates all startup entries visible to the current user, from the Run
+    /// keys and the Startup folder. Entries are returned with IsEnabled = true
+    /// (its default); the actual enabled/disabled state is resolved by
+    /// <see cref="StartupManagementService.GetAllEntries"/>, which reads the
+    /// Windows StartupApproved records. Returns an empty list on error rather
+    /// than throwing.
     /// </summary>
     public IReadOnlyList<StartupEntry> Sample()
     {

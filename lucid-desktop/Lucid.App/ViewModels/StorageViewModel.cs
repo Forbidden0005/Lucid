@@ -29,6 +29,30 @@ public sealed class LargeFileViewModel
     public LargeFileViewModel(LargeFileRecord r) => Record = r;
 }
 
+// ── Near-duplicate pair row ViewModel ────────────────────────────────────────
+
+/// <summary>
+/// A heuristic near-duplicate pair (similar names, copy patterns, or format
+/// variants). Review-only: these files are not byte-identical, so no delete
+/// command is exposed — the user judges each pair themselves.
+/// </summary>
+public sealed class NearDuplicateViewModel
+{
+    public NearDuplicateMatch Match { get; }
+
+    public string NameA      => Match.FileA.FileName;
+    public string NameB      => Match.FileB.FileName;
+    public string PathA      => Match.FileA.DirectoryPath;
+    public string PathB      => Match.FileB.DirectoryPath;
+    public string SizeA      => Match.FileA.SizeFormatted;
+    public string SizeB      => Match.FileB.SizeFormatted;
+    public string Reason     => Match.MatchReason;
+    public string Confidence => Match.ConfidenceFormatted;
+    public string Redundant  => Match.RedundantFormatted;
+
+    public NearDuplicateViewModel(NearDuplicateMatch m) => Match = m;
+}
+
 // ── Duplicate group row ViewModel ────────────────────────────────────────────
 
 public sealed class DuplicateGroupViewModel
@@ -133,6 +157,10 @@ public sealed partial class StorageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ProtectedDuplicatesVisibility))]
     private bool _hasProtectedDuplicates;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NearDuplicatesVisibility))]
+    private bool _hasNearDuplicates;
+
     // ── Tab state ─────────────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -168,6 +196,7 @@ public sealed partial class StorageViewModel : ObservableObject
     public Visibility ActionableDuplicatesVisibility   => V(HasActionableDuplicates);
     public Visibility NoActionableDuplicatesVisibility => V(!HasActionableDuplicates);
     public Visibility ProtectedDuplicatesVisibility    => V(HasProtectedDuplicates);
+    public Visibility NearDuplicatesVisibility         => V(HasNearDuplicates);
 
     private static Visibility V(bool show) =>
         show ? Visibility.Visible : Visibility.Collapsed;
@@ -185,6 +214,9 @@ public sealed partial class StorageViewModel : ObservableObject
     /// (and can take) action.
     /// </summary>
     public ObservableCollection<DuplicateGroupViewModel> ProtectedDuplicateGroups { get; } = new();
+
+    /// <summary>Heuristic near-duplicate pairs — review-only, never actionable.</summary>
+    public ObservableCollection<NearDuplicateViewModel> NearDuplicates { get; } = new();
 
     public ObservableCollection<CategoryRowViewModel>    Categories      { get; } = new();
     public ObservableCollection<LargeFileViewModel>      OldDownloads    { get; } = new();
@@ -228,6 +260,7 @@ public sealed partial class StorageViewModel : ObservableObject
         LargeFiles.Clear();
         DuplicateGroups.Clear();
         ProtectedDuplicateGroups.Clear();
+        NearDuplicates.Clear();
         Categories.Clear();
         OldDownloads.Clear();
 
@@ -413,6 +446,12 @@ public sealed partial class StorageViewModel : ObservableObject
         }
         HasActionableDuplicates = DuplicateGroups.Count > 0;
         HasProtectedDuplicates  = ProtectedDuplicateGroups.Count > 0;
+
+        // Populate near-duplicate pairs (review-only)
+        NearDuplicates.Clear();
+        foreach (var m in result.NearDuplicates)
+            NearDuplicates.Add(new NearDuplicateViewModel(m));
+        HasNearDuplicates = NearDuplicates.Count > 0;
 
         // Populate categories
         Categories.Clear();

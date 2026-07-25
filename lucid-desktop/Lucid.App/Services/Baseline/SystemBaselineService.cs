@@ -146,11 +146,14 @@ public sealed class SystemBaselineService : ISystemBaselineService
         // Disk I/O — combined read + write as a single composite metric.
         _normalDiskIo.Update(snapshot.DiskReadMbps + snapshot.DiskWriteMbps);
 
-        // Startup patterns — track last observed counts.
+        // Startup patterns — track last observed counts. Count only ENABLED
+        // entries so the baseline (and the growth comparisons that build on it)
+        // reflect what actually runs at sign-in, consistent with the insight rules.
         if (snapshot.StartupEntries.Count > 0)
         {
-            _startupEntryCount = snapshot.StartupEntries.Count;
-            _highImpactStartupCount = snapshot.StartupEntries
+            var enabled = snapshot.EnabledStartupEntries;
+            _startupEntryCount = enabled.Count;
+            _highImpactStartupCount = enabled
                 .Count(static e => e.Impact == StartupImpact.High);
         }
 

@@ -25,14 +25,78 @@ function Invoke-CheckedCommand {
         throw ("Command failed with exit code {0}: {1} {2}" -f $LASTEXITCODE, $FilePath, ($Arguments -join " "))
     }
 }
+function Resolve-ToolPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName,
+
+        [string[]]$FallbackPaths = @()
+    )
+
+    $command = Get-Command $CommandName -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    foreach ($path in $FallbackPaths) {
+        if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+            return $path
+        }
+    }
+
+    throw "Required tool not found: $CommandName"
+}
+function Resolve-VsDevCmdPath {
+    $vswhereCandidates = @(
+        (Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"),
+        (Join-Path $env:ProgramFiles "Microsoft Visual Studio\Installer\vswhere.exe")
+    )
+
+    foreach ($vswherePath in $vswhereCandidates) {
+        if (Test-Path -LiteralPath $vswherePath -PathType Leaf) {
+            $installPath = & $vswherePath -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if (-not [string]::IsNullOrWhiteSpace($installPath)) {
+                $candidate = Join-Path $installPath "Common7\Tools\VsDevCmd.bat"
+                if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                    return $candidate
+                }
+            }
+        }
+    }
+
+    $defaultCandidate = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat"
+    if (Test-Path -LiteralPath $defaultCandidate -PathType Leaf) {
+        return $defaultCandidate
+    }
+
+    throw "Visual Studio Developer Command Prompt not found. Install Visual Studio Build Tools with the C++ workload."
+}
+function Invoke-RustTests {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CargoPath
+    )
+
+    if (Get-Command "link.exe" -ErrorAction SilentlyContinue) {
+        Invoke-CheckedCommand -FilePath $CargoPath -Arguments @("test")
+        return
+    }
+
+    $vsDevCmdPath = Resolve-VsDevCmdPath
+    $cmdLine = "`"$vsDevCmdPath`" -arch=x64 -host_arch=x64 && `"$CargoPath`" test"
+    & cmd.exe /s /c $cmdLine
+    if ($LASTEXITCODE -ne 0) {
+        throw ("Command failed with exit code {0}: {1}" -f $LASTEXITCODE, $cmdLine)
+    }
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $desktopDir = Join-Path $repoRoot "lucid-desktop"
 $nativeDir = Join-Path $repoRoot "lucid-native"
+$cargoPath = Resolve-ToolPath -CommandName "cargo" -FallbackPaths @((Join-Path $env:USERPROFILE ".cargo\bin\cargo.exe"))
 $solutionPath = Join-Path $desktopDir "Lucid.slnx"
 $appProjectPath = Join-Path $desktopDir "Lucid.App\Lucid.App.csproj"
 $testProjectPath = Join-Path $desktopDir "Lucid.Tests\Lucid.Tests.csproj"
-$includeCheckPath = Join-Path $PSScriptRoot "check-app-source-includes.ps1"
 $releaseMetadataCheckPath = Join-Path $PSScriptRoot "validate-release-metadata.ps1"
 $releaseOperationsCheckPath = Join-Path $PSScriptRoot "validate-release-operations.ps1"
 $releaseArtifactSignPath = Join-Path $PSScriptRoot "sign-release-artifact.ps1"
@@ -61,9 +125,6 @@ try {
 
     Write-Step "Build solution"
     Invoke-CheckedCommand -FilePath dotnet -Arguments @("build", $solutionPath, "-c", $Configuration, "-p:Platform=x64", "--no-restore")
-
-    Write-Step "Check Lucid.App source inclusion policy"
-    Invoke-CheckedCommand -FilePath powershell.exe -Arguments @("-ExecutionPolicy", "Bypass", "-File", $includeCheckPath)
 
     Write-Step "Run C# tests"
     Invoke-CheckedCommand -FilePath dotnet -Arguments @("test", $testProjectPath, "-c", $Configuration, "-p:Platform=x64", "--no-restore")
@@ -116,7 +177,7 @@ finally {
 Write-Step "Run Rust tests"
 Push-Location $nativeDir
 try {
-    Invoke-CheckedCommand -FilePath cargo -Arguments @("test")
+    Invoke-RustTests -CargoPath $cargoPath
 }
 finally {
     Pop-Location

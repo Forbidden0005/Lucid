@@ -68,7 +68,9 @@ public sealed class StartupResourceCorrelationRule : IInsightRule
         if (current.StartupEntries.Count == 0)
             return null;
 
-        var highImpact = current.StartupEntries
+        // Only enabled entries run at sign-in — a disabled heavy app can't be
+        // the cause of live resource pressure.
+        var highImpact = current.EnabledStartupEntries
             .Where(static e => e.Impact == StartupImpact.High)
             .ToList();
 

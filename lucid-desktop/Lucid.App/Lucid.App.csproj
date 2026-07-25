@@ -26,6 +26,9 @@
     <Configurations>Debug;Release;Lucid</Configurations>
     <!-- Required for stackalloc in NativeScannerService P/Invoke wrapper -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LucidNativeDll Condition="'$(LucidNativeDll)' == ''">$(MSBuildThisFileDirectory)..\..\lucid-native\target\release\lucid_scanner.dll</LucidNativeDll>
+    <RequireLucidNativeDll Condition="'$(RequireLucidNativeDll)' == '' and '$(Configuration)' == 'Release'">true</RequireLucidNativeDll>
+    <RequireLucidNativeDll Condition="'$(RequireLucidNativeDll)' == ''">false</RequireLucidNativeDll>
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,49 +43,32 @@
   </ItemGroup>
 
   <!--
-    Source compilation uses default SDK globbing: every .cs under the project is
-    compiled automatically, so new files need no per-file <Compile Include>.
-    The removes below carve out the only files that must NOT compile:
-      • Controls\ and Models\ — placeholder/future code; the paired Controls XAML
-        is excluded by the <Page Remove="Controls\**"/> group below.
-      • Services\MockTelemetryService.cs — depends on the excluded Models\ types.
-      • ViewModels\ShellViewModel.cs / SystemIssueViewModel.cs — stubs referencing
-        Core.MVVM / Core.Navigation / Models namespaces that don't exist yet.
-    (Replaces the former 483-entry hand-maintained <Compile Include> allow-list,
-    which silently dropped any new file that wasn't added to it by hand.)
-  -->
-  <ItemGroup>
-    <Compile Remove="Controls\**\*.cs" />
-    <Compile Remove="Models\**\*.cs" />
-    <Compile Remove="Services\MockTelemetryService.cs" />
-    <Compile Remove="ViewModels\ShellViewModel.cs" />
-    <Compile Remove="ViewModels\SystemIssueViewModel.cs" />
-  </ItemGroup>
-
-  <!-- Exclude custom controls XAML (they reference excluded code) -->
-  <ItemGroup>
-    <Page Remove="Controls\**" />
-  </ItemGroup>
-
-  <!--
-    Copy lucid_scanner.dll from the Rust release build into the app output directory.
+    Copy lucid_scanner.dll from the Rust release build into the app output and publish directories.
     The DLL is only available after a release build of lucid-native/ (cargo build, release profile).
-    If the file does not exist the copy is skipped (ContinueOnError) so the C# build
-    succeeds without Rust — NativeScannerService.IsAvailable will return false at runtime.
+    Release builds fail when the DLL is missing so broken native artifacts are caught before runtime.
   -->
   <Target Name="CopyLucidNativeDll" AfterTargets="Build">
-    <PropertyGroup>
-      <LucidNativeDll>$(MSBuildThisFileDirectory)..\..\lucid-native\target\release\lucid_scanner.dll</LucidNativeDll>
-    </PropertyGroup>
+    <Error Text="lucid_scanner.dll is required for Release builds. Run cargo build --release in lucid-native/ before building Lucid.App."
+           Condition="'$(RequireLucidNativeDll)' == 'true' and !Exists('$(LucidNativeDll)')" />
     <Copy SourceFiles="$(LucidNativeDll)"
           DestinationFolder="$(OutputPath)"
           SkipUnchangedFiles="true"
-          ContinueOnError="true"
           Condition="Exists('$(LucidNativeDll)')" />
     <Message Text="Copied lucid_scanner.dll to $(OutputPath)" Importance="normal"
              Condition="Exists('$(LucidNativeDll)')" />
     <Message Text="lucid_scanner.dll not found — skipping native copy (run cargo build --release in lucid-native/)" Importance="low"
-             Condition="!Exists('$(LucidNativeDll)')" />
+             Condition="'$(RequireLucidNativeDll)' != 'true' and !Exists('$(LucidNativeDll)')" />
+  </Target>
+
+  <Target Name="CopyLucidNativeDllToPublishDirectory" AfterTargets="Publish" Condition="'$(PublishDir)' != ''">
+    <Error Text="lucid_scanner.dll is required for Release publish output. Run cargo build --release in lucid-native/ before publishing Lucid.App."
+           Condition="'$(RequireLucidNativeDll)' == 'true' and !Exists('$(LucidNativeDll)')" />
+    <Copy SourceFiles="$(LucidNativeDll)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(LucidNativeDll)')" />
+    <Message Text="Copied lucid_scanner.dll to $(PublishDir)" Importance="normal"
+             Condition="Exists('$(LucidNativeDll)')" />
   </Target>
 
 </Project>

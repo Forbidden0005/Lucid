@@ -10,6 +10,42 @@ env:
   DOTNET_VERSION: "8.0.x"
 
 jobs:
+  native-rust:
+    name: Rust Native Checks (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Check Rust formatting
+        working-directory: lucid-native
+        run: cargo fmt --check
+
+      - name: Run Rust clippy
+        working-directory: lucid-native
+        run: cargo clippy -- -D warnings
+
+      - name: Run Rust tests
+        working-directory: lucid-native
+        run: cargo test
+
+      - name: Build native scanner DLL
+        working-directory: lucid-native
+        run: cargo build --release
+
+      - name: Upload native scanner DLL
+        uses: actions/upload-artifact@v7
+        with:
+          name: lucid-native-scanner-win-x64
+          path: lucid-native/target/release/lucid_scanner.dll
+          if-no-files-found: error
+
   build-debug:
     name: Build Debug (x64)
     runs-on: windows-latest
@@ -32,9 +68,6 @@ jobs:
 
       - name: Validate release operations policy
         run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-operations.ps1
-
-      - name: Check Lucid.App source inclusion policy
-        run: powershell.exe -ExecutionPolicy Bypass -File scripts/check-app-source-includes.ps1
 
       - name: Build solution
         working-directory: lucid-desktop
@@ -88,6 +121,7 @@ jobs:
   build-release:
     name: Build Release (x64)
     runs-on: windows-latest
+    needs: native-rust
 
     steps:
       - name: Checkout
@@ -98,6 +132,12 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Download native scanner DLL
+        uses: actions/download-artifact@v7
+        with:
+          name: lucid-native-scanner-win-x64
+          path: lucid-native/target/release
+
       - name: Restore NuGet packages
         working-directory: lucid-desktop
         run: dotnet restore Lucid.slnx -p:Platform=x64
@@ -107,9 +147,6 @@ jobs:
 
       - name: Validate release operations policy
         run: powershell.exe -ExecutionPolicy Bypass -File scripts/validate-release-operations.ps1
-
-      - name: Check Lucid.App source inclusion policy
-        run: powershell.exe -ExecutionPolicy Bypass -File scripts/check-app-source-includes.ps1
 
       - name: Build solution
         working-directory: lucid-desktop
@@ -163,7 +200,9 @@ jobs:
   publish-release:
     name: Publish Release Artifact (win-x64)
     runs-on: windows-latest
-    needs: test-release
+    needs:
+      - native-rust
+      - test-release
 
     steps:
       - name: Checkout
@@ -173,6 +212,12 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Download native scanner DLL
+        uses: actions/download-artifact@v7
+        with:
+          name: lucid-native-scanner-win-x64
+          path: lucid-native/target/release
 
       - name: Restore NuGet packages
         working-directory: lucid-desktop

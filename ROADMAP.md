@@ -92,22 +92,20 @@ cargo test
 **Verified counts:**
 - ~480 compiled C# production files across 33 service domains
 - 27 XAML view files, 41 ViewModel files
-- 296 passing C# tests (verified 2026-07-02 via `dotnet test`)
-- 19 Rust tests passing (verified 2026-07-02 via `cargo test`)
+- 351 passing C# tests (verified 2026-07-24 via `dotnet test`)
+- 19 Rust tests passing (verified 2026-07-24 via `cargo test`)
 - 27 concrete action executors implementing `IActionExecutor` (28 executor files including
   the abstract `OpenApplicationExecutorBase` — earlier docs counted 28; the registered
   production set in `AppServices` is 27)
 
 **Known active issues (not yet fixed):**
-- Fresh-clone / CI proof is still incomplete: the previously untracked CI, release, installer, and
-  support infrastructure was committed on 2026-06-11 (`107a6fb`), and the current worktree is
-  clean, but a scratch-clone verification / CI-green confirmation is still not recorded here.
-- CRLF/LF churn — `.gitattributes` committed 2026-06-10; repo-wide renormalize still pending (C2)
 - ~~`release/` (740 MB of generated artifacts) not in `.gitignore`~~ — resolved 2026-06-10 (C3)
 - `AppServices.cs` is 2,052 lines, ~100 static properties — static service locator
-- `Lucid.App.csproj` has 481 explicit `<Compile Include>` entries instead of default globbing
 - 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls
-- Rust scanner now has 19 tests but is still absent from CI entirely
+- Local workstation prerequisites now include Visual Studio Build Tools with the C++ workload,
+  Windows SDK import libraries, Rustup/Cargo, and Inno Setup for the optional setup-exe gate.
+  `scripts/verify-dev.ps1` initializes the Visual Studio developer environment for Rust tests
+  when `link.exe` is not already on PATH.
 - `NETSDK1206` warning during build — expected, non-critical, from Windows App SDK NuGet
 
 ---
@@ -116,10 +114,9 @@ cargo test
 
 These block professional quality and must be resolved before any new feature work.
 
-### C1 — Clean-checkout / CI proof still pending (P0)
+### C1 — Clean-checkout / CI proof (P0) — done 2026-07-24
 The load-bearing CI, release, installer, and support infrastructure that was previously local-only
-is now committed on `main`, and `git status` is clean. What remains is proving that a fresh
-checkout follows the documented path end-to-end and that CI is green from that state.
+is now committed and verified from a clean checkout and GitHub Actions.
 
 **Fix:** Verify with a scratch clone + CI run, then keep the roadmap aligned with that evidence.
 
@@ -130,11 +127,16 @@ checkout follows the documented path end-to-end and that CI is green from that s
       done 2026-06-11 (`107a6fb`): `.github/workflows/lucid-build.yml`, `scripts/verify-dev.ps1`,
       14 additional `scripts/*.ps1`, `installer/`, `Directory.Build.props`, `release/*.json`,
       and `AUDIT_ROADMAP.md`
-- [ ] Confirm CI green from clean checkout
+- [x] Confirm CI green from clean checkout — done 2026-07-24:
+      scratch clone `C:\Users\tyler\AppData\Local\Temp\lucid-clean-checkout-20260724-165334`
+      passed `scripts\verify-release.ps1` end-to-end: Release build, 351 C# tests, publish,
+      smoke, package/update-feed checks, installer round-trip, support bundle export, and 19 Rust
+      tests. GitHub Actions run `30129408800` on PR #28 / commit `7f5affc` passed: Debug build,
+      Release build, Debug tests, Release tests, and publish release artifact.
 
-### C2 — Line-ending renormalization still pending (P0)
-613 modified files showing ~113k insertions / ~112k deletions — almost entirely CRLF↔LF.
-Real changes are invisible inside whole-file diffs. `git blame` is destroyed on every touched file.
+### C2 — Line-ending renormalization (P0) — done 2026-07-24
+Earlier repository state showed 613 modified files with ~113k insertions / ~112k deletions —
+almost entirely CRLF↔LF. Real changes were invisible inside whole-file diffs.
 
 **Fix:** Add `.gitattributes` (`* text=auto`, explicit `eol=crlf` for `.ps1/.bat/.slnx` if desired),
 add `.editorconfig`, then run a one-time `git add --renormalize .` commit — isolated from any
@@ -142,9 +144,12 @@ functional change.
 
 - [x] Add `.gitattributes` and `.editorconfig` — committed 2026-06-10 (`f7e38ea`); newly staged
       files now land normalized
-- [ ] Run `git add --renormalize .` — deferred: keep this isolated from functional changes as a
-      dedicated normalization commit now that the load-bearing source is tracked
-- [ ] Commit as `chore: normalize line endings` with no functional changes mixed in
+- [x] Run `git add --renormalize .` — done 2026-07-24; it produced no staged file changes because
+      tracked text blobs already matched the `.gitattributes` policy on this branch
+- [x] Confirm repository EOL state — done 2026-07-24: `git ls-files --eol` reported no
+      `i/crlf` or `i/mixed` entries; binary assets remained `i/-text` as intended
+- [x] Commit as isolated roadmap proof — no normalization content commit was needed because
+      renormalization was a verified no-op
 
 ### C3 — `release/` (740 MB) not in `.gitignore` (P0)
 One careless `git add .` permanently bloats history. Also makes `git status` noise normal —
@@ -171,24 +176,27 @@ Meanwhile page-level ViewModels use constructor injection. Two competing DI idio
 - [ ] Migrate one page end-to-end as the template
 - [ ] Continue one page per session
 
-### C5 — 633-line manual compile whitelist in `Lucid.App.csproj` (P1)
-481 explicit `<Compile Include>` entries. Only 9 files remain excluded. The original reason
-(excluding future scaffolding) no longer applies. Every new file requires a csproj edit.
-Current guard coverage is partial: `scripts/check-app-source-includes.ps1` verifies ViewModels,
-Services, and Core, but the 6 excluded Controls/Models files are still outside that guard.
+### C5 — Lucid.App project source exclusions (P1) — done 2026-07-24
+The former explicit `<Compile Include>` allow-list had already been removed before this slice,
+but `Lucid.App.csproj` still excluded Controls, Models, `MockTelemetryService`, and legacy shell
+ViewModel source from SDK default globbing. That kept real project files outside normal build
+coverage.
 
-**Fix:** Delete or archive the 9 orphans, remove the Remove/Include machinery, return to default globbing,
-retire `check-app-source-includes.ps1`.
+**Fix:** Removed the remaining `<Compile Remove>` and `<Page Remove>` exclusions, made retained
+source compile cleanly without wiring new runtime behavior, and removed the source-inclusion guard
+from CI/local verification. The guard script remains as an optional no-regression check that fails
+if explicit include/remove rules return.
 
-- [ ] Identify the 9 excluded orphan files — determine: delete vs. keep vs. move to branch
-- [ ] Remove `<Compile Remove>` globs and all 481 `<Compile Include>` entries
-- [ ] Confirm build output identical; retire guard script from CI
+- [x] Identified formerly excluded orphan files — retained non-destructively and made compile-safe
+- [x] Removed remaining `<Compile Remove>` and `<Page Remove>` project exclusions
+- [x] Removed the source-inclusion guard from CI and `scripts/verify-dev.ps1`
+- [x] Verified Debug build, 351 C# tests, 19 Rust tests, Release build, and source-inclusion guard
 
-### C6 — Rust absent from CI; Release native DLL remains optional (P1)
+### C6 — Rust CI and Release native DLL enforcement (P1) — done 2026-07-24
 Test depth improved materially during Phase 3: 249 C# tests, 19 Rust tests, and executor safety
-coverage across the 27 registered production executors. Remaining risk is CI enforcement and native
-artifact reliability: Rust still has no CI job, and the build silently skips copying
-`lucid_scanner.dll` when missing — a broken native build is undetectable until runtime.
+coverage across the 27 registered production executors. This item closed the remaining native
+reliability gap: Rust is enforced in CI, and Release builds no longer silently skip
+`lucid_scanner.dll` when missing.
 
 **Fix:** See Testing Plan. Make Release copy step a hard error when DLL is missing.
 
@@ -198,11 +206,17 @@ artifact reliability: Rust still has no CI job, and the build silently skips cop
       seams, hostile rollback-token safety)
 - [x] Rust unit tests — done 2026-06-10: 19 tests covering FFI argument/UTF-8 validation,
       long-path `\\?\` traversal, junction-cycle termination, path-form handling
-- [ ] `cargo test/clippy/fmt` CI job — blocked on human review (CI changes are an
-      autonomous hard stop)
-      - Local precondition now clean as of 2026-06-11: `cargo fmt --check`,
-        `cargo clippy -- -D warnings`, and `cargo test` all pass
-- [ ] Make missing DLL a hard build error for Release configuration
+- [x] `cargo test/clippy/fmt` CI job — done 2026-07-24: `native-rust` runs
+      `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, and
+      `cargo build --release`, then uploads `lucid_scanner.dll` as a CI artifact consumed by
+      the Release build and publish jobs
+- [x] Make missing DLL a hard build error for Release configuration — done 2026-07-24:
+      `Lucid.App.csproj` fails Release build/publish when `lucid_scanner.dll` is absent; Debug
+      remains optional. Local proof: MSBuild failed with the expected Release error when
+      `LucidNativeDll` was pointed at a missing file; normal Release build passed with the real DLL.
+- [x] Require native DLL in release package verification — done 2026-07-24:
+      `prepare-release-artifact.ps1` requires `lucid_scanner.dll`, and
+      `verify-release-package.ps1` requires `app/lucid_scanner.dll` in the zip.
 
 ### C7 — 48 empty `catch { }` blocks; 33 `Debug/Console.WriteLine` calls (P1)
 Silent failure directly contradicts the explainability doctrine. A platform that explains the system
@@ -266,7 +280,7 @@ Do not add items here that have not been verified.
 - CI unit test workflow corrected — test job no longer assumes compiled artifacts from another runner
 - `setup.ps1` resolves solution and launch paths from repo location instead of stale `ExplainMyPC` path
 - `scripts/verify-dev.ps1` added as one-command local verification entrypoint
-- `scripts/check-app-source-includes.ps1` verifies ViewModels, Services, and Core C# files are either compiled or documented as intentional exclusions
+- `scripts/check-app-source-includes.ps1` verifies `Lucid.App.csproj` remains on SDK default globbing without explicit source/XAML include or remove lists
 - `docs/active-file-inventory.md` records active file counts and current intentional non-compiled files
 
 ### Build, CI, and Release Pipeline
@@ -293,6 +307,36 @@ Do not add items here that have not been verified.
 - `release/release-operations.json` defines repo-tracked channel ownership, rollout posture, symbol handling, and support-intake policy
 - `scripts/validate-release-operations.ps1` enforces that contract during local and CI verification
 - `installer/Export-LucidSupportBundle.ps1` exports support bundle; `scripts/verify-support-bundle-export.ps1` verifies it
+- `scripts/verify-release.ps1` keeps setup-exe generation as an explicit `-BuildSetupExe` gate
+  so the normal release verification path does not depend on Inno Setup being installed.
+  `scripts/build-setup-exe.ps1` derives the exact package zip from `release/release-metadata.json`
+  instead of selecting the newest zip by timestamp, and `scripts/verify-dev.ps1` resolves Cargo
+  from PATH or the standard Rustup user install path. Verified 2026-07-24: PowerShell parse checks
+  passed, `git diff --check` passed, and `scripts/verify-release.ps1` reached Rust after Release
+  build, 351 C# tests, publish, smoke, package, update feed, installer round-trip, and support
+  bundle gates. Follow-up on 2026-07-24 installed Visual Studio Build Tools / Windows SDK and
+  updated `scripts/verify-dev.ps1` to initialize `VsDevCmd.bat` for Rust when needed. Full
+  `scripts/verify-release.ps1` then passed locally end-to-end, including 351 C# tests and 19 Rust
+  tests. `scripts/build-setup-exe.ps1` also produced `Lucid-Setup-0.1.0-preview.exe` with checksum.
+- C1 clean-checkout and CI proof completed 2026-07-24: scratch clone
+  `C:\Users\tyler\AppData\Local\Temp\lucid-clean-checkout-20260724-165334` passed
+  `scripts\verify-release.ps1` end-to-end; GitHub Actions run `30129408800` passed all Debug,
+  Release, test, and publish artifact jobs for PR #28 at `7f5affc`.
+- C6 native CI and Release artifact enforcement completed 2026-07-24: GitHub Actions now runs
+  `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, and `cargo build --release`
+  in a dedicated Rust job; the produced `lucid_scanner.dll` is uploaded and consumed by Release
+  build/publish jobs. Release MSBuild now fails if the native DLL is missing, and release package
+  verification requires `app/lucid_scanner.dll`.
+- C5 app source exclusion cleanup completed 2026-07-24: `Lucid.App.csproj` now relies on SDK
+  default globbing with no explicit source or XAML exclusions; formerly excluded files were made
+  compile-safe without registering new runtime behavior. Verified locally with
+  `scripts\check-app-source-includes.ps1`, Debug build, 351 C# tests, 19 Rust tests via
+  `scripts\verify-dev.ps1`, and Release build.
+
+### Storage Intelligence — asset migration (2026-07-13)
+- Near-duplicate detection (`NearDuplicateDetectionService`) ported from the archived Drive_Agent project: copy/version naming patterns, format-variant pairs, and name-similarity matching, with size-proximity and per-directory bucketing guards. Review-only by design — each match carries a plain-English reason and confidence, pairs already reported as exact-hash duplicates are excluded, and no delete action is exposed. Surfaced in a "Possible near-duplicates — review manually" section on the Storage page and in the scan-complete timeline detail.
+- `StorageCategoryAnalyzer` enriched with cache/junk location rules ported from the archived Drive Management project (INetCache, Prefetch, SoftwareDistribution\Download, CrashDumps, Chromium/VS Code cache dirs, pip/npm/yarn caches) plus `.crash`/`.swp` extensions. Classification only. Specific cache rules are ordered before the general `\Windows\` rule; the source project's overbroad "Firefox Profiles = cache" rule was narrowed to `cache2` only (profiles hold bookmarks/credentials), with a regression test pinning that.
+- 29 new tests in `Lucid.Tests/Storage/`. Verified 2026-07-13: `dotnet build` (Debug x64) 0 warnings 0 errors; `dotnet test` 351 passed, 0 failed.
 
 ### Safety and Executor Tests
 - Execution engine safety gate tests (pre-flight elevation, confirmation gates, dry-run, rollback gating, exception containment)
@@ -512,7 +556,7 @@ Goal: make the project understandable to a new engineer in under 30 minutes.
 - [x] Repo-tracked release-operations policy and validation
 - [ ] Preserve malformed migration-state evidence instead of silently discarding it during
       installer data migration (`installer/Migrate-LucidData.ps1`)
-- [ ] Remove csproj compile whitelist (C5)
+- [x] Remove csproj compile whitelist/exclusions (C5) — done 2026-07-24
 - [ ] Real certificate-backed signing inputs — flip release metadata to `authenticode-required`
 - [ ] Expand launch smoke gate into deeper navigation and telemetry assertions
 - [ ] Decide non-interactive CI smoke policy: current pending script can record `skipped`, and
@@ -546,12 +590,13 @@ Goal: protect the parts of Lucid that can harm trust.
 - [x] Rust scanner tests (19 tests)
 - [x] Executor safety contract suite across all 27 registered executors (dry-run purity, rollback metadata, hostile-path inputs) (C6) — done 2026-06-10, see session notes
 - [x] Rust unit tests for path handling, long-path `\\?\` behavior, junction/symlink cycles, FFI null/invalid inputs (C6) — done 2026-06-10, all 19 passing
-- [ ] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6)
-- [ ] Make missing `lucid_scanner.dll` a hard build error for Release (C6)
+- [x] Rust CI job: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` (C6) — done 2026-07-24
+- [x] Make missing `lucid_scanner.dll` a hard build error for Release (C6) — done 2026-07-24
 - [x] Persistence durability tests: queue-overflow back-pressure, corrupt-DB backup/recreate,
       poison-write batch isolation, lifecycle write gating — done 2026-06-10
       (flush-on-shutdown was already covered by existing dispose final-flush tests)
-- [ ] Build-inclusion tests for explicitly included C# files (retire after C5)
+- [x] Build-inclusion guard retired from mandatory CI/local verification after C5; optional
+      no-regression script now checks that explicit source/XAML include/remove rules do not return
 - [ ] Coverage visibility: surface summary in CI job; set ratcheting floor
 
 **Exit criteria:**
@@ -697,8 +742,9 @@ a formal Execution Priority Queue (Foreground/Background/Idle-only classes). Unt
 concurrent heavy operations are prevented only by convention. Belongs in Phase 5.
 
 ### Concern 4: Native Boundary Is Silently Optional
-The csproj copies `lucid_scanner.dll` if present and logs "skipping" if not. Release builds must
-fail loudly — make the copy step `Error` severity for Release/publish. Add Rust build+test to CI.
+Closed 2026-07-24: Release builds and publish output now fail when `lucid_scanner.dll` is missing.
+CI builds the Rust scanner, runs fmt/clippy/tests, uploads the native DLL, and feeds that artifact
+into the Release build and publish jobs.
 
 ---
 
@@ -714,7 +760,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 | Constructor bloat | `DashboardViewModel` 15 params | Group into 2–3 cohesive facades after DI migration | P2 |
 | `async void` | 12 occurrences | Audit — acceptable only for UI event handlers; wrap bodies in try/catch | P1 |
 | Sync-over-async | 9 `.Result`/`.Wait()` | Replace with await or document why safe | P1 |
-| Dead code | 9 excluded files incl. `MockTelemetryService.cs`, `ShellViewModel.cs`, 3 controls, 3 models | Delete (git preserves them) | P1 |
+| Formerly excluded source | 9 files formerly outside the build now compile under SDK default globbing | No runtime registration added; revisit only if product scope needs these types | Closed 2026-07-24 |
 | Migration-state recovery loses evidence | `installer/Migrate-LucidData.ps1` swallows JSON parse failure and rewrites migration state | Preserve the bad state file or emit explicit recovery evidence before replacement | P1 |
 | Loose service files | 5 telemetry files at `Services/` root | Relocate to `Services/Telemetry/` | P2 |
 | TFM mismatch | App targets `19041.0`, Tests target `22621.0` | Align or document why tests target newer SDK | P2 |
@@ -727,7 +773,7 @@ fail loudly — make the copy step `Error` severity for Release/publish. Add Rus
 - 296 passing C# test cases — good structure, real assertions, Moq + FluentAssertions
 - Test files are committed; remaining C1 blocker is fresh-clone / CI proof on the now-tracked infrastructure
 - No coverage threshold or report rendering; Cobertura XML uploaded then ignored
-- Rust: 19 tests; no CI job
+- Rust: 19 tests; CI job now runs fmt, clippy, tests, and release DLL build
 - SQLite durability tests cover real file behavior; broader app-level persistence integration coverage is still absent
 
 ### Improvement Plan (ordered)
@@ -755,8 +801,8 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 **P1: Rust tests + CI job**
 - Path handling, long-path `\\?\` behavior, junction/symlink cycles — done 2026-06-10 (19 tests total)
 - FFI surface: null/invalid inputs must not panic across the boundary (panic across FFI is UB) — done 2026-06-10
-- Add `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` to CI
-- Publish DLL as CI artifact consumed by publish job
+- Add `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check` to CI — done 2026-07-24
+- Publish DLL as CI artifact consumed by publish job — done 2026-07-24
 
 **P2: Coverage visibility**
 - Publish coverage summary to CI job summary
@@ -778,7 +824,7 @@ per-executor (existing rollback tests cover the staging-based cleanup executors)
 | Analyzers | Default only | Enable `AnalysisLevel=latest`, `EnforceCodeStyleInBuild=true`, `BannedApiAnalyzers` |
 | Warnings | 0 today | `TreatWarningsAsErrors=true` in `Directory.Build.props` — cheapest moment is now |
 | Package versions | Inline in csproj ×2 | `Directory.Packages.props` central package management |
-| Rust tooling | Local `fmt`, `clippy -D warnings`, and tests pass; no CI job | Add `cargo fmt --check` + `cargo clippy -D warnings` + `cargo test` CI job |
+| Rust tooling | CI runs `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, and `cargo build --release` | Keep Rust gates release-blocking and feed `lucid_scanner.dll` into Release publish |
 | Commit hooks | None | Optional lightweight pre-commit running `dotnet format` on staged files — skip if it adds friction |
 | CI duplication | 4 jobs repeat restore/validate verbatim | Composite action or `workflow_call`; `concurrency:` group with cancel-in-progress; NuGet caching |
 

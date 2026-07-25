@@ -12,6 +12,12 @@ internal static class StorageCategoryAnalyzer
 
     private static readonly (string PathFragment, StorageCategory Category)[] s_pathRules =
     [
+        // Specific cache locations must precede the general \Windows\ and
+        // \AppData\ rules — first match wins.
+        (@"\Microsoft\Windows\INetCache\",   StorageCategory.Temporary),
+        (@"\SoftwareDistribution\Download\", StorageCategory.Temporary),
+        (@"\Windows\Prefetch\",              StorageCategory.Temporary),
+
         (@"\Windows\",           StorageCategory.System),
         (@"\Program Files\",     StorageCategory.System),
         (@"\Program Files (x86)\", StorageCategory.System),
@@ -25,6 +31,22 @@ internal static class StorageCategoryAnalyzer
         (@"\Temp\",              StorageCategory.Temporary),
         (@"\tmp\",               StorageCategory.Temporary),
         (@"\AppData\Local\Temp", StorageCategory.Temporary),
+        // Known browser / package-manager cache locations. These are
+        // regenerable by the apps that own them, so they classify as Temporary
+        // for the category heatmap (classification only — no cleanup implied).
+        (@"\CrashDumps\",                               StorageCategory.Temporary),
+        (@"\Crash Reports\",                            StorageCategory.Temporary),
+        (@"\Code Cache\",                               StorageCategory.Temporary),
+        (@"\GPUCache\",                                 StorageCategory.Temporary),
+        (@"\GrShaderCache\",                            StorageCategory.Temporary),
+        (@"\ShaderCache\",                              StorageCategory.Temporary),
+        (@"\blob_storage\",                             StorageCategory.Temporary),
+        (@"\pip\cache\",                                StorageCategory.Temporary),
+        (@"\npm-cache\",                                StorageCategory.Temporary),
+        (@"\yarn\Cache\",                               StorageCategory.Temporary),
+        (@"\AppData\Local\Google\Chrome\User Data\Default\Cache\", StorageCategory.Temporary),
+        (@"\cache2\",                                   StorageCategory.Temporary), // Firefox cache dir
+        (@"\CachedData\",                               StorageCategory.Temporary), // VS Code et al.
         (@"\node_modules\",      StorageCategory.Development),
         (@"\.git\",              StorageCategory.Development),
         (@"\source\repos\",      StorageCategory.Development),
@@ -69,9 +91,10 @@ internal static class StorageCategoryAnalyzer
         [".gz"]  = StorageCategory.Downloads, [".bz2"] = StorageCategory.Downloads,
 
         // Temp / junk
-        [".tmp"]  = StorageCategory.Temporary, [".temp"] = StorageCategory.Temporary,
-        [".log"]  = StorageCategory.Temporary, [".dmp"]  = StorageCategory.Temporary,
-        [".etl"]  = StorageCategory.Temporary,
+        [".tmp"]  = StorageCategory.Temporary, [".temp"]  = StorageCategory.Temporary,
+        [".log"]  = StorageCategory.Temporary, [".dmp"]   = StorageCategory.Temporary,
+        [".etl"]  = StorageCategory.Temporary, [".crash"] = StorageCategory.Temporary,
+        [".swp"]  = StorageCategory.Temporary,
 
         // Development
         [".pdb"]  = StorageCategory.Development, [".obj"] = StorageCategory.Development,
@@ -90,20 +113,22 @@ internal static class StorageCategoryAnalyzer
     };
 
     /// <summary>Classifies a file into a broad storage category.</summary>
-    internal static StorageCategory Classify(FileInfo file)
-    {
-        var path = file.FullName;
+    internal static StorageCategory Classify(FileInfo file) =>
+        Classify(file.FullName, file.Extension);
 
+    /// <summary>Pure path/extension classification (unit-testable).</summary>
+    internal static StorageCategory Classify(string fullPath, string extension)
+    {
         // Path rules take precedence
         foreach (var (fragment, category) in s_pathRules)
         {
-            if (path.Contains(fragment, StringComparison.OrdinalIgnoreCase))
+            if (fullPath.Contains(fragment, StringComparison.OrdinalIgnoreCase))
                 return category;
         }
 
         // Extension fallback
-        if (!string.IsNullOrEmpty(file.Extension) &&
-            s_extMap.TryGetValue(file.Extension, out var extCategory))
+        if (!string.IsNullOrEmpty(extension) &&
+            s_extMap.TryGetValue(extension, out var extCategory))
             return extCategory;
 
         return StorageCategory.Other;

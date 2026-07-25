@@ -86,7 +86,7 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
         {
             result = new StorageAnalysisResult(
                 scanRoot, DateTimeOffset.Now, TimeSpan.Zero,
-                0, 0, [], [], [], WasCancelled: true);
+                0, 0, [], [], [], [], WasCancelled: true);
         }
         finally
         {
@@ -102,7 +102,10 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
                 $"({StorageFormatHelper.FormatBytes(result.TotalBytesScanned)}). " +
                 $"Found {result.LargeFiles.Count} large files " +
                 $"and {result.DuplicateGroups.Count} duplicate groups " +
-                $"({result.WasteFormatted} recoverable waste).";
+                $"({result.WasteFormatted} recoverable waste)." +
+                (result.NearDuplicates.Count > 0
+                    ? $" {result.NearDuplicates.Count} possible near-duplicate pairs flagged for review."
+                    : string.Empty);
 
             AddTimeline("Storage scan complete", detail,
                 result.DuplicateGroups.Count > 0 || result.LargeFiles.Count > 10
@@ -168,7 +171,7 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
 
         if (ct.IsCancellationRequested)
             return new StorageAnalysisResult(root, DateTimeOffset.Now, sw.Elapsed,
-                bytesProcessed, filesProcessed, [], [], [], WasCancelled: true);
+                bytesProcessed, filesProcessed, [], [], [], [], WasCancelled: true);
 
         // Phase 2: category aggregation
         ReportProgress(65, "Categorizing files…", filesProcessed, bytesProcessed);
@@ -188,7 +191,16 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
 
         if (ct.IsCancellationRequested)
             return new StorageAnalysisResult(root, DateTimeOffset.Now, sw.Elapsed,
-                bytesProcessed, filesProcessed, [], [], categoryBreakdown, WasCancelled: true);
+                bytesProcessed, filesProcessed, [], [], categoryBreakdown, [], WasCancelled: true);
+
+        // Phase 4: near-duplicate heuristics (review-only; excludes exact-hash pairs)
+        ReportProgress(96, "Checking for near-duplicates…", filesProcessed, bytesProcessed);
+        var exactPaths = duplicateGroups
+            .SelectMany(g => g.Files)
+            .Select(f => f.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var nearDuplicates = NearDuplicateDetectionService.Detect(
+            duplicateCandidates, exactPaths, ct);
 
         var sortedLarge = largeFiles
             .OrderByDescending(f => f.SizeBytes)
@@ -202,7 +214,7 @@ public sealed class StorageAnalysisService : IStorageAnalysisService
         return new StorageAnalysisResult(
             root, DateTimeOffset.Now, sw.Elapsed,
             bytesProcessed, filesProcessed,
-            sortedLarge, duplicateGroups, categoryBreakdown,
+            sortedLarge, duplicateGroups, categoryBreakdown, nearDuplicates,
             WasCancelled: false);
     }
 

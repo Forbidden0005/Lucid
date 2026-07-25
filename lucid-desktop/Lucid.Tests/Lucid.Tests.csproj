@@ -50,6 +50,12 @@
              Link="App\Services\Cleanup\CleanupScanner.cs" />
     <Compile Include="..\Lucid.App\Services\Cleanup\RollbackStagingSweeper.cs"
              Link="App\Services\Cleanup\RollbackStagingSweeper.cs" />
+    <Compile Include="..\Lucid.App\Services\Storage\StorageModels.cs"
+             Link="App\Services\Storage\StorageModels.cs" />
+    <Compile Include="..\Lucid.App\Services\Storage\StorageCategoryAnalyzer.cs"
+             Link="App\Services\Storage\StorageCategoryAnalyzer.cs" />
+    <Compile Include="..\Lucid.App\Services\Storage\NearDuplicateDetectionService.cs"
+             Link="App\Services\Storage\NearDuplicateDetectionService.cs" />
     <Compile Include="..\Lucid.App\Services\Automation\AutomationModels.cs"
              Link="App\Services\Automation\AutomationModels.cs" />
     <Compile Include="..\Lucid.App\Services\Automation\AutomationExecutionPlan.cs"
@@ -166,6 +172,8 @@
              Link="App\Services\Process\ProcessRecord.cs" />
     <Compile Include="..\Lucid.App\Helpers\ProcessSample.cs"
              Link="App\Helpers\ProcessSample.cs" />
+    <Compile Include="..\Lucid.App\Helpers\TelemetrySnapshot.cs"
+             Link="App\Helpers\TelemetrySnapshot.cs" />
     <Compile Include="..\Lucid.App\Services\Startup\IStartupManagementService.cs"
              Link="App\Services\Startup\IStartupManagementService.cs" />
     <Compile Include="..\Lucid.App\Services\Startup\StartupBackupSnapshot.cs"
