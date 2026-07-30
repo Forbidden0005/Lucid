@@ -27,7 +27,26 @@
     <!-- Required for stackalloc in NativeScannerService P/Invoke wrapper -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LucidNativeDll Condition="'$(LucidNativeDll)' == ''">$(MSBuildThisFileDirectory)..\..\lucid-native\target\release\lucid_scanner.dll</LucidNativeDll>
-    <RequireLucidNativeDll Condition="'$(RequireLucidNativeDll)' == '' and '$(Configuration)' == 'Release'">true</RequireLucidNativeDll>
+    <!--
+      The native scanner is built, tested (19 Rust tests) and copied when present,
+      but NOTHING CALLS IT YET: NativeScannerService.ScanDirectoryAsync /
+      GetTopFilesAsync have no production call sites, and storage analysis runs
+      entirely on the managed FileSystemScanner.
+
+      Why it isn't simply wired up: StorageAnalysisService.RunScan is a single
+      traversal that produces large files, duplicate candidates, category totals
+      and progress together. The native FFI only exposes aggregate totals
+      (lucid_scan_directory) and top-N largest (lucid_scan_top_files) — neither
+      can feed that pass, so adopting it today would mean a SECOND full traversal
+      of the drive and would be slower overall. Real adoption needs a streaming
+      entry point on the Rust side (a per-entry callback across the FFI boundary)
+      that can replace FileSystemScanner.Enumerate wholesale.
+
+      Until such a consumer exists, failing a Release build over a missing DLL
+      gates the build on an artifact with no runtime effect. Set
+      RequireLucidNativeDll=true (or restore the Release condition below) as soon
+      as the first real call site lands.
+    -->
     <RequireLucidNativeDll Condition="'$(RequireLucidNativeDll)' == ''">false</RequireLucidNativeDll>
   </PropertyGroup>
 
