@@ -1181,6 +1181,12 @@ public static class AppServices
         _logger = new LucidLogger();
         _logger.Info("Startup", "AppServices.Initialize() started");
 
+        // ── UI-thread dispatch adapter ────────────────────────────────────────
+        // Services that live in Lucid.Core cannot reference DispatcherQueue, so
+        // they take IUiDispatcher instead. One adapter is built here and shared
+        // by every consumer — see Lucid.Core/Services/Infrastructure/IUiDispatcher.cs.
+        var ui = new DispatcherQueueUiDispatcher(uiDispatcher);
+
         // ── Phase 18: Unified Operational Core ────────────────────────────────
         // These services form the platform's nervous system.
         // Initialized immediately after the logger so every subsequent
@@ -1349,7 +1355,8 @@ public static class AppServices
         // Started after telemetry so ReadingAvailable is already firing.
         // The governance service subscribes internally via its own Start() call.
         _governance = new RuntimeGovernanceService(
-            _telemetry, _pollingCoordinator!, _concurrencyBudget!, _executionQueue!, uiDispatcher);
+            _telemetry, _pollingCoordinator!, _concurrencyBudget!, _executionQueue!,
+            ui, new WinRtPowerStateProvider());
         _governance.Start();
 
         // ── Internal diagnostics service ──────────────────────────────────────
@@ -1538,7 +1545,7 @@ public static class AppServices
         _watchtowerCoordinator = new ProactiveRecommendationCoordinator(
             _historicalAnalytics, _learningService, _governance);
         _watchtower = new OperationalWatchtowerService(
-            _watchtowerCoordinator, _governance, uiDispatcher);
+            _watchtowerCoordinator, _governance, ui);
         _watchtower.Start();
 
         // ── Anomaly Intelligence layer ─────────────────────────────────────────
@@ -1745,7 +1752,11 @@ public static class AppServices
             baseUrl:   llmUrlValidation.IsAllowed
                            ? _settings!.Current.LlmEndpointUrl
                            : "http://localhost:11434",
-            modelName: _settings!.Current.LlmModel);
+            modelName: _settings!.Current.LlmModel,
+            // The prompt builder aggregates a dozen services from this registry,
+            // so it stays on the App side and is handed to the Core service as a
+            // factory rather than being called statically from inside it.
+            systemPromptFactory: LlmSystemContextBuilder.Build);
 
         var conversationSvc = new OperationalConversationService(
             _intelligence!,
@@ -1783,7 +1794,7 @@ public static class AppServices
             _automationAudit,
             _consentExplanation,
             _automationTransparency,
-            new DispatcherQueueUiDispatcher(uiDispatcher));
+            ui);
 
         // Trust manager subscribes to consent events to adapt the posture.
         // Created last so the audit ledger is populated before it begins listening.
@@ -1837,7 +1848,7 @@ public static class AppServices
         _checkpointManager = new WorkflowCheckpointManager();
 
         // Review gate dispatches approval events to the UI thread.
-        _humanReviewGate = new HumanReviewGate(_timeline!, uiDispatcher);
+        _humanReviewGate = new HumanReviewGate(_timeline!, ui);
 
         // File-operation services depend on the safety validator.
         _fileDiscovery  = new OperationalFileDiscoveryService(_safeExecutionValidator);

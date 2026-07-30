@@ -36,7 +36,7 @@ public sealed class ActionExecutionEngine : IActionExecutionEngine
 
     /// <param name="registry">
     /// Pre-populated registry of executor implementations.
-    /// Typically provided by <see cref="AppServices"/>.
+    /// Typically provided by the composition root.
     /// </param>
     public ActionExecutionEngine(ActionExecutorRegistry registry)
     {

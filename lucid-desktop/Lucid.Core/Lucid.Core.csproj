@@ -25,6 +25,14 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+    <!--
+      WMI access for hardware identity and Windows security status. Plain
+      framework packages, not WinUI / Windows App SDK — they do not breach the
+      boundary rule above, and pulling them in lets the Distributed and Security
+      domains live on this side of the seam where tests can reach them.
+    -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

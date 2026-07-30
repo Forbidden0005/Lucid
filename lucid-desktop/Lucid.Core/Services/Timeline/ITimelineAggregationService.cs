@@ -20,8 +20,8 @@
 ///   History load results are marshalled back to the UI thread via DispatcherQueue.
 ///
 /// Lifecycle:
-///   Call <see cref="Start"/> from AppServices.Initialize after all dependent services
-///   have started. Call <see cref="Stop"/> from AppServices.Shutdown before stopping
+///   Call <see cref="Start"/> from the composition root after all dependent services
+///   have started. Call <see cref="Stop"/> from the composition root shutdown path before stopping
 ///   the intelligence, session, or narrative services (which this service subscribes to).
 /// </summary>
 public interface ITimelineAggregationService
