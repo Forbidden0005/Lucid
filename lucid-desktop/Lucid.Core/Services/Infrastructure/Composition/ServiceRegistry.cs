@@ -7,7 +7,7 @@ namespace Lucid.Services.Infrastructure.Composition;
 ///
 /// Deliberately not a general-purpose DI container: no reflection, no
 /// auto-wiring, no lifetime scopes. Each registration is an explicit
-/// factory closing over the hand-ordered services built during AppServices
+/// factory closing over the hand-ordered services built during the composition root
 /// initialization, which keeps construction order visible and the
 /// migration reviewable one page at a time.
 /// </summary>
@@ -39,7 +39,7 @@ public sealed class ServiceRegistry : IServiceRegistry
         {
             throw new InvalidOperationException(
                 $"No factory registered for {typeof(T).Name}. " +
-                "Register it during AppServices initialization before the first page resolves it.");
+                "Register it during the composition root initialization before the first page resolves it.");
         }
 
         return (T)factory();

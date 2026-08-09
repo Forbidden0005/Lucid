@@ -1,12 +1,12 @@
 namespace Lucid.Services.Trust;
 
 /// <summary>
-/// WinUI-side adapter for <see cref="AutomationConsentService.IUiDispatcher"/>.
+/// WinUI-side adapter for <see cref="Lucid.Services.Infrastructure.IUiDispatcher"/>.
 /// Lucid.Core is WinUI-free, so the DispatcherQueue coupling lives here in
 /// Lucid.App (the interface is internal in Lucid.Core; this assembly sees it
 /// via InternalsVisibleTo).
 /// </summary>
-internal sealed class DispatcherQueueUiDispatcher : AutomationConsentService.IUiDispatcher
+internal sealed class DispatcherQueueUiDispatcher : Lucid.Services.Infrastructure.IUiDispatcher
 {
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
 

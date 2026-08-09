@@ -1,3 +1,4 @@
+using Lucid.Services.Infrastructure;
 using Lucid.Services.Automation;
 using Lucid.Services.Timeline;
 
@@ -34,19 +35,6 @@ namespace Lucid.Services.Trust;
 /// </summary>
 public sealed class AutomationConsentService
 {
-    /// <summary>
-    /// UI-thread dispatch seam. Lucid.Core is WinUI-free, so the WinUI
-    /// DispatcherQueue adapter lives in Lucid.App
-    /// (Services/Trust/DispatcherQueueUiDispatcher.cs); tests supply an
-    /// immediate dispatcher. Internal — App and Tests see it via
-    /// InternalsVisibleTo.
-    /// </summary>
-    internal interface IUiDispatcher
-    {
-        bool HasThreadAccess { get; }
-        void TryEnqueue(Action action);
-    }
-
     // â”€â”€ Dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private readonly ITimelineAggregationService  _timeline;

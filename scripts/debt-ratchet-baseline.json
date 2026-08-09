@@ -9,20 +9,7 @@
     "appServicesConsumerFiles":  [
                                      "lucid-desktop/Lucid.App/App.xaml.cs",
                                      "lucid-desktop/Lucid.App/MainWindow.xaml.cs",
-                                     "lucid-desktop/Lucid.App/Services/Baseline/ISystemBaselineService.cs",
-                                     "lucid-desktop/Lucid.App/Services/Companion/CompanionSessionManager.cs",
-                                     "lucid-desktop/Lucid.App/Services/Companion/ICompanionSessionManager.cs",
-                                     "lucid-desktop/Lucid.App/Services/Intelligence/Calibration/ConfidenceCalibrationEngine.cs",
-                                     "lucid-desktop/Lucid.App/Services/Intelligence/Learning/AdaptiveLearningMetrics.cs",
-                                     "lucid-desktop/Lucid.App/Services/Interaction/Diagnostics/InteractionHealthMetrics.cs",
-                                     "lucid-desktop/Lucid.App/Services/ITelemetryService.cs",
-                                     "lucid-desktop/Lucid.App/Services/LlmChat/LlmChatService.cs",
                                      "lucid-desktop/Lucid.App/Services/LlmChat/LlmSystemContextBuilder.cs",
-                                     "lucid-desktop/Lucid.App/Services/Narrative/IOperationalNarrativeEngine.cs",
-                                     "lucid-desktop/Lucid.App/Services/Persistence/TimelineEventRepository.cs",
-                                     "lucid-desktop/Lucid.App/Services/Reasoning/Cognitive/CognitiveHealthMetrics.cs",
-                                     "lucid-desktop/Lucid.App/Services/Reasoning/Cognitive/CognitiveReasoningEngine.cs",
-                                     "lucid-desktop/Lucid.App/Services/Session/ISessionContextService.cs",
                                      "lucid-desktop/Lucid.App/Services/WindowsTelemetryService.cs",
                                      "lucid-desktop/Lucid.App/ViewModels/ActionExecutionViewModel.cs",
                                      "lucid-desktop/Lucid.App/ViewModels/AppEntryViewModel.cs",
@@ -55,8 +42,6 @@
                                      "lucid-desktop/Lucid.App/Views/SettingsPage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/SimulationPage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/StoragePage.xaml.cs",
-                                     "lucid-desktop/Lucid.App/Views/WatchtowerPage.xaml.cs",
-                                     "lucid-desktop/Lucid.Core/Services/Persistence/SQLitePersistenceService.cs",
-                                     "lucid-desktop/Lucid.Core/Services/Timeline/ITimelineAggregationService.cs"
+                                     "lucid-desktop/Lucid.App/Views/WatchtowerPage.xaml.cs"
                                  ]
 }
