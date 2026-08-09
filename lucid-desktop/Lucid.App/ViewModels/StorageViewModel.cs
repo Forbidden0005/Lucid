@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Execution;
 using Lucid.Services.Execution.Validation;
+using Lucid.Services.Governance;
 using Lucid.Services.History;
 using Lucid.Services.Storage;
 using Lucid.Services.Timeline;
@@ -118,6 +119,7 @@ public sealed partial class StorageViewModel : ObservableObject
     private readonly ITimelineAggregationService _timeline;
     private readonly IActionExecutionEngine      _executionEngine;
     private readonly IOperationHistoryService    _historyService;
+    private readonly IRuntimeGovernanceService?  _governance;
 
     // ── Scan state ────────────────────────────────────────────────────────────
 
@@ -234,11 +236,13 @@ public sealed partial class StorageViewModel : ObservableObject
     public StorageViewModel(
         ITimelineAggregationService timeline,
         IActionExecutionEngine      executionEngine,
-        IOperationHistoryService    historyService)
+        IOperationHistoryService    historyService,
+        IRuntimeGovernanceService?  governance = null)
     {
         _timeline        = timeline;
         _executionEngine = executionEngine;
         _historyService  = historyService;
+        _governance      = governance;
         _dispatcher      = DispatcherQueue.GetForCurrentThread()
                         ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
     }
@@ -265,7 +269,7 @@ public sealed partial class StorageViewModel : ObservableObject
         OldDownloads.Clear();
 
         var timeline = _timeline as Services.Timeline.TimelineAggregationService;
-        var svc      = new StorageAnalysisService(_dispatcher, timeline);
+        var svc      = new StorageAnalysisService(_dispatcher, timeline, _governance);
 
         svc.ScanProgressChanged += OnProgress;
         svc.ScanCompleted       += OnCompleted;

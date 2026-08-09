@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Services.Execution;
+using Lucid.Services.Governance;
 using Lucid.Services.History;
 using Lucid.Services.Security;
 using Lucid.Services.Startup;
@@ -85,6 +86,7 @@ public sealed partial class SecurityViewModel : ObservableObject
     private readonly ITimelineAggregationService _timeline;
     private readonly IActionExecutionEngine      _executionEngine;
     private readonly IStartupManagementService   _startupManagement;
+    private readonly IRuntimeGovernanceService?  _governance;
 
     // ── Scan state ────────────────────────────────────────────────────────────
 
@@ -143,11 +145,13 @@ public sealed partial class SecurityViewModel : ObservableObject
     public SecurityViewModel(
         ITimelineAggregationService timeline,
         IActionExecutionEngine      executionEngine,
-        IStartupManagementService   startupManagement)
+        IStartupManagementService   startupManagement,
+        IRuntimeGovernanceService?  governance = null)
     {
         _timeline          = timeline;
         _executionEngine   = executionEngine;
         _startupManagement = startupManagement;
+        _governance        = governance;
         _dispatcher        = DispatcherQueue.GetForCurrentThread()
                           ?? Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
     }
@@ -172,7 +176,7 @@ public sealed partial class SecurityViewModel : ObservableObject
         StartupEntries.Clear();
 
         var timeline = _timeline as Services.Timeline.TimelineAggregationService;
-        var svc = new SecurityIntelligenceService(_dispatcher, _startupManagement, timeline);
+        var svc = new SecurityIntelligenceService(_dispatcher, _startupManagement, timeline, _governance);
 
         svc.ScanProgressChanged += (_, pct) =>
         {

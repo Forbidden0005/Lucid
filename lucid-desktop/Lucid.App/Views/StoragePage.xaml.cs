@@ -13,7 +13,8 @@ public sealed partial class StoragePage : Page
     public StorageViewModel ViewModel { get; } = new StorageViewModel(
         AppServices.Timeline,
         AppServices.ExecutionEngine,
-        AppServices.HistoryService);
+        AppServices.HistoryService,
+        AppServices.Governance);
 
     public StoragePage()
     {

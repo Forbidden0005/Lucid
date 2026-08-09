@@ -121,6 +121,24 @@ public sealed class RuntimeGovernanceService : IRuntimeGovernanceService, IDispo
         return _budget.TryAcquire(category, workloadName, out refusalReason);
     }
 
+    public void DeferWorkload(
+        WorkloadCategory category,
+        string           workloadName,
+        string?          refusalReason,
+        Func<Task>       retry)
+    {
+        ArgumentNullException.ThrowIfNull(retry);
+
+        _queue.Enqueue(
+            new DeferredWorkloadEntry(
+                workloadName,
+                category,
+                WorkloadClassifier.Classify(category),
+                DateTimeOffset.Now,
+                refusalReason ?? "System is busy."),
+            retry);
+    }
+
     public void ReleaseSlot(WorkloadCategory category, string workloadName)
     {
         _budget.Release(category, workloadName);
@@ -224,10 +242,10 @@ public sealed class RuntimeGovernanceService : IRuntimeGovernanceService, IDispo
         var args = new RuntimeModeChangedEventArgs(previous, applied, reasons);
         _uiDispatcher.TryEnqueue(() => ModeChanged?.Invoke(this, args));
 
-        // 4. Drain the deferred queue — the new mode may allow previously blocked work.
-        // (Already drained from ReleaseSlot too, but drain again on mode change
-        //  because a loosened budget may now admit queued idle-only work.)
-        if (applied == RuntimeMode.Normal)
-            _queue.Drain();
+        // 4. Drain the deferred queue — the new mode may allow previously blocked
+        //    work. Any transition can loosen the budget (e.g. Gaming → HighLoad
+        //    raises the background ceiling from 0 to 1), so drain on every change.
+        //    Retries that still can't acquire simply re-defer themselves.
+        _queue.Drain();
     }
 }

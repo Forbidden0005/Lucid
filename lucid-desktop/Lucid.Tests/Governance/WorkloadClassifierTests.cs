@@ -24,7 +24,9 @@ public sealed class WorkloadClassifierTests
     [InlineData(WorkloadCategory.DuplicateHashing,    WorkloadPriority.IdleOnly)]
     [InlineData(WorkloadCategory.HistoricalAnalytics, WorkloadPriority.IdleOnly)]
     [InlineData(WorkloadCategory.LearningAnalysis,    WorkloadPriority.IdleOnly)]
+    [InlineData(WorkloadCategory.SecurityScan,        WorkloadPriority.Foreground)]
     [InlineData(WorkloadCategory.RollbackMaintenance, WorkloadPriority.IdleOnly)]
+    [InlineData(WorkloadCategory.TelemetryRetention,  WorkloadPriority.IdleOnly)]
     public void Classify_MapsEveryCategoryToDoctrinePriority(
         WorkloadCategory category, WorkloadPriority expected)
     {

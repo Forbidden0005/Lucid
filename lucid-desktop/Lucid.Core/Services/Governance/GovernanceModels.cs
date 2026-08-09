@@ -30,6 +30,7 @@ public enum WorkloadCategory
     ActionExecution     = 0,   // repair/remediation executor
     ExplainReasoning    = 1,   // Lucid flagship reasoning pass
     ReplayAnalysis      = 2,   // operational replay reconstruction
+    SecurityScan        = 3,   // SecurityIntelligenceService scan (user-initiated)
 
     // ── Background-class: yield to foreground, pause under stress ─────────
     TelemetrySampling   = 10,  // WindowsTelemetryService poll cycle
@@ -44,6 +45,7 @@ public enum WorkloadCategory
     HistoricalAnalytics = 22,  // HistoricalAnalyticsEngine.ComputeAsync
     LearningAnalysis    = 23,  // RemediationLearningService.AnalyzePendingActionsAsync
     RollbackMaintenance = 24,  // RollbackStagingMaintenanceService expired-set sweep
+    TelemetryRetention  = 25,  // TelemetryRetentionService hourly downsample + purge
 }
 
 // ── Runtime mode ──────────────────────────────────────────────────────────────
