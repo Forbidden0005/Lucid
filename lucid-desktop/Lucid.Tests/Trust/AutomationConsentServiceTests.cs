@@ -193,7 +193,7 @@ public sealed class AutomationConsentServiceTests : IDisposable
         HowToUndo = "Undo is not required for this test."
     };
 
-    private sealed class ImmediateDispatcher : AutomationConsentService.IUiDispatcher
+    private sealed class ImmediateDispatcher : Lucid.Services.Infrastructure.IUiDispatcher
     {
         public bool HasThreadAccess => true;
 

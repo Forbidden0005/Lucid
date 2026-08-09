@@ -59,7 +59,7 @@ public sealed class SQLitePersistenceService : IDisposable
     /// <summary>
     /// Optional callback invoked when a write is dropped due to queue overflow.
     /// Arguments: (currentQueueDepth, maxQueueDepth).
-    /// Set by AppServices after construction to wire in PersistenceHealthMonitor.
+    /// Set by the composition root after construction to wire in PersistenceHealthMonitor.
     /// </summary>
     public Action<int, int>? OnWriteDropped { get; set; }
 
@@ -98,7 +98,7 @@ public sealed class SQLitePersistenceService : IDisposable
 
     /// <summary>
     /// Opens the database, applies any pending migrations, and starts the
-    /// background flush timer.  Safe to call once from AppServices.Initialize.
+    /// background flush timer.  Safe to call once from the composition root.
     /// </summary>
     public async Task InitializeAsync()
     {

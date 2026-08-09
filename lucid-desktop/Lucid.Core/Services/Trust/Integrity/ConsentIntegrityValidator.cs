@@ -4,7 +4,7 @@ namespace Lucid.Services.Trust.Integrity;
 /// Validates that the trust/consent posture loaded from settings.json has
 /// not been tampered with outside the normal UI consent flows.
 ///
-/// Used at startup by AppServices before the automation/consent systems are
+/// Used at startup by the composition root before the automation/consent systems are
 /// initialized. If tamper is detected, <see cref="TrustPostureRecoveryManager"/>
 /// is invoked to restore safe defaults.
 /// </summary>
