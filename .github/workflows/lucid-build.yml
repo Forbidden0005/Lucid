@@ -136,7 +136,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Download native scanner DLL
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: lucid-native-scanner-win-x64
           path: lucid-native/target/release
@@ -217,7 +217,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Download native scanner DLL
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: lucid-native-scanner-win-x64
           path: lucid-native/target/release
