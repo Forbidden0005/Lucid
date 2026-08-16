@@ -38,6 +38,19 @@ public interface ILlmChatService
     void ClearHistory();
 
     /// <summary>
+    /// Replaces the conversation history with the turns of a previously saved
+    /// session, so resuming a conversation gives the model real continuity
+    /// instead of a transcript the user can see but the model cannot.
+    ///
+    /// Only the most recent turns are retained — the same cap that applies to a
+    /// live conversation applies to a restored one.
+    ///
+    /// Like <see cref="ClearHistory"/>, this must not be called while a response
+    /// is streaming; cancel the in-flight stream first.
+    /// </summary>
+    void RestoreHistory(IReadOnlyList<LlmTurn> turns);
+
+    /// <summary>
     /// Reconfigures the service to use a new Ollama endpoint and model.
     ///
     /// Waits for any in-flight stream to complete, then atomically swaps the

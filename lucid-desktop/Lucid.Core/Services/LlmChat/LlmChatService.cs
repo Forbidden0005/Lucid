@@ -142,6 +142,27 @@ public sealed class LlmChatService : ILlmChatService, IDisposable
 
     public void ClearHistory() => _history.Clear();
 
+    /// <summary>
+    /// Rehydrates history from a saved session. Applies the same MaxTurns cap as
+    /// a live conversation, keeping the most recent turns — a long resumed
+    /// session must not silently blow past the model's context window.
+    /// </summary>
+    public void RestoreHistory(IReadOnlyList<LlmTurn> turns)
+    {
+        _history.Clear();
+
+        var slice = turns.Count > MaxTurns ? turns.Skip(turns.Count - MaxTurns) : turns;
+
+        foreach (var turn in slice)
+        {
+            _history.Add(new OllamaMessage
+            {
+                role    = turn.Role == LlmTurnRole.User ? "user" : "assistant",
+                content = turn.Text,
+            });
+        }
+    }
+
     // ── Reconfiguration ────────────────────────────────────────────────────────
 
     /// <summary>

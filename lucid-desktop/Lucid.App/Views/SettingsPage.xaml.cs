@@ -23,7 +23,9 @@ public sealed partial class SettingsPage : Page
             AppServices.TrustManager,
             AppServices.AutomationConsent,
             AppServices.AutomationOrchestrator,
-            AppServices.LlmChat,
+            // Both chat surfaces are reconfigured together so the overlay and
+            // the home page never end up talking to different models.
+            [AppServices.LlmChat, AppServices.HomeChat],
             AppServices.DesktopContext,
             AppServices.LocalSync,
             AppServices.Logger);

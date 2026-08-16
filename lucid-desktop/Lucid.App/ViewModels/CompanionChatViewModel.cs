@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lucid.Core.Infrastructure;
 using Lucid.Services.Automation;
+using Lucid.Services.Chat;
 using Lucid.Services.Companion;
 using Lucid.Services.LlmChat;
 using Microsoft.UI.Dispatching;
@@ -22,6 +23,13 @@ namespace Lucid.ViewModels;
 ///
 /// Threading: all ObservableCollection mutations happen on the UI thread via
 /// the captured DispatcherQueue.
+///
+/// Surfaces: this ViewModel backs both chat surfaces — the floating
+/// CompanionOverlayWindow and the full-page ChatPage. The two differ only in
+/// layout and in whether they persist the conversation, which is why the
+/// welcome seed is optional and why session lifecycle (new / resume) is exposed
+/// rather than assumed. ChatWorkspaceViewModel composes this one; it does not
+/// reimplement any of it.
 /// </summary>
 public sealed partial class CompanionChatViewModel : ObservableObject
 {
@@ -142,12 +150,35 @@ public sealed partial class CompanionChatViewModel : ObservableObject
     public string NoMessagesVisibility =>
         Messages.Count == 0 ? "Visible" : "Collapsed";
 
+    /// <summary>Inverse of <see cref="NoMessagesVisibility"/> — for surfaces that
+    /// swap between an empty-state hero and the live transcript.</summary>
+    public string HasMessagesVisibility =>
+        Messages.Count == 0 ? "Collapsed" : "Visible";
+
+    // ── Message lifecycle notification ─────────────────────────────────────────
+
+    /// <summary>
+    /// Raised once per message when its text is final — after a user message is
+    /// added, and after a streamed answer finishes, is cancelled, or fails.
+    /// Never raised for the intermediate states of a streaming message.
+    ///
+    /// Surfaces that persist conversations subscribe to this; the overlay ignores
+    /// it. Always raised on the UI thread.
+    /// </summary>
+    public event EventHandler<CompanionMessage>? MessageFinalized;
+
     // ── Constructor ────────────────────────────────────────────────────────────
 
+    /// <param name="seedWelcomeMessages">
+    /// When true (the overlay), the conversation opens with two greeting bubbles.
+    /// The full page renders its own empty state around the avatar instead, and
+    /// passes false so <see cref="Messages"/> starts genuinely empty.
+    /// </param>
     public CompanionChatViewModel(
         ILlmChatService         llm,
-        AutomationOrchestrator? orchestrator = null,
-        ILucidLogger?           logger       = null)
+        AutomationOrchestrator? orchestrator        = null,
+        ILucidLogger?           logger              = null,
+        bool                    seedWelcomeMessages = true)
     {
         _llm          = llm;
         _orchestrator = orchestrator;
@@ -159,7 +190,8 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         foreach (var qa in StaticQuickActions)
             QuickActions.Add(qa);
 
-        AddWelcomeMessages();
+        if (seedWelcomeMessages)
+            AddWelcomeMessages();
 
         // Check LLM status in background — don't block the UI
         _ = CheckLlmStatusAsync();
@@ -225,7 +257,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         if (string.IsNullOrEmpty(text) || IsProcessing) return;
 
         // Add the user message bubble
-        AddMessage(new CompanionMessage
+        AddAndFinalize(new CompanionMessage
         {
             Id        = NewId(),
             Role      = CompanionMessageRole.User,
@@ -250,7 +282,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             }
             catch (Exception ex)
             {
-                AddMessage(MakeMessage(BuildErrorMessage(ex), CompanionMessageCategory.Error));
+                AddAndFinalize(MakeMessage(BuildErrorMessage(ex), CompanionMessageCategory.Error));
                 IsProcessing = false;
                 return;
             }
@@ -258,7 +290,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
 
             if (!_llm.IsReady)
             {
-                AddMessage(MakeMessage(SetupBannerText, CompanionMessageCategory.Warning));
+                AddAndFinalize(MakeMessage(SetupBannerText, CompanionMessageCategory.Warning));
                 IsProcessing = false;
                 return;
             }
@@ -321,8 +353,24 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             _streamCts?.Dispose();
             _streamCts   = null;
             IsProcessing = false;
+
+            // The answer has reached its final text by now — whether it completed,
+            // was cancelled mid-sentence, or was replaced by an error. Announce it
+            // once so persisting surfaces store exactly what the user ended up
+            // seeing, rather than storing every streamed fragment.
+            var final = Messages.LastOrDefault(m => m.Id == streamingId);
+            if (final is not null)
+                MessageFinalized?.Invoke(this, final);
         }
     }
+
+    /// <summary>
+    /// Cancels the response currently being generated. Whatever text already
+    /// arrived stays on screen — a half-finished answer is still an answer, and
+    /// discarding it would lose work the user asked to stop, not to undo.
+    /// </summary>
+    [RelayCommand]
+    private void StopGeneration() => _streamCts?.Cancel();
 
     private static string BuildErrorMessage(Exception ex)
     {
@@ -355,11 +403,54 @@ public sealed partial class CompanionChatViewModel : ObservableObject
         // NoMessagesVisibility is notified by AddWelcomeMessages() → AddMessage()
     }
 
+    // ── Session lifecycle (used by the full-page chat surface) ────────────────
+
+    /// <summary>
+    /// Resets to an empty conversation: cancels any in-flight response and clears
+    /// both the rendered messages and the model's history.
+    ///
+    /// Distinct from <see cref="ClearConversation"/>, which re-seeds the greeting
+    /// bubbles for the overlay. A page that renders its own empty state wants a
+    /// genuinely empty collection.
+    /// </summary>
+    public void BeginNewSession()
+    {
+        _streamCts?.Cancel();
+        Messages.Clear();
+        _llm.ClearHistory();
+        OnPropertyChanged(nameof(NoMessagesVisibility));
+        OnPropertyChanged(nameof(HasMessagesVisibility));
+    }
+
+    /// <summary>
+    /// Loads a saved conversation into the view and rebuilds the model's history
+    /// from it, so a resumed session can be continued rather than merely read.
+    ///
+    /// Restored messages are not re-announced through
+    /// <see cref="MessageFinalized"/> — they are already stored, and echoing them
+    /// back would append the whole transcript to itself.
+    /// </summary>
+    public void RestoreSession(IReadOnlyList<ChatTranscriptEntry> transcript)
+    {
+        _streamCts?.Cancel();
+        Messages.Clear();
+
+        foreach (var message in ChatTranscriptMapper.ToMessages(transcript))
+            Messages.Add(message);
+
+        _llm.RestoreHistory(ChatTranscriptMapper.ToLlmTurns(transcript));
+
+        OnPropertyChanged(nameof(NoMessagesVisibility));
+        OnPropertyChanged(nameof(HasMessagesVisibility));
+    }
+
     // ── Automation narration (called from CompanionOverlayWindow) ─────────────
 
     public void AddAutomationNarration(string narration, bool isWarning = false)
     {
-        AddMessage(MakeMessage(narration,
+        // Finalised on arrival: narration text never streams, and it is part of
+        // what the user saw happen in this conversation.
+        AddAndFinalize(MakeMessage(narration,
             isWarning ? CompanionMessageCategory.Warning : CompanionMessageCategory.Action));
     }
 
@@ -436,6 +527,18 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             Messages.RemoveAt(0);
         Messages.Add(message);
         OnPropertyChanged(nameof(NoMessagesVisibility));
+        OnPropertyChanged(nameof(HasMessagesVisibility));
+    }
+
+    /// <summary>
+    /// Adds a message whose text is already final and announces it in one step.
+    /// Used for everything except the streaming placeholder, which is finalised
+    /// by <see cref="SendMessageAsync"/> once the stream ends.
+    /// </summary>
+    private void AddAndFinalize(CompanionMessage message)
+    {
+        AddMessage(message);
+        MessageFinalized?.Invoke(this, message);
     }
 
     private static CompanionMessage MakeMessage(string text, CompanionMessageCategory category) =>
