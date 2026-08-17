@@ -38,6 +38,7 @@ public sealed partial class CompanionChatViewModel : ObservableObject
     // ── Dependencies ───────────────────────────────────────────────────────────
 
     private readonly ILlmChatService         _llm;
+    private readonly IInvestigationPreflight? _preflight;
     private readonly AutomationOrchestrator? _orchestrator;
     private readonly ILucidLogger?           _logger;
     private readonly DispatcherQueue         _dispatcher;
@@ -174,13 +175,20 @@ public sealed partial class CompanionChatViewModel : ObservableObject
     /// The full page renders its own empty state around the avatar instead, and
     /// passes false so <see cref="Messages"/> starts genuinely empty.
     /// </param>
+    /// <param name="preflight">
+    /// Runs real investigations before the model answers. Optional: without it
+    /// the model still works, but answers questions about crashes from live
+    /// telemetry alone, which is what it did before the reliability domain existed.
+    /// </param>
     public CompanionChatViewModel(
-        ILlmChatService         llm,
-        AutomationOrchestrator? orchestrator        = null,
-        ILucidLogger?           logger              = null,
-        bool                    seedWelcomeMessages = true)
+        ILlmChatService          llm,
+        AutomationOrchestrator?  orchestrator        = null,
+        ILucidLogger?            logger              = null,
+        bool                     seedWelcomeMessages = true,
+        IInvestigationPreflight? preflight           = null)
     {
         _llm          = llm;
+        _preflight    = preflight;
         _orchestrator = orchestrator;
         _logger       = logger;
         _dispatcher   = DispatcherQueue.GetForCurrentThread()
@@ -296,6 +304,52 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             }
         }
 
+        // Created here rather than just before the stream so that Stop cancels the
+        // investigation too — an event-log read the user has abandoned should not
+        // keep running.
+        _streamCts = new CancellationTokenSource();
+
+        // ── Investigate before answering ──────────────────────────────────
+        // Some questions cannot be answered from live readings at all: "why does
+        // my PC keep crashing" is about a machine that was not running, so the
+        // failure history has to be fetched first. Anything found is shown to the
+        // user as a trail message and handed to the model as evidence.
+        string? investigationContext = null;
+
+        if (_preflight is not null)
+        {
+            try
+            {
+                var outcome = await _preflight
+                    .RunAsync(text, _streamCts.Token)
+                    .ConfigureAwait(true);
+
+                if (outcome.DidInvestigate)
+                {
+                    investigationContext = outcome.PromptContext;
+
+                    if (outcome.TrailMessage is not null)
+                        AddAndFinalize(MakeMessage(outcome.TrailMessage,
+                            CompanionMessageCategory.Action));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Stop was pressed while the event log was being read. Abandon the
+                // whole turn rather than answering a question the user withdrew.
+                _streamCts?.Dispose();
+                _streamCts   = null;
+                IsProcessing = false;
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Never let a failed investigation cost the user their answer —
+                // an answer from live data alone still beats no answer.
+                _logger?.Warning("Chat", $"Investigation pre-flight failed: {ex.Message}", ex);
+            }
+        }
+
         // Add a placeholder message that will be updated as text streams in
         var streamingId = NewId();
         AddMessage(new CompanionMessage
@@ -307,13 +361,13 @@ public sealed partial class CompanionChatViewModel : ObservableObject
             Category  = CompanionMessageCategory.Answer,
         });
 
-        _streamCts = new CancellationTokenSource();
         var accumulated = new System.Text.StringBuilder();
 
         try
         {
             await _llm.StreamResponseAsync(
                 text,
+                investigationContext: investigationContext,
                 onChunk: chunk =>
                 {
                     accumulated.Append(chunk);

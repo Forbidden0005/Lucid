@@ -10,6 +10,7 @@ using Lucid.Services.Analytics;
 using Lucid.Services.Autonomy;
 using Lucid.Services.Automation;
 using Lucid.Services.Chat;
+using Lucid.Services.Reliability;
 using Lucid.Services.Conversation;
 using Lucid.Services.Trust;
 using Lucid.Services.LlmChat;
@@ -192,6 +193,10 @@ public static class AppServices
     // ── Home chat surface ─────────────────────────────────────────────────────
     private static ILlmChatService?   _homeChat;
     private static IChatSessionStore? _chatSessions;
+
+    // ── Reliability / investigation ───────────────────────────────────────────
+    private static IReliabilityService?      _reliability;
+    private static IInvestigationPreflight?  _investigationPreflight;
 
     // ── Desktop Context layer ─────────────────────────────────────────────────
     private static DesktopContextService? _desktopContext;
@@ -1067,6 +1072,26 @@ public static class AppServices
     /// layer as a schema migration; nothing outside this registration needs to
     /// change when it lands.
     /// </summary>
+    /// <summary>
+    /// Windows event log crash history — unexpected shutdowns, stop errors, WHEA
+    /// hardware errors, storage faults, application failures — correlated into
+    /// ranked findings with confidence levels.
+    /// </summary>
+    public static IReliabilityService Reliability =>
+        _reliability ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Runs real investigations before the model answers a question, so questions
+    /// that live telemetry cannot answer — "why does my PC keep crashing" — are
+    /// answered from the machine's actual failure history.
+    /// </summary>
+    public static IInvestigationPreflight InvestigationPreflight =>
+        _investigationPreflight ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
     public static IChatSessionStore ChatSessions =>
         _chatSessions ?? throw new InvalidOperationException(
             "AppServices.Initialize() has not been called. " +
@@ -1803,6 +1828,20 @@ public static class AppServices
 
         _chatSessions = new InMemoryChatSessionStore();
 
+        // ── Crash history + investigation pre-flight ──────────────────────────
+        // The reliability service reads the Windows event logs; the pre-flight
+        // decides when a question needs them and gathers the answer before the
+        // model is called. Governed as ReliabilityAnalysis (Foreground).
+        _reliability = new ReliabilityService(
+            new WindowsEventLogReader(),
+            _governance,
+            _logger);
+
+        _investigationPreflight = new InvestigationPreflight(
+            new ConversationIntentResolver(),
+            _reliability,
+            _logger);
+
         var conversationSvc = new OperationalConversationService(
             _intelligence!,
             _narrative!,
@@ -2086,6 +2125,8 @@ public static class AppServices
         (_homeChat as IDisposable)?.Dispose();
         _homeChat               = null;
         _chatSessions           = null;
+        _investigationPreflight = null;
+        _reliability            = null;
         _companionSession       = null;
         _conversationEngine     = null;
         _conversationService    = null;

@@ -29,10 +29,19 @@ public interface ILlmChatService
     /// Threading: <paramref name="onChunk"/> is invoked on a thread-pool thread.
     /// The caller must marshal to the UI thread if needed.
     /// </summary>
+    /// <param name="investigationContext">
+    /// Findings gathered before this call — see IInvestigationPreflight. Appended
+    /// to the live system context so the model answers from what was actually
+    /// looked up rather than inferring from current readings.
+    /// Not retained in history: it describes this turn only, and replaying stale
+    /// findings into later turns would have the model reasoning from a snapshot
+    /// of the machine that no longer holds.
+    /// </param>
     Task StreamResponseAsync(
-        string         userMessage,
-        Action<string> onChunk,
-        CancellationToken ct = default);
+        string            userMessage,
+        Action<string>    onChunk,
+        string?           investigationContext = null,
+        CancellationToken ct                   = default);
 
     /// <summary>Clears the in-memory conversation history.</summary>
     void ClearHistory();

@@ -48,7 +48,10 @@ public sealed partial class ChatPage : Page
             logger:              AppServices.Logger,
             // The page renders its own empty state around the avatar rather than
             // opening with greeting bubbles.
-            seedWelcomeMessages: false);
+            seedWelcomeMessages: false,
+            // Lets a question actually reach the investigation engines rather than
+            // being answered from current readings alone.
+            preflight:           AppServices.InvestigationPreflight);
 
         // Start the model's history in step with what the page is showing. This
         // matters when the Frame has evicted and rebuilt the page: the service
