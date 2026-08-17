@@ -12,8 +12,8 @@ namespace Lucid.Services.ProcessIntel;
 /// Anomaly detection thresholds:
 ///   RunawayCpu        — CPU% > 80 for 4+ consecutive samples (~6 s)
 ///   MemoryGrowth      — RAM grew > 200 MB in last 20 samples
-///   ThreadExplosion   — current thread count > 200
-///   HandleLeak        — current handle count > 2000
+///   ThreadGrowth      — thread count climbing steadily (not merely high)
+///   HandleGrowth      — handle count climbing steadily (not merely high)
 ///   HighRamAbsolute   — working set > 1.5 GB
 ///   ZombieBackground  — CPU > 2%, no visible window, not in known-foreground category
 ///
@@ -27,20 +27,31 @@ internal sealed class ProcessBehaviorTracker
     private const int    RunawayCpuMinSamples  = 4;
     private const long   MemoryGrowthThreshold = 200L * 1024 * 1024;  // 200 MB
     private const long   HighRamThreshold      = 1_500L * 1024 * 1024; // 1.5 GB
-    private const int    ThreadExplosionLimit  = 200;
-    private const int    HandleLeakLimit       = 2_000;
+    // Growth-based, deliberately not absolute. A browser or a game holds
+    // thousands of handles and hundreds of threads perfectly normally; what
+    // distinguishes a leak is that the count keeps climbing. See
+    // ResourceGrowthDetector for why all three conditions are needed.
+    private const int    GrowthMinSamples      = 12;      // ~18 s at a 1.5 s poll
+    private const double HandleGrowthRelative  = 0.20;    // +20% over the window
+    private const int    HandleGrowthAbsolute  = 400;     // and at least +400 handles
+    private const double ThreadGrowthRelative  = 0.30;    // +30% over the window
+    private const int    ThreadGrowthAbsolute  = 24;      // and at least +24 threads
     private const float  ZombieCpuMinimum      = 2f;
     private const int    MaxTrackedProcesses   = 300;
 
     // Per-PID ring buffers
     private sealed class PidHistory
     {
-        public readonly Queue<float> Cpu = new(HistoryDepth + 1);
-        public readonly Queue<long>  Ram = new(HistoryDepth + 1);
+        public readonly Queue<float> Cpu     = new(HistoryDepth + 1);
+        public readonly Queue<long>  Ram     = new(HistoryDepth + 1);
+        public readonly Queue<int>   Handles = new(HistoryDepth + 1);
+        public readonly Queue<int>   Threads = new(HistoryDepth + 1);
         public DateTime LastSeenAt = DateTime.UtcNow;
 
-        public void PushCpu(float v) { Cpu.Enqueue(v); if (Cpu.Count > HistoryDepth) Cpu.Dequeue(); }
-        public void PushRam(long  v) { Ram.Enqueue(v); if (Ram.Count > HistoryDepth) Ram.Dequeue(); }
+        public void PushCpu(float v)     { Cpu.Enqueue(v);     if (Cpu.Count     > HistoryDepth) Cpu.Dequeue(); }
+        public void PushRam(long  v)     { Ram.Enqueue(v);     if (Ram.Count     > HistoryDepth) Ram.Dequeue(); }
+        public void PushHandles(int v)   { Handles.Enqueue(v); if (Handles.Count > HistoryDepth) Handles.Dequeue(); }
+        public void PushThreads(int v)   { Threads.Enqueue(v); if (Threads.Count > HistoryDepth) Threads.Dequeue(); }
     }
 
     private readonly Dictionary<int, PidHistory> _history = new();
@@ -65,6 +76,8 @@ internal sealed class ProcessBehaviorTracker
 
         hist.PushCpu(sample.CpuPercent);
         hist.PushRam(sample.RamBytes);
+        hist.PushHandles(handleCount);
+        hist.PushThreads(threadCount);
         hist.LastSeenAt = DateTime.UtcNow;
 
         var anomalies = DetectAnomalies(sample, hist, threadCount, handleCount, hasWindow);
@@ -128,13 +141,17 @@ internal sealed class ProcessBehaviorTracker
         if (sample.RamBytes > HighRamThreshold)
             flags |= ProcessAnomalyFlags.HighRamAbsolute;
 
-        // Thread explosion
-        if (threadCount > ThreadExplosionLimit)
-            flags |= ProcessAnomalyFlags.ThreadExplosion;
+        // Thread count climbing. Not "over 200" — Discord, Chrome and most games
+        // sit well above that while behaving perfectly normally, and reporting
+        // them as broken buries the processes that genuinely are.
+        if (ResourceGrowthDetector.IsSustainedGrowth(
+                hist.Threads, GrowthMinSamples, ThreadGrowthRelative, ThreadGrowthAbsolute))
+            flags |= ProcessAnomalyFlags.ThreadGrowth;
 
-        // Handle leak
-        if (handleCount > HandleLeakLimit)
-            flags |= ProcessAnomalyFlags.HandleLeak;
+        // Handle count climbing. Same reasoning: the shape matters, not the size.
+        if (ResourceGrowthDetector.IsSustainedGrowth(
+                hist.Handles, GrowthMinSamples, HandleGrowthRelative, HandleGrowthAbsolute))
+            flags |= ProcessAnomalyFlags.HandleGrowth;
 
         // Zombie background: moderate CPU, no window, not a known service
         if (!hasWindow && sample.CpuPercent >= ZombieCpuMinimum)

@@ -159,8 +159,8 @@ public sealed class ProcessIntelligenceService
     {
         ProcessAnomalyFlags.RunawayCpu        => "Runaway CPU",
         ProcessAnomalyFlags.MemoryGrowth      => "Memory growing",
-        ProcessAnomalyFlags.ThreadExplosion   => "Thread explosion",
-        ProcessAnomalyFlags.HandleLeak        => "Handle leak",
+        ProcessAnomalyFlags.ThreadGrowth      => "Threads climbing",
+        ProcessAnomalyFlags.HandleGrowth      => "Handles climbing",
         ProcessAnomalyFlags.RepeatedCrashes   => "Repeated crashes",
         ProcessAnomalyFlags.HighRamAbsolute   => "High RAM usage",
         ProcessAnomalyFlags.ZombieBackground  => "Background resource hog",
