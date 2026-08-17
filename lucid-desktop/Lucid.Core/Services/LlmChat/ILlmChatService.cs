@@ -29,13 +29,35 @@ public interface ILlmChatService
     /// Threading: <paramref name="onChunk"/> is invoked on a thread-pool thread.
     /// The caller must marshal to the UI thread if needed.
     /// </summary>
+    /// <param name="investigationContext">
+    /// Findings gathered before this call — see IInvestigationPreflight. Appended
+    /// to the live system context so the model answers from what was actually
+    /// looked up rather than inferring from current readings.
+    /// Not retained in history: it describes this turn only, and replaying stale
+    /// findings into later turns would have the model reasoning from a snapshot
+    /// of the machine that no longer holds.
+    /// </param>
     Task StreamResponseAsync(
-        string         userMessage,
-        Action<string> onChunk,
-        CancellationToken ct = default);
+        string            userMessage,
+        Action<string>    onChunk,
+        string?           investigationContext = null,
+        CancellationToken ct                   = default);
 
     /// <summary>Clears the in-memory conversation history.</summary>
     void ClearHistory();
+
+    /// <summary>
+    /// Replaces the conversation history with the turns of a previously saved
+    /// session, so resuming a conversation gives the model real continuity
+    /// instead of a transcript the user can see but the model cannot.
+    ///
+    /// Only the most recent turns are retained — the same cap that applies to a
+    /// live conversation applies to a restored one.
+    ///
+    /// Like <see cref="ClearHistory"/>, this must not be called while a response
+    /// is streaming; cancel the in-flight stream first.
+    /// </summary>
+    void RestoreHistory(IReadOnlyList<LlmTurn> turns);
 
     /// <summary>
     /// Reconfigures the service to use a new Ollama endpoint and model.

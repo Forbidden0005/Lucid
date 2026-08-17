@@ -30,8 +30,8 @@ public enum ProcessAnomalyFlags
     None              = 0,
     RunawayCpu        = 1 << 0,  // sustained > 80% CPU for 3+ samples
     MemoryGrowth      = 1 << 1,  // RAM grew > 200 MB in last 60 s
-    ThreadExplosion   = 1 << 2,  // thread count > 200
-    HandleLeak        = 1 << 3,  // handle count > 2000
+    ThreadGrowth      = 1 << 2,  // thread count climbing steadily over the window
+    HandleGrowth      = 1 << 3,  // handle count climbing steadily over the window
     RepeatedCrashes   = 1 << 4,  // restarted 3+ times in 5 min window
     HighRamAbsolute   = 1 << 5,  // working set > 1.5 GB
     ZombieBackground  = 1 << 6,  // > 2% CPU, no visible window, no user action
@@ -86,8 +86,8 @@ public sealed class ProcessRecord
             var parts = new List<string>();
             if (Anomalies.HasFlag(ProcessAnomalyFlags.RunawayCpu))      parts.Add("Runaway CPU");
             if (Anomalies.HasFlag(ProcessAnomalyFlags.MemoryGrowth))    parts.Add("Memory growing");
-            if (Anomalies.HasFlag(ProcessAnomalyFlags.ThreadExplosion))  parts.Add("Thread explosion");
-            if (Anomalies.HasFlag(ProcessAnomalyFlags.HandleLeak))       parts.Add("Handle leak");
+            if (Anomalies.HasFlag(ProcessAnomalyFlags.ThreadGrowth))     parts.Add("Threads climbing");
+            if (Anomalies.HasFlag(ProcessAnomalyFlags.HandleGrowth))      parts.Add("Handles climbing");
             if (Anomalies.HasFlag(ProcessAnomalyFlags.RepeatedCrashes))  parts.Add("Repeated crashes");
             if (Anomalies.HasFlag(ProcessAnomalyFlags.HighRamAbsolute))  parts.Add("High RAM");
             if (Anomalies.HasFlag(ProcessAnomalyFlags.ZombieBackground)) parts.Add("Background hog");

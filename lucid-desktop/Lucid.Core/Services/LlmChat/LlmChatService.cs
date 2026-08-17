@@ -68,15 +68,23 @@ public sealed class LlmChatService : ILlmChatService, IDisposable
     // ── Streaming response ─────────────────────────────────────────────────────
 
     public async Task StreamResponseAsync(
-        string         userMessage,
-        Action<string> onChunk,
-        CancellationToken ct = default)
+        string            userMessage,
+        Action<string>    onChunk,
+        string?           investigationContext = null,
+        CancellationToken ct                   = default)
     {
         await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             // Build the full message list: system context + history + new user message
             var systemPrompt = _systemPromptFactory();
+
+            // Investigation findings go into the system message for this turn only.
+            // They are deliberately not committed to history: they describe the
+            // machine at the moment the question was asked, and replaying them on
+            // later turns would have the model reasoning from a stale snapshot.
+            if (!string.IsNullOrWhiteSpace(investigationContext))
+                systemPrompt = systemPrompt + "\n\n" + investigationContext;
 
             var messages = new List<OllamaMessage>
             {
@@ -141,6 +149,27 @@ public sealed class LlmChatService : ILlmChatService, IDisposable
     // ── History ────────────────────────────────────────────────────────────────
 
     public void ClearHistory() => _history.Clear();
+
+    /// <summary>
+    /// Rehydrates history from a saved session. Applies the same MaxTurns cap as
+    /// a live conversation, keeping the most recent turns — a long resumed
+    /// session must not silently blow past the model's context window.
+    /// </summary>
+    public void RestoreHistory(IReadOnlyList<LlmTurn> turns)
+    {
+        _history.Clear();
+
+        var slice = turns.Count > MaxTurns ? turns.Skip(turns.Count - MaxTurns) : turns;
+
+        foreach (var turn in slice)
+        {
+            _history.Add(new OllamaMessage
+            {
+                role    = turn.Role == LlmTurnRole.User ? "user" : "assistant",
+                content = turn.Text,
+            });
+        }
+    }
 
     // ── Reconfiguration ────────────────────────────────────────────────────────
 

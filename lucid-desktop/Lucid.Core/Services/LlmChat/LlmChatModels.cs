@@ -42,6 +42,21 @@ public sealed class OllamaModelInfo
     public string? name { get; set; }
 }
 
+// ── Conversation history ───────────────────────────────────────────────────────
+
+/// <summary>Author of a single turn in the model-facing conversation history.</summary>
+public enum LlmTurnRole
+{
+    User      = 0,
+    Assistant = 1,
+}
+
+/// <summary>
+/// One turn of conversation history, in the service's own vocabulary rather than
+/// Ollama's wire format. Used to rehydrate history when a saved session is resumed.
+/// </summary>
+public sealed record LlmTurn(LlmTurnRole Role, string Text);
+
 // ── LLM chat service status ────────────────────────────────────────────────────
 
 public enum LlmStatus

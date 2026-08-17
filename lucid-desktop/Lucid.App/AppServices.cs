@@ -9,6 +9,8 @@ using Lucid.Services;
 using Lucid.Services.Analytics;
 using Lucid.Services.Autonomy;
 using Lucid.Services.Automation;
+using Lucid.Services.Chat;
+using Lucid.Services.Reliability;
 using Lucid.Services.Conversation;
 using Lucid.Services.Trust;
 using Lucid.Services.LlmChat;
@@ -187,6 +189,14 @@ public static class AppServices
     private static IOperationalConversationEngine?  _conversationEngine;
     private static IOperationalConversationService? _conversationService;
     private static ILlmChatService?                 _llmChat;
+
+    // ── Home chat surface ─────────────────────────────────────────────────────
+    private static ILlmChatService?   _homeChat;
+    private static IChatSessionStore? _chatSessions;
+
+    // ── Reliability / investigation ───────────────────────────────────────────
+    private static IReliabilityService?      _reliability;
+    private static IInvestigationPreflight?  _investigationPreflight;
 
     // ── Desktop Context layer ─────────────────────────────────────────────────
     private static DesktopContextService? _desktopContext;
@@ -1039,6 +1049,55 @@ public static class AppServices
             "Call it from App.OnLaunched before creating the main window.");
 
     /// <summary>
+    /// Chat service for the home page (<c>ChatPage</c>).
+    ///
+    /// A second instance rather than a second consumer of <see cref="LlmChat"/>:
+    /// the home page and the floating companion overlay show different
+    /// conversations, and conversation history is per-service state. Sharing one
+    /// would mean resuming a saved session on the home page silently wiped the
+    /// context the overlay was mid-conversation in. Same local endpoint, same
+    /// model, same live system prompt — only the history is separate.
+    /// </summary>
+    public static ILlmChatService HomeChat =>
+        _homeChat ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Storage for the home page's saved conversations.
+    ///
+    /// Currently process-lifetime (<see cref="InMemoryChatSessionStore"/>): the
+    /// rail is fully functional within a run, but conversations do not survive a
+    /// restart. The durable implementation belongs in the SQLite persistence
+    /// layer as a schema migration; nothing outside this registration needs to
+    /// change when it lands.
+    /// </summary>
+    /// <summary>
+    /// Windows event log crash history — unexpected shutdowns, stop errors, WHEA
+    /// hardware errors, storage faults, application failures — correlated into
+    /// ranked findings with confidence levels.
+    /// </summary>
+    public static IReliabilityService Reliability =>
+        _reliability ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
+    /// Runs real investigations before the model answers a question, so questions
+    /// that live telemetry cannot answer — "why does my PC keep crashing" — are
+    /// answered from the machine's actual failure history.
+    /// </summary>
+    public static IInvestigationPreflight InvestigationPreflight =>
+        _investigationPreflight ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    public static IChatSessionStore ChatSessions =>
+        _chatSessions ?? throw new InvalidOperationException(
+            "AppServices.Initialize() has not been called. " +
+            "Call it from App.OnLaunched before creating the main window.");
+
+    /// <summary>
     /// Desktop context awareness service.
     /// Observes the active foreground window, File Explorer path, and clipboard
     /// metadata via Win32 APIs. Observation-only — no automation, no screenshots.
@@ -1748,15 +1807,40 @@ public static class AppServices
                 $"({llmUrlValidation.Classification}): {llmUrlValidation.Reason} " +
                 $"Falling back to default localhost endpoint.");
 
+        var llmBaseUrl = llmUrlValidation.IsAllowed
+                             ? _settings!.Current.LlmEndpointUrl
+                             : "http://localhost:11434";
+
         _llmChat = new LlmChatService(
-            baseUrl:   llmUrlValidation.IsAllowed
-                           ? _settings!.Current.LlmEndpointUrl
-                           : "http://localhost:11434",
+            baseUrl:   llmBaseUrl,
             modelName: _settings!.Current.LlmModel,
             // The prompt builder aggregates a dozen services from this registry,
             // so it stays on the App side and is handed to the Core service as a
             // factory rather than being called statically from inside it.
             systemPromptFactory: LlmSystemContextBuilder.Build);
+
+        // Home page chat — same endpoint and model, independent history.
+        // See the HomeChat property for why the two surfaces are not sharing one.
+        _homeChat = new LlmChatService(
+            baseUrl:             llmBaseUrl,
+            modelName:           _settings!.Current.LlmModel,
+            systemPromptFactory: LlmSystemContextBuilder.Build);
+
+        _chatSessions = new InMemoryChatSessionStore();
+
+        // ── Crash history + investigation pre-flight ──────────────────────────
+        // The reliability service reads the Windows event logs; the pre-flight
+        // decides when a question needs them and gathers the answer before the
+        // model is called. Governed as ReliabilityAnalysis (Foreground).
+        _reliability = new ReliabilityService(
+            new WindowsEventLogReader(),
+            _governance,
+            _logger);
+
+        _investigationPreflight = new InvestigationPreflight(
+            new ConversationIntentResolver(),
+            _reliability,
+            _logger);
 
         var conversationSvc = new OperationalConversationService(
             _intelligence!,
@@ -2038,6 +2122,11 @@ public static class AppServices
         // Companion layer — dispose LlmChatService (owns HttpClient instances), null the rest.
         (_llmChat as IDisposable)?.Dispose();
         _llmChat                = null;
+        (_homeChat as IDisposable)?.Dispose();
+        _homeChat               = null;
+        _chatSessions           = null;
+        _investigationPreflight = null;
+        _reliability            = null;
         _companionSession       = null;
         _conversationEngine     = null;
         _conversationService    = null;

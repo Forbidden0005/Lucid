@@ -31,6 +31,7 @@ public sealed class ConcurrencyBudget
         [WorkloadCategory.ReplayAnalysis]      = 1,   // one replay session at a time
         [WorkloadCategory.SecurityScan]        = 1,   // one security scan at a time
         [WorkloadCategory.TelemetryRetention]  = 1,   // one downsample/purge pass at a time
+        [WorkloadCategory.ReliabilityAnalysis] = 1,   // one event-log read at a time
     };
 
     // ── Mutable state (all guarded by _lock) ──────────────────────────────────

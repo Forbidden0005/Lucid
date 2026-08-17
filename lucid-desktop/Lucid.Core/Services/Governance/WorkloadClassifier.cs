@@ -20,6 +20,10 @@ internal static class WorkloadClassifier
         WorkloadCategory.ExplainReasoning => WorkloadPriority.Foreground,
         WorkloadCategory.ReplayAnalysis   => WorkloadPriority.Foreground,
         WorkloadCategory.SecurityScan     => WorkloadPriority.Foreground,
+        // Foreground because it only ever runs in response to a question the
+        // user just asked. It is bounded rather than cheap — see the record caps
+        // in ReliabilityService — so it must not be deferred behind a scan.
+        WorkloadCategory.ReliabilityAnalysis => WorkloadPriority.Foreground,
 
         // Background — scheduled/passive, paused under stress
         WorkloadCategory.TelemetrySampling   => WorkloadPriority.Background,
@@ -48,6 +52,7 @@ internal static class WorkloadClassifier
         WorkloadCategory.ExplainReasoning    => "Explain Analysis",
         WorkloadCategory.ReplayAnalysis      => "Replay Reconstruction",
         WorkloadCategory.SecurityScan        => "Security Scan",
+        WorkloadCategory.ReliabilityAnalysis => "Reliability Analysis",
         WorkloadCategory.TelemetrySampling   => "Telemetry Sampling",
         WorkloadCategory.ProcessIntelligence => "Process Intelligence",
         WorkloadCategory.NarrativeGeneration => "Narrative Generation",

@@ -30,6 +30,15 @@ public sealed class EvidenceRetrievalPlanner
             EvidenceSource.EvidenceGraph,
         ],
 
+        // "Why does it crash?" — the failure history is the whole answer here;
+        // live telemetry describes a machine that is, by definition, running now.
+        ConversationIntent.WhyDoesItCrash =>
+        [
+            EvidenceSource.ReliabilityHistory,
+            EvidenceSource.TimelineEvents,
+            EvidenceSource.InsightEngine,
+        ],
+
         // "Why hot?" — thermal-focused
         ConversationIntent.WhyIsHot =>
         [
