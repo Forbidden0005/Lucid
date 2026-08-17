@@ -1,6 +1,7 @@
 # Chat as the home surface
 
-> **Status:** Phase A implemented. Phases B–E planned, not started.
+> **Status:** Phase A implemented. Phase D partly implemented (crash
+> investigation). Phases B, C and E planned, not started.
 > **Owner decision:** Tyler, 2026-08-16 — conversation becomes Lucid's front door.
 > **Guardian classification:** Category B (significant direction change, proceed
 > with the risks named below).
@@ -83,11 +84,12 @@ the pre-flight rather than replacing it. The deterministic no-LLM responder also
 falls through to a generic status answer for a crash question instead of
 reporting the findings.
 
-Phase D is where the product value actually lands. Today the model receives a
-*snapshot* of system state; the mechanic experience needs it to be able to *go
-and look* — run a storage scan, pull the process graph, check startup items — and
-then answer from what it found. That is a tool-dispatch layer over the executors
-and engines that already exist.
+Crash history is the first investigation wired up, and the pattern generalises:
+the remaining ones — running a storage scan, pulling the process graph, checking
+startup items — are the same shape. A planner decides what the question needs, it
+runs before the model answers, and the findings are injected as evidence. What
+changes with a larger model is only *who* chooses: the model iterating rather
+than the planner deciding up front.
 
 ## What Phase A built
 
