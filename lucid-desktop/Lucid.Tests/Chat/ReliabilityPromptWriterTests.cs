@@ -35,6 +35,21 @@ public sealed class ReliabilityPromptWriterTests
             Summary      = $"{kind} happened",
         };
 
+    /// <summary>
+    /// Collapses runs of whitespace so assertions match meaning rather than layout.
+    ///
+    /// The writer builds prose with AppendLine, so a sentence is wrapped across
+    /// several source lines and a phrase like "a hard power cut" contains a
+    /// newline in the rendered output. Asserting against the raw string makes
+    /// these tests fail whenever prose is re-wrapped — testing the line breaks
+    /// instead of what the model is told.
+    /// </summary>
+    private static string Flat(string text) =>
+        string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static string WriteFlat(ReliabilityReport report) =>
+        Flat(ReliabilityPromptWriter.Write(report));
+
     private static ReliabilityReport Report(
         IEnumerable<ReliabilityEvent>? events = null,
         bool                           failed = false,
@@ -61,7 +76,7 @@ public sealed class ReliabilityPromptWriterTests
         // This is the case that produced the worst possible answer before: an
         // empty findings list reads as "all clear" to a model unless it is told
         // otherwise, in the exact situation where the user's PC is crashing.
-        var prompt = ReliabilityPromptWriter.Write(
+        var prompt = WriteFlat(
             Report(failed: true, reason: "Reading the Windows event log was denied."));
 
         prompt.Should().Contain("COULD NOT BE READ");
@@ -72,14 +87,14 @@ public sealed class ReliabilityPromptWriterTests
 
     [Fact]
     public void AFailedRead_IncludesTheReasonVerbatim()
-        => ReliabilityPromptWriter.Write(Report(failed: true, reason: "Access was denied."))
+        => WriteFlat(Report(failed: true, reason: "Access was denied."))
                .Should().Contain("Access was denied.");
 
     [Fact]
     public void AFailedRead_WarnsAgainstSubstitutingLiveReadings()
     {
         // The original wrong answer reasoned about a crash from current CPU usage.
-        ReliabilityPromptWriter.Write(Report(failed: true, reason: "denied"))
+        WriteFlat(Report(failed: true, reason: "denied"))
             .Should().Contain("running right now");
     }
 
@@ -88,7 +103,7 @@ public sealed class ReliabilityPromptWriterTests
     [Fact]
     public void AQuietMachine_IsDistinguishedFromAFailedRead()
     {
-        var prompt = ReliabilityPromptWriter.Write(Report());
+        var prompt = WriteFlat(Report());
 
         prompt.Should().Contain("genuine absence of events, not a failure to look");
         prompt.Should().NotContain("COULD NOT BE READ");
@@ -98,7 +113,7 @@ public sealed class ReliabilityPromptWriterTests
     public void AQuietMachine_OffersTheExplanationsThatLeaveNoTrace()
     {
         // A user certain their PC crashed should not be told they are wrong.
-        var prompt = ReliabilityPromptWriter.Write(Report());
+        var prompt = WriteFlat(Report());
 
         prompt.Should().Contain("power cut");
         prompt.Should().Contain("cleared");
@@ -110,7 +125,7 @@ public sealed class ReliabilityPromptWriterTests
     [Fact]
     public void FindingsCarryTheirConfidenceBand_AndTheModelIsToldToKeepIt()
     {
-        var prompt = ReliabilityPromptWriter.Write(Report(
+        var prompt = WriteFlat(Report(
         [
             Event(ReliabilityEventKind.UnexpectedShutdown, 1),
             Event(ReliabilityEventKind.UnexpectedShutdown, 30),
@@ -125,7 +140,7 @@ public sealed class ReliabilityPromptWriterTests
     [Fact]
     public void LowConfidenceIsLabelledAsWorthReviewingOnly()
     {
-        var prompt = ReliabilityPromptWriter.Write(
+        var prompt = WriteFlat(
             Report([Event(ReliabilityEventKind.UnexpectedShutdown)]));
 
         prompt.Should().Contain("worth reviewing only");
@@ -134,7 +149,7 @@ public sealed class ReliabilityPromptWriterTests
     [Fact]
     public void CountsAndStopCodesAreGivenVerbatim_SoNothingNeedsInventing()
     {
-        var prompt = ReliabilityPromptWriter.Write(Report(
+        var prompt = WriteFlat(Report(
         [
             Event(ReliabilityEventKind.BugCheck, 1,  stopCode: "0x00000133"),
             Event(ReliabilityEventKind.BugCheck, 24, stopCode: "0x00000133"),
@@ -149,32 +164,32 @@ public sealed class ReliabilityPromptWriterTests
     public void StopCodeKnowledgeReachesThePrompt()
     {
         // The model does not need to know what 0x133 is — it is told.
-        ReliabilityPromptWriter.Write(Report([Event(ReliabilityEventKind.BugCheck, 1, "0x00000133")]))
+        WriteFlat(Report([Event(ReliabilityEventKind.BugCheck, 1, "0x00000133")]))
             .Should().Contain("DPC_WATCHDOG_VIOLATION");
     }
 
     [Fact]
     public void SuggestedChecksReachThePrompt()
-        => ReliabilityPromptWriter.Write(Report([Event(ReliabilityEventKind.BugCheck, 1, "0x00000124")]))
+        => WriteFlat(Report([Event(ReliabilityEventKind.BugCheck, 1, "0x00000124")]))
                .Should().Contain("Worth checking:");
 
     [Fact]
     public void TheModelIsToldNotToBlameACrashingAppForTheWholeMachine()
     {
         // The specific overreach in the answer that started this work.
-        ReliabilityPromptWriter.Write(Report([Event(ReliabilityEventKind.ApplicationCrash)]))
+        WriteFlat(Report([Event(ReliabilityEventKind.ApplicationCrash)]))
             .Should().Contain("does not explain the whole machine going");
     }
 
     [Fact]
     public void TheBannedSecurityVocabularyIsRestated()
-        => ReliabilityPromptWriter.Write(Report([Event(ReliabilityEventKind.BugCheck)]))
+        => WriteFlat(Report([Event(ReliabilityEventKind.BugCheck)]))
                .Should().Contain("Never use the words malicious, infected, dangerous, or virus");
 
     [Fact]
     public void EventsAreListedUnderTheFindings()
     {
-        var prompt = ReliabilityPromptWriter.Write(
+        var prompt = WriteFlat(
             Report([Event(ReliabilityEventKind.DiskFault)]));
 
         prompt.Should().Contain("UNDERLYING EVENTS");
@@ -188,6 +203,8 @@ public sealed class ReliabilityPromptWriterTests
             .Select(i => Event(ReliabilityEventKind.ApplicationCrash, i))
             .ToList();
 
+        // Deliberately not flattened: this assertion is about the rendered shape,
+        // which is the one thing line breaks are load-bearing for.
         var prompt = ReliabilityPromptWriter.Write(Report(many));
 
         prompt.Should().Contain("older event(s) not listed");
@@ -196,7 +213,7 @@ public sealed class ReliabilityPromptWriterTests
 
     [Fact]
     public void TheWindowIsStated()
-        => ReliabilityPromptWriter.Write(Report()).Should().Contain("14 days");
+        => WriteFlat(Report()).Should().Contain("14 days");
 
     // ── The user-facing trail line ────────────────────────────────────────────
 
