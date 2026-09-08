@@ -1,0 +1,593 @@
+﻿<Page
+    x:Class="Lucid.Views.ChatPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:companion="using:Lucid.Services.Companion"
+    xmlns:controls="using:Lucid.Controls"
+    xmlns:vm="using:Lucid.ViewModels"
+    Background="{StaticResource AppBackgroundBrush}">
+
+    <!--
+        ChatPage.xaml — Lucid's home surface.
+
+        Layout is two columns:
+
+          ┌────────────┬──────────────────────────────────┐
+          │ session    │ header (title · model status)    │
+          │ rail       ├──────────────────────────────────┤
+          │            │ conversation, or the empty-state │
+          │ (new /     │ hero with the avatar centred     │
+          │  search /  ├──────────────────────────────────┤
+          │  history)  │ composer                         │
+          └────────────┴──────────────────────────────────┘
+
+        The rail holds conversations only. Navigation to the rest of Lucid stays
+        in the shell's NavigationView, which drops to icon-width while this page
+        is open (see MainWindow.NavigateToPage) so the two never compete.
+
+        All conversation behaviour comes from ViewModel.Chat
+        (CompanionChatViewModel) — the same ViewModel the floating companion
+        overlay uses. This page adds the rail, the avatar and persistence, and
+        reimplements none of the chat logic.
+    -->
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             SESSION RAIL
+        ═══════════════════════════════════════════════════════════════════ -->
+        <Border Grid.Column="0"
+                Width="272"
+                Visibility="{x:Bind ViewModel.RailVisibility, Mode=OneWay}"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,0,1,0">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />  <!-- New conversation -->
+                    <RowDefinition Height="Auto" />  <!-- Search -->
+                    <RowDefinition Height="*" />     <!-- History -->
+                </Grid.RowDefinitions>
+
+                <!-- ── New conversation ──────────────────────────────────── -->
+                <Button Grid.Row="0"
+                        Margin="12,14,12,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Padding="12,9"
+                        CornerRadius="10"
+                        Background="#1B2338"
+                        BorderBrush="#2A3A5C"
+                        BorderThickness="1"
+                        Command="{x:Bind ViewModel.NewSessionCommand}"
+                        ToolTipService.ToolTip="Start a new conversation">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE710;"
+                                  FontFamily="Segoe MDL2 Assets"
+                                  FontSize="13"
+                                  Foreground="#6B9FFF" />
+                        <TextBlock Text="New conversation"
+                                   FontSize="13"
+                                   Foreground="#C8D4E8" />
+                    </StackPanel>
+                </Button>
+
+                <!-- ── Search ────────────────────────────────────────────── -->
+                <TextBox Grid.Row="1"
+                         Margin="12,0,12,10"
+                         Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="Search conversations"
+                         Background="#0D0D1A"
+                         BorderBrush="#2A2A3E"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         FontSize="12.5"
+                         CornerRadius="8"
+                         Padding="10,6" />
+
+                <!-- ── History ───────────────────────────────────────────── -->
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="8,0,8,12">
+                    <StackPanel Spacing="4">
+
+                        <!-- Empty rail -->
+                        <TextBlock Visibility="{x:Bind ViewModel.EmptyRailVisibility, Mode=OneWay}"
+                                   Margin="8,20,8,0"
+                                   Text="Your conversations appear here once you start one."
+                                   FontSize="11.5"
+                                   Foreground="{StaticResource TextTertiaryBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Grouped session list -->
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.SessionGroups, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="10" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ChatRailGroup">
+                                    <StackPanel Spacing="2">
+
+                                        <TextBlock Text="{x:Bind Label}"
+                                                   Margin="8,6,8,2"
+                                                   FontSize="10.5"
+                                                   FontWeight="SemiBold"
+                                                   CharacterSpacing="60"
+                                                   Foreground="{StaticResource TextTertiaryBrush}" />
+
+                                        <ItemsRepeater ItemsSource="{x:Bind Items}">
+                                            <ItemsRepeater.Layout>
+                                                <StackLayout Spacing="1" />
+                                            </ItemsRepeater.Layout>
+                                            <ItemsRepeater.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ChatRailItem">
+
+                                                    <!--
+                                                        Local Background carries the "open conversation"
+                                                        tint; the resource overrides supply hover and
+                                                        pressed feedback without a custom template.
+                                                    -->
+                                                    <Button HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            Padding="10,7"
+                                                            CornerRadius="8"
+                                                            BorderThickness="0"
+                                                            Background="{x:Bind RowBackground}"
+                                                            Tag="{x:Bind}"
+                                                            Click="SessionRow_Click">
+                                                        <Button.Resources>
+                                                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#161E30" />
+                                                            <SolidColorBrush x:Key="ButtonBackgroundPressed"    Color="#1B2338" />
+                                                            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                                                            <SolidColorBrush x:Key="ButtonBorderBrushPressed"     Color="Transparent" />
+                                                        </Button.Resources>
+
+                                                        <Grid ColumnSpacing="6">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <!-- Pin marker -->
+                                                            <FontIcon Grid.Column="0"
+                                                                      Visibility="{x:Bind PinIndicatorVisibility}"
+                                                                      Glyph="&#xE718;"
+                                                                      FontFamily="Segoe MDL2 Assets"
+                                                                      FontSize="10"
+                                                                      Foreground="#6B9FFF"
+                                                                      VerticalAlignment="Top"
+                                                                      Margin="0,3,0,0" />
+
+                                                            <StackPanel Grid.Column="1" Spacing="1">
+                                                                <TextBlock Text="{x:Bind Title}"
+                                                                           FontSize="12.5"
+                                                                           Foreground="{x:Bind TitleColor}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           TextWrapping="NoWrap" />
+                                                                <TextBlock Visibility="{x:Bind PreviewVisibility}"
+                                                                           Text="{x:Bind Preview}"
+                                                                           FontSize="10.5"
+                                                                           Foreground="{StaticResource TextTertiaryBrush}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           TextWrapping="NoWrap" />
+                                                            </StackPanel>
+
+                                                            <!--
+                                                                Row menu. The flyout is built in code-behind
+                                                                (SessionMenu_Click) rather than declared here:
+                                                                its Pin/Unpin entry depends on the row's current
+                                                                state, and building it per-click keeps that label
+                                                                honest without a binding inside a flyout.
+                                                            -->
+                                                            <Button Grid.Column="2"
+                                                                    Width="26" Height="26"
+                                                                    Padding="0"
+                                                                    CornerRadius="6"
+                                                                    Background="Transparent"
+                                                                    BorderThickness="0"
+                                                                    VerticalAlignment="Top"
+                                                                    Tag="{x:Bind}"
+                                                                    Click="SessionMenu_Click"
+                                                                    ToolTipService.ToolTip="Conversation options">
+                                                                <FontIcon Glyph="&#xE712;"
+                                                                          FontFamily="Segoe MDL2 Assets"
+                                                                          FontSize="12"
+                                                                          Foreground="{StaticResource TextTertiaryBrush}" />
+                                                            </Button>
+
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsRepeater.ItemTemplate>
+                                        </ItemsRepeater>
+
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             CONVERSATION COLUMN
+        ═══════════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />  <!-- Header -->
+                <RowDefinition Height="Auto" />  <!-- Setup banner -->
+                <RowDefinition Height="*" />     <!-- Conversation / empty state -->
+                <RowDefinition Height="Auto" />  <!-- Composer -->
+            </Grid.RowDefinitions>
+
+            <!-- ── Header ─────────────────────────────────────────────────── -->
+            <Grid Grid.Row="0"
+                  Padding="16,14,24,14"
+                  ColumnSpacing="12"
+                  BorderBrush="{StaticResource BorderSubtleBrush}"
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Rail toggle -->
+                <Button Grid.Column="0"
+                        Width="34" Height="34"
+                        Padding="0"
+                        CornerRadius="8"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{x:Bind ViewModel.ToggleRailCommand}"
+                        ToolTipService.ToolTip="{x:Bind ViewModel.RailToggleTooltip, Mode=OneWay}">
+                    <FontIcon Glyph="{x:Bind ViewModel.RailToggleGlyph, Mode=OneWay}"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="14"
+                              Foreground="{StaticResource TextSecondaryBrush}" />
+                </Button>
+
+                <!--
+                    Compact avatar. Shown only once a conversation is under way —
+                    in the empty state the large avatar below carries the presence,
+                    and two of them at once would be noise.
+                -->
+                <controls:CompanionAvatar Grid.Column="1"
+                                          Width="34" Height="34"
+                                          Visibility="{x:Bind ViewModel.Chat.HasMessagesVisibility, Mode=OneWay}"
+                                          State="{x:Bind ViewModel.AvatarState, Mode=OneWay}" />
+
+                <StackPanel Grid.Column="2" Spacing="1" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind ViewModel.ActiveSessionTitle, Mode=OneWay}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap" />
+                    <TextBlock Text="Answers come from this machine's own data · nothing leaves the device"
+                               FontSize="10.5"
+                               Foreground="{StaticResource TextTertiaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ── Local model setup banner ───────────────────────────────── -->
+            <Border Grid.Row="1"
+                    Visibility="{x:Bind ViewModel.Chat.SetupBannerVisibility, Mode=OneWay}"
+                    Margin="24,12,24,0"
+                    Padding="14,10"
+                    CornerRadius="10"
+                    Background="#181428"
+                    BorderBrush="#3A2E50"
+                    BorderThickness="1">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ProgressRing Grid.Column="0"
+                                  Visibility="{x:Bind ViewModel.Chat.SetupBannerCheckingVisibility, Mode=OneWay}"
+                                  Width="16" Height="16"
+                                  IsActive="True"
+                                  Foreground="#A78BFA" />
+
+                    <FontIcon Grid.Column="0"
+                              Visibility="{x:Bind ViewModel.Chat.SetupBannerRetryVisibility, Mode=OneWay}"
+                              Glyph="&#xE946;"
+                              FontFamily="Segoe MDL2 Assets"
+                              FontSize="14"
+                              Foreground="#A78BFA" />
+
+                    <TextBlock Grid.Column="1"
+                               Text="{x:Bind ViewModel.Chat.SetupBannerText, Mode=OneWay}"
+                               FontSize="12"
+                               Foreground="#C0B4DC"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+
+                    <Button Grid.Column="2"
+                            Visibility="{x:Bind ViewModel.Chat.SetupBannerRetryVisibility, Mode=OneWay}"
+                            Padding="10,4"
+                            CornerRadius="8"
+                            FontSize="11.5"
+                            Background="#241C3A"
+                            BorderBrush="#3A2E50"
+                            BorderThickness="1"
+                            Foreground="#C0B4DC"
+                            Content="Check again"
+                            Command="{x:Bind ViewModel.Chat.RetryLlmCheckCommand}" />
+                </Grid>
+            </Border>
+
+            <!-- ── Conversation / empty state ─────────────────────────────── -->
+            <Grid Grid.Row="2">
+
+                <!--
+                    EMPTY STATE — the avatar takes the centre of the page, which is
+                    the whole point of the home surface: something to talk to.
+                -->
+                <ScrollViewer Visibility="{x:Bind ViewModel.Chat.NoMessagesVisibility, Mode=OneWay}"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                MaxWidth="640"
+                                Margin="24,40,24,24"
+                                Spacing="18">
+
+                        <controls:CompanionAvatar Width="148" Height="148"
+                                                  HorizontalAlignment="Center"
+                                                  State="{x:Bind ViewModel.AvatarState, Mode=OneWay}" />
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="What is your PC doing?"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       TextAlignment="Center" />
+                            <TextBlock Text="Describe it however it comes out — &#x201C;it gets loud when I open my browser&#x201D; works as well as a spec sheet. Lucid reads this machine's own telemetry, processes and history to work out what is going on."
+                                       FontSize="13"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       LineHeight="20" />
+                        </StackPanel>
+
+                        <!-- Openers -->
+                        <ItemsRepeater ItemsSource="{x:Bind ViewModel.Chat.QuickActions, Mode=OneWay}"
+                                       Margin="0,4,0,0">
+                            <ItemsRepeater.Layout>
+                                <UniformGridLayout Orientation="Horizontal"
+                                                   MinItemWidth="196"
+                                                   MinItemHeight="52"
+                                                   MinColumnSpacing="10"
+                                                   MinRowSpacing="10"
+                                                   ItemsJustification="Center" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="companion:QuickAction">
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Padding="12,9"
+                                            CornerRadius="10"
+                                            Background="#161628"
+                                            BorderBrush="#2A2A3E"
+                                            BorderThickness="1"
+                                            Tag="{x:Bind}"
+                                            Click="QuickAction_Click"
+                                            ToolTipService.ToolTip="{x:Bind Description}">
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Text="{x:Bind Label}"
+                                                       FontSize="12.5"
+                                                       Foreground="#C8D4E8" />
+                                            <TextBlock Text="{x:Bind Description}"
+                                                       FontSize="10.5"
+                                                       Foreground="{StaticResource TextTertiaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       TextWrapping="NoWrap" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- CONVERSATION -->
+                <ScrollViewer x:Name="MessageScroller"
+                              Visibility="{x:Bind ViewModel.Chat.HasMessagesVisibility, Mode=OneWay}"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="0,16,0,8">
+                    <ItemsRepeater ItemsSource="{x:Bind ViewModel.Chat.Messages, Mode=OneWay}"
+                                   MaxWidth="820"
+                                   Margin="24,0">
+                        <ItemsRepeater.Layout>
+                            <StackLayout Spacing="18" />
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate x:DataType="companion:CompanionMessage">
+                                <Grid>
+
+                                    <!-- ── User turn — right-aligned bubble ── -->
+                                    <Border Visibility="{x:Bind UserBubbleVisibility}"
+                                            HorizontalAlignment="Right"
+                                            MaxWidth="620"
+                                            Background="#1E2F52"
+                                            CornerRadius="14,14,4,14"
+                                            Padding="14,10">
+                                        <TextBlock Text="{x:Bind Text}"
+                                                   FontSize="14"
+                                                   Foreground="#E4E4F0"
+                                                   TextWrapping="Wrap"
+                                                   LineHeight="21"
+                                                   IsTextSelectionEnabled="True" />
+                                    </Border>
+
+                                    <!--
+                                        ── Lucid's turn ──
+                                        No bubble: at page width an unboxed column of
+                                        text reads like an explanation rather than a
+                                        chat message, which is what these answers are.
+                                    -->
+                                    <Grid Visibility="{x:Bind SystemBubbleVisibility}"
+                                          HorizontalAlignment="Left"
+                                          ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0"
+                                                Width="28" Height="28"
+                                                CornerRadius="14"
+                                                Background="#1B2338"
+                                                VerticalAlignment="Top">
+                                            <FontIcon Glyph="{x:Bind CategoryGlyph}"
+                                                      FontFamily="Segoe MDL2 Assets"
+                                                      FontSize="12"
+                                                      Foreground="{x:Bind CategoryColor}" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" Spacing="6" MaxWidth="700">
+                                            <TextBlock Text="{x:Bind Text}"
+                                                       FontSize="14"
+                                                       Foreground="#D4D4E8"
+                                                       TextWrapping="Wrap"
+                                                       LineHeight="22"
+                                                       IsTextSelectionEnabled="True" />
+
+                                            <TextBlock Visibility="{x:Bind UncertaintyVisibility}"
+                                                       Text="{x:Bind UncertaintyNote}"
+                                                       FontSize="11.5"
+                                                       FontStyle="Italic"
+                                                       Foreground="#6B7280"
+                                                       TextWrapping="Wrap" />
+
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{x:Bind TimeLabel}"
+                                                           FontSize="10.5"
+                                                           Foreground="#4B5563"
+                                                           VerticalAlignment="Center" />
+                                                <Border Visibility="{x:Bind ConfidenceVisibility}"
+                                                        Background="#1A2035"
+                                                        BorderBrush="#2A3A5C"
+                                                        BorderThickness="1"
+                                                        CornerRadius="8"
+                                                        Padding="7,2">
+                                                    <TextBlock Text="{x:Bind ConfidenceDisplay}"
+                                                               FontSize="10"
+                                                               Foreground="#4E7FBF" />
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ── Composer ───────────────────────────────────────────────── -->
+            <Border Grid.Row="3"
+                    Padding="24,12,24,20">
+                <Grid MaxWidth="820" HorizontalAlignment="Stretch">
+                    <Border Background="#101020"
+                            BorderBrush="#2A2A3E"
+                            BorderThickness="1"
+                            CornerRadius="16"
+                            Padding="6,6,6,6">
+                        <Grid ColumnSpacing="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!--
+                                UpdateSourceTrigger=PropertyChanged is required: the
+                                default (LostFocus) leaves InputText empty when the
+                                user presses Enter, so the send command no-ops.
+                            -->
+                            <TextBox x:Name="InputBox"
+                                     Grid.Column="0"
+                                     Text="{x:Bind ViewModel.Chat.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="Tell Lucid what your PC is doing…"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     FontSize="14"
+                                     Padding="12,10"
+                                     MinHeight="44"
+                                     MaxHeight="160"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalAlignment="Center"
+                                     KeyDown="InputBox_KeyDown">
+                                <TextBox.Resources>
+                                    <SolidColorBrush x:Key="TextControlBackgroundFocused"     Color="Transparent" />
+                                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+                                    <SolidColorBrush x:Key="TextControlBorderBrushFocused"     Color="Transparent" />
+                                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+                                </TextBox.Resources>
+                            </TextBox>
+
+                            <!-- Send -->
+                            <Button Grid.Column="1"
+                                    Visibility="{x:Bind ViewModel.Chat.SendButtonVisibility, Mode=OneWay}"
+                                    Width="40" Height="40"
+                                    Padding="0"
+                                    CornerRadius="12"
+                                    Background="{StaticResource AccentBlueBrush}"
+                                    BorderThickness="0"
+                                    VerticalAlignment="Bottom"
+                                    Command="{x:Bind ViewModel.Chat.SendMessageCommand}"
+                                    ToolTipService.ToolTip="Send (Enter)">
+                                <FontIcon Glyph="&#xE724;"
+                                          FontFamily="Segoe MDL2 Assets"
+                                          FontSize="15"
+                                          Foreground="White" />
+                            </Button>
+
+                            <!-- Stop — replaces Send while an answer is generating -->
+                            <Button Grid.Column="1"
+                                    Visibility="{x:Bind ViewModel.Chat.SpinnerVisibility, Mode=OneWay}"
+                                    Width="40" Height="40"
+                                    Padding="0"
+                                    CornerRadius="12"
+                                    Background="#1A2035"
+                                    BorderBrush="#2A3A5C"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Bottom"
+                                    Command="{x:Bind ViewModel.Chat.StopGenerationCommand}"
+                                    ToolTipService.ToolTip="Stop generating">
+                                <Grid>
+                                    <ProgressRing Width="22" Height="22"
+                                                  IsActive="True"
+                                                  Foreground="#4E9FFF" />
+                                    <FontIcon Glyph="&#xE71A;"
+                                              FontFamily="Segoe MDL2 Assets"
+                                              FontSize="10"
+                                              Foreground="#9BB8E0" />
+                                </Grid>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Grid>
+</Page>

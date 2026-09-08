@@ -41,7 +41,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly OperationalTrustManager   _trustManager;
     private readonly AutomationConsentService  _automationConsent;
     private readonly AutomationOrchestrator    _automationOrchestrator;
-    private readonly ILlmChatService           _llmChat;
+    /// <summary>
+    /// Every chat surface that must pick up an endpoint or model change: the
+    /// companion overlay's service and the home page's. They keep separate
+    /// conversation history but must always point at the same local model.
+    /// </summary>
+    private readonly IReadOnlyList<ILlmChatService> _llmChatSurfaces;
     private readonly IDesktopContextService    _desktopContext;
     private readonly LocalSyncCoordinator      _localSync;
     private readonly ILucidLogger?             _logger;
@@ -87,7 +92,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         OperationalTrustManager   trustManager,
         AutomationConsentService  automationConsent,
         AutomationOrchestrator    automationOrchestrator,
-        ILlmChatService           llmChat,
+        IReadOnlyList<ILlmChatService> llmChatSurfaces,
         IDesktopContextService    desktopContext,
         LocalSyncCoordinator      localSync,
         ILucidLogger?             logger = null)
@@ -97,7 +102,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _trustManager           = trustManager;
         _automationConsent      = automationConsent;
         _automationOrchestrator = automationOrchestrator;
-        _llmChat                = llmChat;
+        _llmChatSurfaces        = llmChatSurfaces;
         _desktopContext         = desktopContext;
         _localSync              = localSync;
         _logger                 = logger;
@@ -390,7 +395,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            await _llmChat.ReconfigureAsync(url, model);
+            foreach (var surface in _llmChatSurfaces)
+                await surface.ReconfigureAsync(url, model);
         }
         catch (Exception ex)
         {

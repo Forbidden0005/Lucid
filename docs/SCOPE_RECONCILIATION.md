@@ -60,7 +60,7 @@ Legend (phases = CLAUDE.md product-capability scheme above, **not** `ROADMAP.md`
 | Learning, Behavior | Phase 2 (forecasting/correlation) | ⏩ |
 | Simulation | — | ❓ |
 | Autonomy, Workflow, Automation | — | ❓ |
-| Companion, Conversation, LlmChat | — | ❓ |
+| Companion, Conversation, LlmChat, **Chat** | Phase 4 (flagship) — reclassified 2026-08-16 | ⏩ |
 | DesktopContext, VisualContext | — | ❓ |
 | Distributed | — | ❓ |
 | Interaction | — | ❓ |

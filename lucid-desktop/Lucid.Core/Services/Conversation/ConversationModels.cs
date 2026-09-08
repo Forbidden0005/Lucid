@@ -23,6 +23,13 @@ public enum ConversationIntent
     /// <summary>"What changed / what happened recently?" — delta</summary>
     WhyDidSomethingChange   = 14,
 
+    /// <summary>
+    /// "Why does my PC keep crashing / restarting / blue screening."
+    /// The one question that cannot be answered from live telemetry at all —
+    /// it needs the machine's failure history out of the Windows event logs.
+    /// </summary>
+    WhyDoesItCrash          = 15,
+
     // ── Navigation requests (20-29) ──────────────────────────────────────────
     /// <summary>"Show / open repairs / fixes" — Repairs page</summary>
     OpenRepairs             = 20,
@@ -135,6 +142,9 @@ public enum EvidenceSource
     StorageAnalysis     = 7,
     ProcessIntelligence = 8,
     NarrativeEngine     = 9,
+
+    /// <summary>Windows event log crash history — see Services/Reliability.</summary>
+    ReliabilityHistory  = 10,
 }
 
 // ── Query model ───────────────────────────────────────────────────────────────

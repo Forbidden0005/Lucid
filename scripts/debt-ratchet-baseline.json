@@ -21,6 +21,7 @@
                                      "lucid-desktop/Lucid.App/ViewModels/TrendVisualizationHelper.cs",
                                      "lucid-desktop/Lucid.App/Views/AppsPage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/AutonomousRemediationPage.xaml.cs",
+                                     "lucid-desktop/Lucid.App/Views/ChatPage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/CompanionOverlayWindow.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/DashboardPage.xaml.cs",
                                      "lucid-desktop/Lucid.App/Views/DeviceIntelligencePage.xaml.cs",

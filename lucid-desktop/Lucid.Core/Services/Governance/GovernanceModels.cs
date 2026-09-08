@@ -31,6 +31,7 @@ public enum WorkloadCategory
     ExplainReasoning    = 1,   // Lucid flagship reasoning pass
     ReplayAnalysis      = 2,   // operational replay reconstruction
     SecurityScan        = 3,   // SecurityIntelligenceService scan (user-initiated)
+    ReliabilityAnalysis = 4,   // Windows event log read + crash correlation (user asked a question)
 
     // ── Background-class: yield to foreground, pause under stress ─────────
     TelemetrySampling   = 10,  // WindowsTelemetryService poll cycle

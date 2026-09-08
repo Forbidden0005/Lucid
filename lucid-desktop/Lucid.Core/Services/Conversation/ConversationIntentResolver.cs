@@ -37,6 +37,7 @@ public sealed class ConversationIntentResolver
             TryMatch(q, ConversationIntent.InvestigateProblem,    _investigateWords)      ??
             TryMatch(q, ConversationIntent.CompareChanges,        _compareWords)          ??
             TryMatch(q, ConversationIntent.WhyDidSomethingChange, _changeWords)           ??
+            TryMatch(q, ConversationIntent.WhyDoesItCrash,         _crashWords)            ??
             TryMatch(q, ConversationIntent.WhyIsHot,              _thermalWords)          ??
             TryMatch(q, ConversationIntent.WhyIsDiskFull,         _diskWords)             ??
             TryMatch(q, ConversationIntent.WhyIsMemoryHigh,       _ramWords)              ??
@@ -190,6 +191,16 @@ public sealed class ConversationIntentResolver
 
     private static readonly string[] _greetingWords =
         ["hello", "hi ", "hey ", "howdy", "good morning", "good afternoon", "good evening"];
+
+    // Checked ahead of the slowness words: "freeze" and "unresponsive" appear in
+    // both vocabularies, and a machine that is crashing is the more specific — and
+    // more urgent — reading of those words.
+    private static readonly string[] _crashWords =
+        ["crash", "crashes", "crashing", "crashed", "blue screen", "bluescreen", "bsod",
+         "stop code", "stop error", "reboot", "reboots", "rebooting", "restarts by itself",
+         "restarting on its own", "shuts down", "shut off", "turns off", "powers off",
+         "keeps dying", "died", "black screen", "kernel panic", "dump file", "minidump",
+         "unexpected shutdown", "won't stay on", "restarted itself"];
 
     private static readonly string[] _slowWords =
         ["slow", "lag", "sluggish", "freeze", "frozen", "performance", "unresponsive",

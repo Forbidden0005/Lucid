@@ -100,7 +100,8 @@ public sealed partial class CompanionOverlayWindow : Window
         ViewModel = new CompanionChatViewModel(
             AppServices.LlmChat,
             AppServices.AutomationOrchestrator,
-            AppServices.Logger);
+            AppServices.Logger,
+            preflight: AppServices.InvestigationPreflight);
         InitializeComponent();
 
         _uiDispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();

@@ -33,6 +33,15 @@
     -->
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+    <!--
+      Windows event log access for the Reliability domain (crash history:
+      unexpected shutdowns, stop errors, WHEA hardware errors, storage faults).
+      Provides System.Diagnostics.Eventing.Reader, used only by
+      WindowsEventLogReader — every layer above it works on RawEventRecord, so
+      the interpretation stays testable without a Windows log to read.
+      Framework package, not WinUI, so the Lucid.Core boundary rule holds.
+    -->
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -70,10 +70,25 @@
             <!-- ── Navigation Items ────────────────────────────────────── -->
             <muxc:NavigationView.MenuItems>
 
+                <!--
+                    Chat is the home surface — first item, selected at launch.
+                    Everything below it is the analysis workspace you reach when
+                    you want to look at the data yourself rather than ask about it.
+                -->
+                <muxc:NavigationViewItem x:Name="NavChat"
+                                         Tag="chat"
+                                         Content="Chat"
+                                         IsSelected="True">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8BD;" FontFamily="Segoe MDL2 Assets" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemSeparator />
+
                 <muxc:NavigationViewItem x:Name="NavDashboard"
                                          Tag="dashboard"
-                                         Content="Dashboard"
-                                         IsSelected="True">
+                                         Content="Dashboard">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE80F;" FontFamily="Segoe MDL2 Assets" />
                     </muxc:NavigationViewItem.Icon>

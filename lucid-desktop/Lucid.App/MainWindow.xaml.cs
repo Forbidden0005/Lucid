@@ -31,7 +31,10 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new SizeInt32(1280, 820));
         Title = "Lucid";
 
-        ContentFrame.Navigate(typeof(DashboardPage));
+        // Chat is the home surface. NavigateToPage also sets the pane width for
+        // the destination, so route the initial navigation through it rather than
+        // calling ContentFrame.Navigate directly.
+        NavigateToPage("chat");
 
         // Ensure the overlay window is created whenever ANY code makes the
         // companion visible — Dashboard button, page deep-links, automation, etc.
@@ -118,6 +121,7 @@ public sealed partial class MainWindow : Window
     {
         Type? pageType = tag switch
         {
+            "chat"          => typeof(ChatPage),
             "dashboard"     => typeof(DashboardPage),
             "explain"       => typeof(ExplainPage),
             "insights"      => typeof(InsightsPage),
@@ -143,10 +147,32 @@ public sealed partial class MainWindow : Window
             _ => null
         };
 
-        if (pageType is not null && ContentFrame.CurrentSourcePageType != pageType)
-        {
+        if (pageType is null) return;
+
+        ApplyPaneModeFor(pageType);
+
+        if (ContentFrame.CurrentSourcePageType != pageType)
             ContentFrame.Navigate(pageType);
-        }
+    }
+
+    /// <summary>
+    /// Narrows the shell's navigation pane to icons on the chat page, and restores
+    /// the labelled pane everywhere else.
+    ///
+    /// The chat page carries its own conversation rail. Two full-width rails side
+    /// by side would eat close to half the window on a 1280px display and read as
+    /// clutter, which is exactly what the design language rules out. Dropping the
+    /// shell pane to icon width keeps one list of conversations and one strip of
+    /// destinations, and the hamburger still opens the labelled pane on demand.
+    ///
+    /// Only the chat page pays this cost — every analysis page keeps the full
+    /// labelled sidebar it had before.
+    /// </summary>
+    private void ApplyPaneModeFor(Type pageType)
+    {
+        NavView.PaneDisplayMode = pageType == typeof(ChatPage)
+            ? NavigationViewPaneDisplayMode.LeftCompact
+            : NavigationViewPaneDisplayMode.Auto;
     }
 
     // ── Companion window toggle ────────────────────────────────────────────────
